@@ -28,6 +28,7 @@ shadowJar {
                 'Main-Class': 'AppStart' // 替换为你的主类全名
         )
     }
+    zip64 true
 }
 
 
