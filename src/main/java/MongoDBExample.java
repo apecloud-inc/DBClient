@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 import java.util.Arrays;
 
 public class MongoDBExample {
-    public static void main(String[] args) {
+    public static void doTest(){
         // 1. 建立数据库连接
 	/*
 	ClusterSettings clusterSettings = ClusterSettings.builder()
@@ -32,26 +32,36 @@ public class MongoDBExample {
                                       .build();
 	*/
 
-	MongoCredential credential = MongoCredential.createCredential(
-		"root", "admin", "r8wp56zg".toCharArray());
+
+		String username = System.getenv("username");
+		String password = System.getenv("password");
+		String hostname = System.getenv("host");
+		String port = System.getenv("port");
+		String database = System.getenv("database");
 
 
-	MongoClientSettings settings = MongoClientSettings.builder()
-		        .credential(credential)
-			.applyToClusterSettings( builder -> {
-			      builder.hosts(Arrays.asList(
-				  new ServerAddress("172.31.19.121", 31826),
-				  new ServerAddress("172.31.36.59", 31826),
-				  new ServerAddress("172.31.45.238", 31826)))
-			      .mode(ClusterConnectionMode.MULTIPLE);
-			})
-			.build();
+
+	 /*MongoCredential credential = MongoCredential.createCredential(
+		"root", "admin", "fkfthrv4".toCharArray()); */
+		MongoCredential credential = MongoCredential.createCredential(
+		username, database, password.toCharArray());
+
+
+
+		MongoClientSettings settings = MongoClientSettings.builder()
+				.credential(credential)
+				.applyToClusterSettings( builder -> {
+					builder.hosts(Arrays.asList(
+									new ServerAddress(hostname, Integer.parseInt(port))));
+							//.mode(ClusterConnectionMode.MULTIPLE);
+				})
+				.build();
 
 
 	MongoClient mongoClient = MongoClients.create(settings);
 
-	MongoDatabase database = mongoClient.getDatabase("mydb");
-	MongoCollection<Document> collection = database.getCollection("mycollection");
+	MongoDatabase Database = mongoClient.getDatabase("test");
+	MongoCollection<Document> collection = Database.getCollection("mycollection");
 
 	// 插入文档
 	Document document = new Document("name", "John Doe");
@@ -68,6 +78,7 @@ public class MongoDBExample {
 
 	// 删除文档
 	collection.deleteOne(Filters.eq("name", "John Doe"));
+
 
 	mongoClient.close();
     }

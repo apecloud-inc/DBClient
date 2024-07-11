@@ -4,11 +4,23 @@
 import java.sql.*;
 
 public class PostgreSQLExample {
-    public static void main(String[] args) {
+    public static void doTest()  {
         // 1. 建立数据库连接
-        String url = "jdbc:postgresql://172.31.21.153:30150,172.31.32.194:30150,172.31.47.15:30150/postgres?useSSL=false";
-        String username = "postgres";
-        String password = "fx9xflfb";
+        //String url = "jdbc:postgresql://127.0.0.1:5432/postgres?useSSL=false";
+        //String username = "postgres";
+        //String password = "tps6stdr";
+
+        try {
+            Class.forName("org.postgresql.Driver");
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("PostgreSQL JDBC Driver not found，please.", e);
+        }
+        String username = System.getenv("username");
+        String password = System.getenv("password");
+        String hostname = System.getenv("host");
+        String port = System.getenv("port");
+
+        String url = "jdbc:postgresql://"+hostname+":"+port+"/postgres?useSSL=false";
 
         try (Connection connection = DriverManager.getConnection(url, username, password)) {
             System.out.println("Connected to database!");
