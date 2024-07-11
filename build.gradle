@@ -7,10 +7,29 @@
  */
 
 // Apply the java plugin to add support for Java
-apply plugin: 'java'
+
+plugins {
+    id 'java'
+    id 'com.github.johnrengelman.shadow' version '5.0.0' // 使用最新版本替换x.y.z
+}
+//apply plugin: 'java'
 
 // Apply the application plugin to add support for building an application
-apply plugin: 'application'
+//apply plugin: 'application'
+
+/*application {
+ mainClassName = 'AppStart'
+}*/
+
+shadowJar {
+    classifier = 'all'
+    manifest {
+        attributes(
+                'Main-Class': 'AppStart' // 替换为你的主类全名
+        )
+    }
+}
+
 
 // In this section you declare where to find the dependencies of your project
 repositories {
@@ -47,7 +66,95 @@ dependencies {
     // this is for redis sentinel connector
     compile group: 'redis.clients', name: 'jedis', version: '3.7.0'
     runtime 'redis.clients:jedis:3.7.0'
+
+    // this is for kafka connector
+    compile group: 'org.apache.kafka', name: 'kafka-clients', version: '2.8.0'
+    runtime 'org.apache.kafka:kafka-clients:2.8.0'
+
+    // this is for qdrant connect
+    compile group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.13'
+    runtime 'org.apache.httpcomponents:httpclient:4.5.13'
+    compile group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.13.0'
+    runtime 'com.fasterxml.jackson.core:jackson-databind:2.13.0'
+
+    // this is for pulsar connector
+    compile group: 'org.apache.pulsar', name: 'pulsar-client', version: '2.10.0'
+    runtime 'org.apache.pulsar:pulsar-client:2.10.0'
+
+
+
+    // this is for elasticsearch connector
+    compile group: 'org.elasticsearch.client', name: 'elasticsearch-rest-high-level-client', version: '7.17.2'
+    runtime 'org.elasticsearch.client:elasticsearch-rest-high-level-client:7.17.2'
+    compile group: 'org.elasticsearch.client', name: 'elasticsearch-rest-client', version: '7.17.2'
+    runtime 'org.elasticsearch.client:elasticsearch-rest-client:7.17.2'
+    compile group: 'org.elasticsearch', name: 'elasticsearch', version: '7.17.2'
+    runtime 'org.elasticsearch:elasticsearch:7.17.2'
+
+    // this is for clickhouse connector
+    //compile group: 'ru.yandex.clickhouse', name: 'clickhouse-jdbc', version: '0.3.2-patch5'
+    //runtime 'ru.yandex.clickhouse:clickhouse-jdbc:0.3.2-patch'
+    implementation 'ru.yandex.clickhouse:clickhouse-jdbc:0.3.2'
+
+
+    //this if for weaviate connector
+    implementation 'io.weaviate:client:4.7.0'
+
+    ////this if for greptimdb  connector
+    implementation 'io.greptime:ingester-all:0.7.3'
+    //this if for nebula  connector
+    implementation 'com.vesoft:client:3.8.0'
+    implementation 'com.alibaba:fastjson:2.0.51'
+
+    //this if for milvus  connector
+    implementation 'io.milvus:milvus-sdk-java:2.4.1'
+    //this if for oracle  connector
+    implementation 'com.oracle.database.jdbc:ojdbc8:19.3.0.0'
+    //this if for flink  connector
+    implementation 'org.apache.flink:flink-java:1.19.1'
+    implementation 'org.apache.flink:flink-streaming-java:1.19.1'
+    implementation 'org.apache.flink:flink-clients:1.19.1'
+    //this if for mariadb  connector
+    implementation 'org.mariadb.jdbc:mariadb-java-client:3.3.3'
+    //implementation 'org.apache.commons:commons-dbcp2:3.3.3'
+    //this if for yashandb  connector
+    implementation 'com.yashandb:yashandb-jdbc:1.6.1'
+    //this if for dmdb  connector
+    implementation  'com.dameng:Dm7JdbcDriver18:7.6.0.165'
+    //this if for influxdb  connector
+    implementation 'com.influxdb:influxdb-client-java:3.2.0'
+    //this if for openldap  connector
+    //implementation 'com.sun.jldap:jldap-client-sdk:1.0.1'
+    //this if for zookeeper  connector
+    implementation 'org.apache.zookeeper:zookeeper:3.6.3'
+    //this if for minio  connector
+    implementation 'io.minio:minio:8.5.11'
+    //this if for etcd  connector
+    implementation 'io.etcd:jetcd-core:0.5.0'
+    //this if for halo  connector
+    //implementation 'com.halo.client:halo-jdbc:0.5.0'
+    //this if for opengauss  connector
+    implementation 'org.opengauss:opengauss-jdbc:6.0.0-RC1-og'
+    //this if for tdengine  connector
+    implementation 'com.taosdata.jdbc:taos-jdbcdriver:3.3.0'
+
+    //this if for solr  connector
+    implementation 'org.apache.solr:solr-solrj:8.11.1'
+    //this if for opensearch  connector
+    implementation 'org.opensearch.client:opensearch-rest-high-level-client:1.2.4'
+    implementation 'org.apache.httpcomponents.client5:httpclient5:5.2.1'
+    //this if for tidb  connector
+    implementation 'com.pingcap.tikv:tikv-client-java:3.0.0'
+    // this is for mogdb connector
+    implementation 'io.mogdb:mogdb-jdbc:5.0.0.8.mg'
+
+
+
+
+
+
 }
+
 
 task(runMySQL, dependsOn: 'classes', type: JavaExec) {
    main = 'MySQLExample'
@@ -76,3 +183,36 @@ task(runSentinelRedis, dependsOn: 'classes', type: JavaExec) {
    args 'ApeCloud'
    systemProperty 'sentinelredis.message', 'Hello '
 }
+
+task(runKafka, dependsOn: 'classes', type: JavaExec) {
+    main = 'KafkaProducerExample'
+    classpath = sourceSets.main.runtimeClasspath
+    args 'ApeCloud'
+    systemProperty 'kafka.message', 'Hello '
+}
+task(runPolarDBX, dependsOn: 'classes', type: JavaExec) {
+    main = 'PolarDBXExample'
+    classpath = sourceSets.main.runtimeClasspath
+    args 'ApeCloud'
+    systemProperty 'polardbx.message', 'Hello '
+}
+task(runPulsar, dependsOn: 'classes', type: JavaExec) {
+    main = 'PulsarProducerExample'
+    classpath = sourceSets.main.runtimeClasspath
+    args 'ApeCloud'
+    systemProperty 'pulsar.message', 'Hello '
+}
+task(runQdrant, dependsOn: 'classes', type: JavaExec) {
+    main = 'QdrantHttpExample'
+    classpath = sourceSets.main.runtimeClasspath
+    args 'ApeCloud'
+    systemProperty 'qdrant.message', 'Hello '
+}
+task(runElasticSearch, dependsOn: 'classes', type: JavaExec) {
+    main = 'ElasticSearchExample'
+    classpath = sourceSets.main.runtimeClasspath
+    args 'ApeCloud'
+    systemProperty 'elasticsearch.message', 'Hello '
+}
+
+
