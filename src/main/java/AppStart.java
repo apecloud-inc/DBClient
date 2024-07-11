@@ -3,7 +3,8 @@ public class AppStart {
 
     public static void main(String[] args) throws Exception {
             String engine=System.getenv("engine");
-            if (engine.isEmpty()) {
+
+            if (engine==null||engine.isEmpty()) {
                 System.out.println("No engine provided");
                 return;
             }
@@ -30,11 +31,17 @@ public class AppStart {
                 case 10:          //qdrant
                     QdrantHttpExample.doTest();
                     break;
+                case 12:          //nebula
+                    NebulaExample.doTest();
+                    break;
                 case 22:          //openldap
                     OpenldapExample.doTest();
                     break;
                 case 24:          //opensearch
                     OpenSearchExample.doTest();
+                    break;
+                case 27:          //tdengine
+                    TdengineExample.doTest();
                     break;
                 case 29:          //clickhouse
                     ClickHouseExample.doTest();
