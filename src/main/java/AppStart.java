@@ -31,11 +31,17 @@ public class AppStart {
             case 10:          //qdrant
                 QdrantHttpExample.doTest();
                 break;
+            case 11:          //greptimedb
+                GreptimeDBExample.doTest();
+                break;
             case 12:          //nebula
                 NebulaExample.doTest();
                 break;
             case 14:          //starrocks
                 StarRocksExample.doTest();
+                break;
+            case 15:          //etcd
+                EtcdExample.doTest();
                 break;
             case 17:          //foxlake
                 FoxLakeExample.doTest();
@@ -43,8 +49,14 @@ public class AppStart {
             case 22:          //openldap
                 OpenldapExample.doTest();
                 break;
+            case 23:          //polardbx
+                PolarDBXExample.doTest();
+                break;
             case 24:          //opensearch
                 OpenSearchExample.doTest();
+                break;
+            case 25:          //elasticsearch
+                ElasticSearchExample.doTest();
                 break;
             case 26:          //vllm
                 VllmExample.doTest();
