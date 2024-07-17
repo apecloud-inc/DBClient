@@ -79,6 +79,9 @@ public class AppStart {
             case 35:          //xinference
                 XinferenceExample.doTest();
                 break;
+            case 36:          //oracle
+                OracleExample.doTest();
+                break;
             case 37:          //opengauss
                 OpengaussExample.doTest();
                 break;
@@ -93,6 +96,15 @@ public class AppStart {
                 break;
             case 43:          //mogdb
                 MogDBExample.doTest();
+                break;
+            case 47:          //yashandb
+                YashanDBExample.doTest();
+                break;
+            case 48:          //redis-cluster(sentinel)
+                SentinelRedisExample.doTest();
+                break;
+            case 50:          //dmdb
+                DmDBExample.doTest();
                 break;
             case 51:        //minio
                 MinioExample.doTest();
