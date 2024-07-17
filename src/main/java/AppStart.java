@@ -31,11 +31,17 @@ public class AppStart {
             case 10:          //qdrant
                 QdrantHttpExample.doTest();
                 break;
+            case 11:          //greptimedb
+                GreptimeDBExample.doTest();
+                break;
             case 12:          //nebula
                 NebulaExample.doTest();
                 break;
             case 14:          //starrocks
                 StarRocksExample.doTest();
+                break;
+            case 15:          //etcd
+                EtcdExample.doTest();
                 break;
             case 17:          //foxlake
                 FoxLakeExample.doTest();
@@ -43,8 +49,14 @@ public class AppStart {
             case 22:          //openldap
                 OpenldapExample.doTest();
                 break;
+            case 23:          //polardbx
+                PolarDBXExample.doTest();
+                break;
             case 24:          //opensearch
                 OpenSearchExample.doTest();
+                break;
+            case 25:          //elasticsearch
+                ElasticSearchExample.doTest();
                 break;
             case 26:          //vllm
                 VllmExample.doTest();
@@ -67,6 +79,9 @@ public class AppStart {
             case 35:          //xinference
                 XinferenceExample.doTest();
                 break;
+            case 36:          //oracle
+                OracleExample.doTest();
+                break;
             case 37:          //opengauss
                 OpengaussExample.doTest();
                 break;
@@ -81,6 +96,15 @@ public class AppStart {
                 break;
             case 43:          //mogdb
                 MogDBExample.doTest();
+                break;
+            case 47:          //yashandb
+                YashanDBExample.doTest();
+                break;
+            case 48:          //redis-cluster(sentinel)
+                SentinelRedisExample.doTest();
+                break;
+            case 50:          //dmdb
+                DmDBExample.doTest();
                 break;
             case 51:        //minio
                 MinioExample.doTest();
