@@ -1,3 +1,5 @@
+package com.apecloud.dbtester.tester;
+
 public class DBConfig {
     private final String host;
     private final int port;

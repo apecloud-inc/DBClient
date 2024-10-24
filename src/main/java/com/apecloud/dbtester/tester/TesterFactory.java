@@ -1,3 +1,4 @@
+package com.apecloud.dbtester.tester;
 
 public class TesterFactory {
     public static DatabaseTester createTester(DBConfig config) {

@@ -8,52 +8,48 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public class SQLServerTester implements DatabaseTester {
+public class ClickHouseTester implements DatabaseTester {
     private List<DatabaseConnection> connections = new ArrayList<>();
     private final DBConfig dbConfig;
 
-    // 默认构造函数
-    public SQLServerTester() {
+    public ClickHouseTester() {
         this.dbConfig = null;
     }
 
-    // 接收 DBConfig 的构造函数
-    public SQLServerTester(DBConfig dbConfig) {
+    public ClickHouseTester(DBConfig dbConfig) {
         this.dbConfig = dbConfig;
     }
 
-    // 使用 DBConfig 的 connect 方法
     public DatabaseConnection connect() throws IOException {
         if (dbConfig == null) {
             throw new IllegalStateException("DBConfig not provided");
         }
 
         try {
-            Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver");
+            Class.forName("ru.yandex.clickhouse.ClickHouseDriver");
         } catch (ClassNotFoundException e) {
-            throw new RuntimeException("SQL Server JDBC Driver not found, please try again..", e);
+            throw new RuntimeException("ClickHouse JDBC Driver not found, please try again..", e);
         }
 
-        // SQL Server的连接URL格式：jdbc:sqlserver://hostname:port;databaseName=database
-        String url = String.format("jdbc:sqlserver://%s:%d;databaseName=%s;encrypt=false",
+        String url = String.format("jdbc:clickhouse://%s:%d/%s",
                 dbConfig.getHost(),
                 dbConfig.getPort(),
                 dbConfig.getDatabase());
 
         try {
-            return new SQLServerConnection(DriverManager.getConnection(url, dbConfig.getUser(), dbConfig.getPassword()));
+            return new ClickHouseConnection(DriverManager.getConnection(url, dbConfig.getUser(), dbConfig.getPassword()));
         } catch (SQLException e) {
-            throw new IOException("Failed to connect to SQL Server database", e);
+            throw new IOException("Failed to connect to ClickHouse database", e);
         }
     }
 
     @Override
     public QueryResult execute(DatabaseConnection connection, String query) throws IOException {
-        SQLServerConnection sqlServerConnection = (SQLServerConnection) connection;
+        ClickHouseConnection clickHouseConnection = (ClickHouseConnection) connection;
         try {
-            Statement statement = sqlServerConnection.connection.createStatement();
+            Statement statement = clickHouseConnection.connection.createStatement();
             boolean isResultSet = statement.execute(query);
-            return new SQLServerQueryResult(statement.getResultSet(), statement.getUpdateCount());
+            return new ClickHouseQueryResult(statement.getResultSet(), statement.getUpdateCount());
         } catch (SQLException e) {
             throw new IOException("Failed to execute query", e);
         }
@@ -87,7 +83,6 @@ public class SQLServerTester implements DatabaseTester {
 
     @Override
     public String connectionStress(int connections, int duration) {
-        // 建立多个连接
         for (int i = 0; i < connections; i++) {
             try {
                 DatabaseConnection connection = connect();
@@ -101,7 +96,6 @@ public class SQLServerTester implements DatabaseTester {
 
     @Override
     public void releaseConnections() {
-        // 释放所有连接
         for (DatabaseConnection connection : connections) {
             try {
                 connection.close();
@@ -117,10 +111,10 @@ public class SQLServerTester implements DatabaseTester {
         return TestExecutor.executeTest(this, dbConfig);
     }
 
-    private static class SQLServerConnection implements DatabaseConnection {
+    private static class ClickHouseConnection implements DatabaseConnection {
         private final Connection connection;
 
-        SQLServerConnection(Connection connection) {
+        ClickHouseConnection(Connection connection) {
             this.connection = connection;
         }
 
@@ -129,16 +123,16 @@ public class SQLServerTester implements DatabaseTester {
             try {
                 connection.close();
             } catch (SQLException e) {
-                throw new IOException("Failed to close SQL Server connection", e);
+                throw new IOException("Failed to close ClickHouse connection", e);
             }
         }
     }
 
-    public static class SQLServerQueryResult implements QueryResult {
+    public static class ClickHouseQueryResult implements QueryResult {
         private final ResultSet resultSet;
         private final int updateCount;
 
-        SQLServerQueryResult(ResultSet resultSet, int updateCount) {
+        ClickHouseQueryResult(ResultSet resultSet, int updateCount) {
             this.resultSet = resultSet;
             this.updateCount = updateCount;
         }
@@ -160,17 +154,16 @@ public class SQLServerTester implements DatabaseTester {
     }
 
     public static void main(String[] args) throws IOException {
-        // 使用示例
         DBConfig dbConfig = new DBConfig.Builder()
             .host("localhost")
-            .port(1433)  // SQL Server 默认端口
-            .database("master")  // SQL Server 默认数据库
-            .user("sa")  // SQL Server 默认管理员账户
-            .password("password")
+            .port(8123)
+            .database("default")
+            .user("default")
+            .password("")
             .build();
-        SQLServerTester tester = new SQLServerTester(dbConfig);
+        ClickHouseTester tester = new ClickHouseTester(dbConfig);
         DatabaseConnection connection = tester.connect();
-        QueryResult result = tester.execute(connection, "SELECT * FROM users");
+        QueryResult result = tester.execute(connection, "SHOW DATABASES");
         connection.close();
     }
 }
