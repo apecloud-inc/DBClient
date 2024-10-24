@@ -15,4 +15,16 @@ include 'api'
 include 'services:webservice'
 */
 
-rootProject.name = 'java'
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+	mavenCentral()
+	google()
+	jcenter()
+        maven {
+            url 'https://maven.fabricmc.net/'
+        }
+    }
+}
+
+rootProject.name = 'DBClient'
