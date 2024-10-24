@@ -1,0 +1,108 @@
+import org.apache.commons.cli.*;
+
+public class OneClient {
+    public static void main(String[] args) throws Exception {
+        Options options = new Options();
+        // 基本数据库配置选项
+        options.addOption("h", "host", true, "Database host")
+               .addOption("u", "user", true, "Database user name")
+               .addOption("p", "password", true, "Database password")
+               .addOption("P", "port", true, "Database port number")
+               .addOption("db", "database", true, "Database name")
+               .addOption("type", "dbtype", true, "Database type (mysql/postgresql/etc)")
+               .addOption("tb", "table", true, "Table name");
+
+        // 测试相关选项
+        options.addOption("t", "test", true, "Test type (query/connectionstress/benchmark)")
+               .addOption("q", "query", true, "SQL query to execute")
+               .addOption("c", "connections", true, "Number of connections")
+               .addOption("d", "duration", true, "Test duration in seconds")
+               .addOption("i", "iterations", true, "Number of iterations for benchmark")
+               .addOption("cc", "concurrency", true, "Concurrency level for benchmark");
+
+        CommandLineParser parser = new DefaultParser();
+        try {
+            CommandLine cmd = parser.parse(options, args);
+            DBConfig config = createConfig(cmd);
+            executeTest(config);
+        } catch (ParseException e) {
+            System.err.println("Failed to parse command line arguments: " + e.getMessage());
+            new HelpFormatter().printHelp("OneClient", options);
+            return;
+        }
+    }
+
+    private static DBConfig createConfig(CommandLine cmd) {
+        DBConfig.Builder builder = new DBConfig.Builder()
+            .host(cmd.getOptionValue("host", "127.0.0.1"))
+            .user(cmd.getOptionValue("user", "root"))
+            .password(cmd.getOptionValue("password", ""))
+            .database(cmd.getOptionValue("database", "mysql"))
+            .dbType(cmd.getOptionValue("dbtype", "mysql"))
+            .table(cmd.getOptionValue("table", "user"))
+            .query(cmd.getOptionValue("query", "SELECT * FROM user"))
+            .testType(cmd.getOptionValue("test", "query"));
+
+        // 处理数值类型的参数
+        try {
+            // 必需的数值参数
+            builder.port(Integer.parseInt(cmd.getOptionValue("port", "3306")));
+            builder.connectionCount(Integer.parseInt(cmd.getOptionValue("connections", "1000")));
+            
+            // 可选的数值参数
+            if (cmd.hasOption("duration")) {
+                builder.duration(Integer.parseInt(cmd.getOptionValue("duration")));
+            }
+            if (cmd.hasOption("iterations")) {
+                builder.iterations(Integer.parseInt(cmd.getOptionValue("iterations")));
+            }
+            if (cmd.hasOption("concurrency")) {
+                builder.concurrency(Integer.parseInt(cmd.getOptionValue("concurrency")));
+            }
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid numeric parameter: " + e.getMessage());
+        }
+
+        return builder.build();
+    }
+
+    private static void executeTest(DBConfig config) {
+        try {
+            DatabaseTester tester = TesterFactory.createTester(config);
+            String result = TestExecutor.executeTest(tester, config);
+            
+            // 打印测试结果
+            System.out.println("Test Result:");
+            System.out.println(result);
+            
+            // 打印配置信息
+            System.out.println("\nConnection Information:");
+            System.out.printf("Database Type: %s%n", config.getDbType());
+            System.out.printf("Host: %s%n", config.getHost());
+            System.out.printf("Port: %d%n", config.getPort());
+            System.out.printf("Database: %s%n", config.getDatabase());
+            System.out.printf("Table: %s%n", config.getTable());
+            System.out.printf("User: %s%n", config.getUser());
+            System.out.printf("Test Type: %s%n", config.getTestType());
+            
+            // 根据测试类型打印额外信息
+            switch (config.getTestType().toLowerCase()) {
+                case "connectionstress":
+                    System.out.printf("Connection Count: %d%n", config.getConnectionCount());
+                    System.out.printf("Duration: %d seconds%n", config.getDuration());
+                    break;
+                case "benchmark":
+                    System.out.printf("Iterations: %d%n", config.getIterations());
+                    System.out.printf("Concurrency: %d%n", config.getConcurrency());
+                    System.out.printf("Query: %s%n", config.getQuery());
+                    break;
+                case "query":
+                    System.out.printf("Query: %s%n", config.getQuery());
+                    break;
+            }
+        } catch (Exception e) {
+            System.err.println("Test execution failed: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+}
