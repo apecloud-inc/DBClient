@@ -9,25 +9,25 @@
 // Apply the java plugin to add support for Java
 
 plugins {
-    id 'java'
     id 'com.gradleup.shadow' version '8.3.0' // 使用最新版本替换x.y.z
+    id 'application'
 }
-//apply plugin: 'java'
 
-// Apply the application plugin to add support for building an application
-//apply plugin: 'application'
-
-/*application {
- mainClassName = 'AppStart'
-}*/
+mainClassName = 'OneClient'
 
 shadowJar {
     archiveClassifier.set('all')
     manifest {
         attributes(
-                'Main-Class': 'AppStart' // 替换为你的主类全名
+                'Main-Class': 'OneClient', // 替换为你的主类全名
         )
     }
+    // 将依赖打包进 JAR
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    
+    // 排除签名文件
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF','META-INF/*.DSA'
+
     zip64 true
 }
 
@@ -243,3 +243,24 @@ task(runOneClient, dependsOn: 'classes', type: JavaExec) {
     systemProperty 'oneclient.message', 'Hello '
 }
 
+// 创建一个包含所有依赖的发布版本
+tasks.register('packageDistribution', Zip) {
+    dependsOn jar
+    archiveFileName = "${project.name}-${project.version}-dist.zip"
+    
+    from jar.archiveFile
+    from configurations.runtimeClasspath
+    
+    into "${project.name}-${project.version}"
+}
+
+tasks.register('apecloudJar', Jar) {
+    archiveClassifier = 'apecloud'
+
+    from sourceSets.main.output
+
+    dependsOn configurations.runtimeClasspath
+    from {
+        configurations.runtimeClasspath.findAll { it.name.endsWith('jar') }.collect { zipTree(it) }
+    }
+}

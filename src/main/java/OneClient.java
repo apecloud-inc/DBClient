@@ -106,4 +106,8 @@ public class OneClient {
             e.printStackTrace();
         }
     }
+
+    public Object getGreeting() {
+        return "Hello";
+    }
 }
