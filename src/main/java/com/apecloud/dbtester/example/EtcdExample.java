@@ -1,3 +1,5 @@
+package com.apecloud.dbtester.example;
+
 import io.etcd.jetcd.Client;
 import io.etcd.jetcd.kv.GetResponse;
 

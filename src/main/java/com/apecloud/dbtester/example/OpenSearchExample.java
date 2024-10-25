@@ -1,4 +1,4 @@
-
+package com.apecloud.dbtester.example;
 
 import org.apache.http.HttpHost;
 import org.opensearch.action.DocWriteResponse;
