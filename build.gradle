@@ -16,15 +16,16 @@ plugins {
 mainClassName = 'OneClient'
 
 shadowJar {
-    archiveClassifier.set('all')
-    manifest {
-        attributes(
-                'Main-Class': 'OneClient', // 替换为你的主类全名
-        )
-    }
     // 将依赖打包进 JAR
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     
+    // 配置输出的文件名
+    archiveBaseName.set('oneclient')
+    archiveClassifier.set('all')
+    archiveVersion.set('1.0')
+    
+    // 合并相同的文件
+    mergeServiceFiles()
     // 排除签名文件
     exclude 'META-INF/*.RSA', 'META-INF/*.SF','META-INF/*.DSA'
 
@@ -241,26 +242,4 @@ task(runOneClient, dependsOn: 'classes', type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     args 'ApeCloud'
     systemProperty 'oneclient.message', 'Hello '
-}
-
-// 创建一个包含所有依赖的发布版本
-tasks.register('packageDistribution', Zip) {
-    dependsOn jar
-    archiveFileName = "${project.name}-${project.version}-dist.zip"
-    
-    from jar.archiveFile
-    from configurations.runtimeClasspath
-    
-    into "${project.name}-${project.version}"
-}
-
-tasks.register('apecloudJar', Jar) {
-    archiveClassifier = 'apecloud'
-
-    from sourceSets.main.output
-
-    dependsOn configurations.runtimeClasspath
-    from {
-        configurations.runtimeClasspath.findAll { it.name.endsWith('jar') }.collect { zipTree(it) }
-    }
 }
