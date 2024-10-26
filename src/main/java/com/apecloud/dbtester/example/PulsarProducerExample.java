@@ -1,3 +1,5 @@
+package com.apecloud.dbtester.example;
+
 import org.apache.pulsar.client.api.ClientBuilder;
 import org.apache.pulsar.client.api.Producer;
 import org.apache.pulsar.client.api.PulsarClient;

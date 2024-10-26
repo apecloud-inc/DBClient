@@ -7,19 +7,20 @@ public class OneClient {
         // 基本数据库配置选项
         options.addOption("h", "host", true, "Database host")
                .addOption("u", "user", true, "Database user name")
+               .addOption("o", "org", true, "Org name for some databases")
                .addOption("p", "password", true, "Database password")
                .addOption("P", "port", true, "Database port number")
-               .addOption("db", "database", true, "Database name")
-               .addOption("type", "dbtype", true, "Database type (mysql/postgresql/etc)")
-               .addOption("tb", "table", true, "Table name");
+               .addOption("d", "database", true, "Database name")
+               .addOption("e", "dbtype", true, "Database type (mysql/postgresql/etc)")
+               .addOption("t", "table", true, "Table name");
 
         // 测试相关选项
         options.addOption("t", "test", true, "Test type (query/connectionstress/benchmark)")
                .addOption("q", "query", true, "SQL query to execute")
                .addOption("c", "connections", true, "Number of connections")
-               .addOption("d", "duration", true, "Test duration in seconds")
+               .addOption("s", "duration", true, "Test duration in seconds")
                .addOption("i", "iterations", true, "Number of iterations for benchmark")
-               .addOption("cc", "concurrency", true, "Concurrency level for benchmark");
+               .addOption("m", "concurrency", true, "Concurrency level for benchmark");
 
         CommandLineParser parser = new DefaultParser();
         try {
@@ -37,6 +38,7 @@ public class OneClient {
         DBConfig.Builder builder = new DBConfig.Builder()
             .host(cmd.getOptionValue("host", "127.0.0.1"))
             .user(cmd.getOptionValue("user", "root"))
+            .org(cmd.getOptionValue("org", "primary"))
             .password(cmd.getOptionValue("password", ""))
             .database(cmd.getOptionValue("database", "mysql"))
             .dbType(cmd.getOptionValue("dbtype", "mysql"))
@@ -84,6 +86,7 @@ public class OneClient {
             System.out.printf("Database: %s%n", config.getDatabase());
             System.out.printf("Table: %s%n", config.getTable());
             System.out.printf("User: %s%n", config.getUser());
+            System.out.printf("Org: %s%n", config.getOrg());
             System.out.printf("Test Type: %s%n", config.getTestType());
             
             // 根据测试类型打印额外信息

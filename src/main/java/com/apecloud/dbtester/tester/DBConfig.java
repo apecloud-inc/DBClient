@@ -5,6 +5,7 @@ public class DBConfig {
     private final int port;
     private final String database;
     private final String user;
+    private final String org;
     private final String password;
     private final String dbType;        // 数据库类型
     private final String testType;      // 测试类型
@@ -20,6 +21,7 @@ public class DBConfig {
         this.port = builder.port;
         this.database = builder.database;
         this.user = builder.user;
+        this.org = builder.org;
         this.password = builder.password;
         this.dbType = builder.dbType;
         this.testType = builder.testType;
@@ -53,6 +55,10 @@ public class DBConfig {
 
     public String getUser() {
         return user;
+    }
+
+    public String getOrg() {
+        return org;
     }
 
     public String getPassword() {
@@ -89,6 +95,7 @@ public class DBConfig {
         private int port = 3306;
         private String database;
         private String user;
+        private String org;
         private String password;
         private String dbType = "mysql";     // 默认数据库类型
         private String testType;
@@ -126,6 +133,11 @@ public class DBConfig {
 
         public Builder user(String user) {
             this.user = user;
+            return this;
+        }
+
+        public Builder org(String org) {
+            this.org = org;
             return this;
         }
 
@@ -175,6 +187,9 @@ public class DBConfig {
             }
             if (user == null || user.isEmpty()) {
                 throw new IllegalStateException("User must be specified");
+            }
+            if (org == null || org.isEmpty()) {
+                throw new IllegalStateException("Org must be specified");
             }
             if (password == null || password.isEmpty()) {
                 throw new IllegalStateException("Password must be specified");
@@ -229,6 +244,7 @@ public class DBConfig {
                 ", port=" + port +
                 ", database='" + database + '\'' +
                 ", user='" + user + '\'' +
+                ", org='" + org + '\'' +
                 ", dbType='" + dbType + '\'' +
                 ", testType='" + testType + '\'' +
                 ", query='" + query + '\'' +

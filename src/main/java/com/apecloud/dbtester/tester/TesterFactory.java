@@ -8,6 +8,8 @@ public class TesterFactory {
             case "polardbx":
             case "starrocks":
             case "sr":
+            case "greptime":
+            case "greptimedb":
                 return new MySQLTester(config);
             case "pg":
             case "postgres":
@@ -33,6 +35,13 @@ public class TesterFactory {
                 return new ElasticSearchTester(config);
             case "etcd":
                 return new EtcdTester(config);
+            case "influx":
+            case "influxdb":
+                return new InfluxDBTester(config);
+            case "taos":
+            case "tdengine":
+            case "td":
+                return new TDEngineTester(config);
             case "mongo":
             case "mongodb":
                 return new MongoDBTester(config);
@@ -40,6 +49,12 @@ public class TesterFactory {
                 return new OpenGaussTester(config);
             case "qdrant":
                 return new QdrantTester(config);
+            case "redis":
+            case "sentinelredis":
+                return new SentinelRedisTester(config);
+            case "zk":
+            case "zookeeper":
+                return new ZookeeperTester(config);
             default:
                 throw new IllegalArgumentException("Unsupported database type: " + config.getDbType());
         }
