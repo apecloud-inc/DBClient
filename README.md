@@ -38,7 +38,7 @@ You will get oneclient jar at:
 
 Access the user table:
 bash-3.2$ java -jar ./build/libs/oneclient-1.0-all.jar --host=127.0.0.1 --user=postgres --database=postgres --password=g67rtlm8 --test=query --query="select * from pg_user limit 1" --port=5432 --dbtype=postgresql
-```
+```bash
 SLF4J(I): Connected with provider of type [ch.qos.logback.classic.spi.LogbackServiceProvider]
 Test Result:
 usename	usesysid	usecreatedb	usesuper	userepl	usebypassrls	passwd	valuntil	useconfig
@@ -56,14 +56,14 @@ Test Type: query
 Query: select * from pg_user limit 1
 ```
 
-### Run Connection Stress test
+#### Run Connection Stress test
 
 gradle runOneclient --args="--password='g67rtlm8' --port=5432  --database=postgres --user=postgres --dbtype=postgresql --test=connectionstress --connections=10"
 
 or:
 
 java -jar ./build/libs/oneclient-1.0-all.jar --host=127.0.0.1 --user=postgres --database=postgres --password='g67rtlm8' --test=connectionstress --connections=10 --port=5432 --dbtype=postgresql
-```
+```bash
 SLF4J(I): Connected with provider of type [ch.qos.logback.classic.spi.LogbackServiceProvider]
 Test Result:
 null
@@ -80,10 +80,10 @@ Connection Count: 10
 Duration: 60 seconds
 ```
 
-### Run a benchmark
+#### Run a benchmark
 
  java -jar ./build/libs/oneclient-1.0-all.jar --host=127.0.0.1 --user=postgres --database=postgres --password=g67rtlm8 --test=benchmark --query="select * from pg_user limit 1" --port=5432 --dbtype=postgresql
- ```
+ ```bash
  SLF4J(I): Connected with provider of type [ch.qos.logback.classic.spi.LogbackServiceProvider]
 Test Result:
 Benchmark completed with 1000 iterations and 10 concurrency
@@ -100,3 +100,36 @@ Iterations: 1000
 Concurrency: 10
 Query: select * from pg_user limit 1
  ```
+
+#### Run on Pod
+
+```yaml 
+apiVersion: v1
+kind: Pod
+metadata:
+  generateName: test-dbclient-
+  namespace: default
+spec:
+  containers:
+    - name: test-dbclient
+      imagePullPolicy: IfNotPresent
+      image: docker.io/apecloud/dbclient:latest
+      args:
+        - "--host"
+        - "127.0.0.1"                                    
+        - "--user"
+        - "postgres"                       
+        - "--database"
+        - "postgres"
+        - "--port"
+        - "5432"
+        - "--password"
+        - "g67rtlm8"
+        - "--test"
+        - "query"
+        - "--query"
+        - "select * from pg_user limit 1"
+        - "--dbtype"
+        - "postgresql"
+  restartPolicy: Never
+```

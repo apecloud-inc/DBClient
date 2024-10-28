@@ -1,9 +1,9 @@
-# build dbclient docker
+# Build DBClient Image
+
 docker buildx build -f docker/Dockerfile -t docker.io/apecloud/dbclient:latest --platform=linux/amd64,linux/arm64 . --push
 
-## run pod
-```yaml
-kubectl create -f -<<EOF            
+## Run Connection on Pod
+```yaml 
 apiVersion: v1
 kind: Pod
 metadata:
@@ -28,9 +28,8 @@ spec:
         - "--test"
         - "query"
         - "--query"
-        - "\"select * from pg_user limit 1\"
+        - "select * from pg_user limit 1"
         - "--dbtype"
         - "postgresql"
   restartPolicy: Never
-EOF
 ```
