@@ -11,8 +11,9 @@ public class OneClient {
                .addOption("p", "password", true, "Database password")
                .addOption("P", "port", true, "Database port number")
                .addOption("d", "database", true, "Database name")
-               .addOption("e", "dbtype", true, "Database type (mysql/postgresql/etc)")
-               .addOption("t", "table", true, "Table name");
+               .addOption("e", "dbtype", true, "Database type (mysql/postgresql/oceanbase/etc)")
+               .addOption("t", "table", true, "Table name")
+               .addOption("a", "accessmode", true, "Access mode (mysql/postgresql/oracle/redis/influxdb/prometheus)");
 
         // 测试相关选项
         options.addOption("t", "test", true, "Test type (query/connectionstress/benchmark)")
@@ -35,6 +36,18 @@ public class OneClient {
     }
 
     private static DBConfig createConfig(CommandLine cmd) {
+        // 处理访问模式
+        DBConfig.AccessMode accessMode;
+        try {
+            String accessModeStr = cmd.getOptionValue("accessmode", "mysql").toUpperCase();
+            accessMode = DBConfig.AccessMode.valueOf(accessModeStr);
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid access mode. Supported modes: " + 
+                String.join(", ", java.util.Arrays.stream(DBConfig.AccessMode.values())
+                    .map(mode -> mode.getMode())
+                    .toArray(String[]::new)));
+        }
+
         DBConfig.Builder builder = new DBConfig.Builder()
             .host(cmd.getOptionValue("host", "127.0.0.1"))
             .user(cmd.getOptionValue("user", "root"))
@@ -42,6 +55,7 @@ public class OneClient {
             .password(cmd.getOptionValue("password", ""))
             .database(cmd.getOptionValue("database", "mysql"))
             .dbType(cmd.getOptionValue("dbtype", "mysql"))
+            .accessMode(accessMode)
             .table(cmd.getOptionValue("table", "user"))
             .query(cmd.getOptionValue("query", "SELECT * FROM user"))
             .testType(cmd.getOptionValue("test", "query"));
@@ -81,6 +95,7 @@ public class OneClient {
             // 打印配置信息
             System.out.println("\nConnection Information:");
             System.out.printf("Database Type: %s%n", config.getDbType());
+            System.out.printf("Access Mode: %s%n", config.getAccessMode().getMode());
             System.out.printf("Host: %s%n", config.getHost());
             System.out.printf("Port: %d%n", config.getPort());
             System.out.printf("Database: %s%n", config.getDatabase());

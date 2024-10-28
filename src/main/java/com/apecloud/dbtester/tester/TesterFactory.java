@@ -22,6 +22,9 @@ public class TesterFactory {
                 return new Gbase8cTester(config);
             case "oracle":
                 return new OracleTester(config);
+            case "ob":
+            case "oceanbase":
+                return new OceanbaseTester(config);
             case "sqlserver":
                 return new SQLServerTester(config);
             case "clickhouse":
@@ -37,6 +40,8 @@ public class TesterFactory {
             case "elasticsearch":
             case "opensearch":
                 return new ElasticSearchTester(config);
+            case "loki":
+                return new LokiTester(config);
             case "etcd":
                 return new EtcdTester(config);
             case "kafka":
@@ -44,6 +49,9 @@ public class TesterFactory {
             case "influx":
             case "influxdb":
                 return new InfluxDBTester(config);
+            case "vm":
+            case "victoriametrics":
+                return new VictoriaMetricsTester(config);
             case "taos":
             case "tdengine":
             case "td":

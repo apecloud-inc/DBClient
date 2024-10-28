@@ -63,6 +63,9 @@ dependencies {
     // Use JUnit test framework
     testImplementation 'junit:junit:4.12'
 
+    // Use Json
+    implementation 'org.json:json:20231013'
+
     // Use SLF4J
     implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.30'
     runtimeOnly group: 'org.slf4j', name: 'slf4j-api', version: '1.7.30'
@@ -79,6 +82,9 @@ dependencies {
 
     // This is for Gbase8c Java connector
     implementation files('libs/GBase8cV5_JDBC_3.0.0/gbase8c-jdbc-3.0.0B02.jar')
+
+    // This is for Oceanbase connector
+    implementation files('libs/oceanbase-client-2.4.8.jar')
 
     // This is for MongoDB Java connector
     implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.6.1'
@@ -174,7 +180,7 @@ dependencies {
     implementation 'com.pingcap.tikv:tikv-client-java:3.0.0'
 
     // This is for MogDB connector
-    implementation 'io.mogdb:mogdb-jdbc:5.0.0.8.mg'
+    implementation 'io.mogdb:mogdb-jdbc:5.0.0.8.mg'    
 }
 
 

@@ -1,0 +1,1 @@
+6e204d6bf941c2bc9d612d6b07cccc13  gbase8c-jdbc-3.0.0B02.jar

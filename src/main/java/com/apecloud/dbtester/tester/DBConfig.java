@@ -1,6 +1,27 @@
 package com.apecloud.dbtester.tester;
 
 public class DBConfig {
+    // 支持的数据库访问模式枚举
+    public enum AccessMode {
+        MYSQL("mysql"),
+        POSTGRESQL("postgresql"),
+        ORACLE("oracle"),
+        REDIS("redis"),
+        MONGODB("mongodb"),
+        INFLUXDB("influxdb"),
+        PROMETHEUS("prometheus");
+
+        private final String mode;
+
+        AccessMode(String mode) {
+            this.mode = mode;
+        }
+
+        public String getMode() {
+            return mode;
+        }
+    }
+
     private final String host;
     private final int port;
     private final String database;
@@ -8,6 +29,7 @@ public class DBConfig {
     private final String org;
     private final String password;
     private final String dbType;        // 数据库类型
+    private final AccessMode accessMode; // 数据库访问语法 mode
     private final String testType;      // 测试类型
     private final String query;         // SQL查询语句
     private final String table;         // 数据表名
@@ -24,6 +46,7 @@ public class DBConfig {
         this.org = builder.org;
         this.password = builder.password;
         this.dbType = builder.dbType;
+        this.accessMode = builder.accessMode;
         this.testType = builder.testType;
         this.query = builder.query;
         this.table = builder.table;
@@ -39,6 +62,10 @@ public class DBConfig {
 
     public String getDbType() {
         return dbType;
+    }
+
+    public AccessMode getAccessMode() {
+        return accessMode;
     }
 
     public String getHost() {
@@ -105,6 +132,8 @@ public class DBConfig {
         private int duration = 60;           // 默认60秒
         private int iterations = 1000;       // 默认值
         private int concurrency = 10;        // 默认值
+        private AccessMode accessMode = AccessMode.MYSQL; // 默认访问模式
+
 
         public Builder table(String table) {
             this.table = table;
@@ -113,6 +142,11 @@ public class DBConfig {
 
         public Builder dbType(String dbType) {
             this.dbType = dbType;
+            return this;
+        }
+
+        public Builder accessMode(AccessMode accessMode) {
+            this.accessMode = accessMode;
             return this;
         }
 
@@ -246,6 +280,7 @@ public class DBConfig {
                 ", user='" + user + '\'' +
                 ", org='" + org + '\'' +
                 ", dbType='" + dbType + '\'' +
+                ", accessMode=" + accessMode +
                 ", testType='" + testType + '\'' +
                 ", query='" + query + '\'' +
                 ", table='" + table + '\'' +
