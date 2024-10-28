@@ -1,23 +1,28 @@
-FROM openjdk:8-jdk-slim
+FROM openjdk:8-jdk-slim AS builder
 
 WORKDIR /app
 
-COPY ./gradlew ./gradlew.bat ./build.gradle ./settings.gradle .
-
+COPY ./gradlew .
+COPY ./gradlew.bat .
+COPY ./build.gradle .
+COPY ./settings.gradle .
 COPY ./libs ./libs
-
 COPY ./gradle ./gradle
-
 COPY ./src ./src
 
 RUN chmod +x gradlew && \
     ./gradlew --version && \
-    ./gradlew build
-
-RUN rm -rf .gradle && \
-    rm -rf build/intermediates && \
+    ./gradlew build && \
+    rm -rf ./gradle && \
+    rm -rf build/distributions && \
     rm -rf build/classes && \
-    rm -rf build/resources
+    rm -rf build/tmp
+
+FROM openjdk:8-jre-slim
+
+WORKDIR /app
+
+COPY --from=builder /app/build/libs/oneclient-1.0-all.jar .
 
 ADD ./docker/run.sh /run.sh
 
