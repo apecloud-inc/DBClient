@@ -15,7 +15,11 @@ public class TesterFactory {
             case "postgres":
             case "postgresql":
             case "opentenbase":
+            case "gaussdb":
+            case "vastbase":
                 return new PostgreSQLTester(config);
+            case "gbase8c":
+                return new Gbase8cTester(config);
             case "oracle":
                 return new OracleTester(config);
             case "sqlserver":
@@ -35,6 +39,8 @@ public class TesterFactory {
                 return new ElasticSearchTester(config);
             case "etcd":
                 return new EtcdTester(config);
+            case "kafka":
+                return new KafkaTester(config);
             case "influx":
             case "influxdb":
                 return new InfluxDBTester(config);
