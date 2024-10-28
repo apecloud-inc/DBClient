@@ -69,6 +69,8 @@ public class TesterFactory {
             case "zk":
             case "zookeeper":
                 return new ZookeeperTester(config);
+            case "kingbase":
+                return new KingbaseTester(config);
             default:
                 throw new IllegalArgumentException("Unsupported database type: " + config.getDbType());
         }

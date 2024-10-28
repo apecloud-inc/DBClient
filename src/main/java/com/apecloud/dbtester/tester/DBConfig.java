@@ -306,6 +306,7 @@ public class DBConfig {
                 case "sentinelredis":
                 case "zk":
                 case "zookeeper":
+                case "kingbase":
                     break;
                 default:
                     throw new IllegalStateException("Unsupported database type: " + dbType);

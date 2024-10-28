@@ -68,6 +68,9 @@ public class DatabaseConnectionFactory {
             case "yanshan":
                 Class.forName("com.yashandb.jdbc.Driver");
                 break;
+            case "kingbase":
+                Class.forName("com.kingbase8.Driver");
+                break;
             // 可以添加其他数据库驱动程序
             default:
                 throw new IllegalArgumentException("Unsupported database type: " + dbType);
