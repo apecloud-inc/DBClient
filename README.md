@@ -24,11 +24,14 @@ gradle runSentinelRedis
 
 ## How to run advanced database tests
 ### Build OneClient
+
+```bash
 gradle build
 
 You will get oneclient jar at:
 
 ./build/libs/oneclient-1.0-all.jar
+```
 
 ### Usage of OneClient
 
