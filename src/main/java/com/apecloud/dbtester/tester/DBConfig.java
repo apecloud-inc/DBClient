@@ -261,9 +261,51 @@ public class DBConfig {
             // 验证数据库类型
             switch (dbType.toLowerCase()) {
                 case "mysql":
+                case "foxlake":
+                case "polardbx":
+                case "starrocks":
+                case "sr":
+                case "greptime":
+                case "greptimedb":
+                case "pg":
+                case "postgres":
                 case "postgresql":
+                case "opentenbase":
+                case "gaussdb":
+                case "vastbase":
+                case "gbase8c":
                 case "oracle":
+                case "ob":
+                case "oceanbase":
                 case "sqlserver":
+                case "clickhouse":
+                case "ck":
+                case "dm":
+                case "dmdb":
+                case "dameng":
+                case "damengdb":
+                case "es":
+                case "elastic":
+                case "elasticsearch":
+                case "opensearch":
+                case "loki":
+                case "etcd":
+                case "kafka":
+                case "influx":
+                case "influxdb":
+                case "vm":
+                case "victoriametrics":
+                case "taos":
+                case "tdengine":
+                case "td":
+                case "mongo":
+                case "mongodb":
+                case "opengauss":
+                case "qdrant":
+                case "redis":
+                case "sentinelredis":
+                case "zk":
+                case "zookeeper":
                     break;
                 default:
                     throw new IllegalStateException("Unsupported database type: " + dbType);
