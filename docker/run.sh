@@ -2,4 +2,4 @@
 
 echo "$@"
 
-java -jar build/libs/oneclient-1.0-all.jar "$@"
+java -jar oneclient-1.0-all.jar "$@"
