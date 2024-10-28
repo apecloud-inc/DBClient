@@ -2,7 +2,7 @@
 docker buildx build -f docker/Dockerfile -t docker.io/apecloud/dbclient:latest --platform=linux/amd64,linux/arm64 . --push
 
 ## run pod
-```
+```yaml
 kubectl create -f -<<EOF            
 apiVersion: v1
 kind: Pod
