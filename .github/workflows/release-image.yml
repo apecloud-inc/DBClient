@@ -7,6 +7,10 @@ on:
         description: 'The tag name of image'
         required: true
         default: ''
+      release_platform:
+        description: 'The platform of release image'
+        required: false
+        default: 'linux/amd64,linux/arm64'
   release:
     types:
       - published
@@ -20,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       release-version: ${{ steps.get_release_version.outputs.release_version }}
+      release-platform: ${{ steps.get_release_version.outputs.release_platform }}
     steps:
       - name: Get Release Version
         id: get_release_version
@@ -29,6 +34,12 @@ jobs:
               RELEASE_VERSION=${{ env.RELEASE_VERSION }}
           fi
           echo release_version=$RELEASE_VERSION >> $GITHUB_OUTPUT
+          
+          RELEASE_PLATFORM=${{ inputs.release_platform }}
+          if [ -z "$RELEASE_PLATFORM" ]; then
+              RELEASE_PLATFORM="linux/amd64,linux/arm64"
+          fi
+          echo release_platform="$RELEASE_PLATFORM" >> $GITHUB_OUTPUT
 
   release-image:
     permissions:
@@ -41,4 +52,5 @@ jobs:
       VERSION: "${{ needs.release-version.outputs.release-version }}"
       DOCKERFILE_PATH: "./docker/Dockerfile"
       APECD_REF: "v0.3.0"
+      BUILDX_PLATFORMS: "${{ needs.release-version.outputs.release-platform }}"
     secrets: inherit
