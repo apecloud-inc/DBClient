@@ -21,6 +21,8 @@ RUN rm -rf .gradle && \
 
 ADD ./docker/run.sh /run.sh
 
+RUN chmod +x /run.sh
+
 ENTRYPOINT ["/run.sh"]
 
 CMD []
