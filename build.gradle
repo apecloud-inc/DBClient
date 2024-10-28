@@ -180,7 +180,10 @@ dependencies {
     implementation 'com.pingcap.tikv:tikv-client-java:3.0.0'
 
     // This is for MogDB connector
-    implementation 'io.mogdb:mogdb-jdbc:5.0.0.8.mg'    
+    implementation 'io.mogdb:mogdb-jdbc:5.0.0.8.mg'
+
+    // This is for KingBase connector
+    implementation 'cn.com.kingbase:kingbase8:8.6.0'
 }
 
 
