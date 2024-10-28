@@ -4,6 +4,8 @@ WORKDIR /app
 
 COPY ./gradlew ./gradlew.bat ./build.gradle ./settings.gradle .
 
+COPY ./libs ./libs
+
 COPY ./gradle ./gradle
 
 COPY ./src ./src
