@@ -22,7 +22,8 @@ public class OneClient {
                .addOption("s", "duration", true, "Test duration in seconds")
                .addOption("i", "iterations", true, "Number of iterations for benchmark")
                .addOption("m", "concurrency", true, "Concurrency level for benchmark")
-               .addOption("M", "master", true, "Redis sentinel master");
+               .addOption("M", "master", true, "Redis sentinel master")
+               .addOption("S", "sentinelPassword", true, "Redis sentinel password");
 
         CommandLineParser parser = new DefaultParser();
         try {
@@ -60,7 +61,8 @@ public class OneClient {
             .table(cmd.getOptionValue("table", "user"))
             .query(cmd.getOptionValue("query", "SELECT * FROM user"))
             .testType(cmd.getOptionValue("test", "query"))
-            .master(cmd.getOptionValue("master","master"));
+            .master(cmd.getOptionValue("master", ""))
+            .sentinelPassword(cmd.getOptionValue("sentinelPassword", ""));
 
         // 处理数值类型的参数
         try {
@@ -106,6 +108,7 @@ public class OneClient {
             System.out.printf("Org: %s%n", config.getOrg());
             System.out.printf("Test Type: %s%n", config.getTestType());
             System.out.printf("Master Name: %s%n", config.getMaster());
+            System.out.printf("Sentinel Password: %s%n", config.getSentinelPassword());
 
             // 根据测试类型打印额外信息
             switch (config.getTestType().toLowerCase()) {

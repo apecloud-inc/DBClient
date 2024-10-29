@@ -36,7 +36,7 @@ public class SentinelRedisTester implements DatabaseTester {
                     dbConfig.getMaster(),
                     sentinels,
                     dbConfig.getPassword(),
-                    dbConfig.getPassword()
+                    dbConfig.getSentinelPassword()
             );
 
             return new RedisConnection(pool);
