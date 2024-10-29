@@ -37,6 +37,7 @@ public class DBConfig {
     private final int duration;         // 测试持续时间(秒)
     private final int iterations;       // 基准测试迭代次数
     private final int concurrency;      // 基准测试并发数
+    private final String master;        // Redis sentinel master
 
     private DBConfig(Builder builder) {
         this.host = builder.host;
@@ -54,6 +55,7 @@ public class DBConfig {
         this.duration = builder.duration;
         this.iterations = builder.iterations;
         this.concurrency = builder.concurrency;
+        this.master = builder.master;
     }
 
     public String getTable() {
@@ -116,6 +118,10 @@ public class DBConfig {
         return concurrency;
     }
 
+    public String getMaster() {
+        return master;
+    }
+
     // Builder class
     public static class Builder {
         private String host = "localhost";
@@ -133,6 +139,7 @@ public class DBConfig {
         private int iterations = 1000;       // 默认值
         private int concurrency = 10;        // 默认值
         private AccessMode accessMode = AccessMode.MYSQL; // 默认访问模式
+        private String master;
 
 
         public Builder table(String table) {
@@ -207,6 +214,11 @@ public class DBConfig {
 
         public Builder concurrency(int concurrency) {
             this.concurrency = concurrency;
+            return this;
+        }
+
+        public Builder master(String master) {
+            this.master = master;
             return this;
         }
 
@@ -331,6 +343,7 @@ public class DBConfig {
                 ", duration=" + duration +
                 ", iterations=" + iterations +
                 ", concurrency=" + concurrency +
+                ", master=" + master +
                 '}';
     }
 }

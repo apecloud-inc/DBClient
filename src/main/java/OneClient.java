@@ -21,7 +21,8 @@ public class OneClient {
                .addOption("c", "connections", true, "Number of connections")
                .addOption("s", "duration", true, "Test duration in seconds")
                .addOption("i", "iterations", true, "Number of iterations for benchmark")
-               .addOption("m", "concurrency", true, "Concurrency level for benchmark");
+               .addOption("m", "concurrency", true, "Concurrency level for benchmark")
+               .addOption("M", "master", true, "Redis sentinel master");
 
         CommandLineParser parser = new DefaultParser();
         try {
@@ -58,7 +59,8 @@ public class OneClient {
             .accessMode(accessMode)
             .table(cmd.getOptionValue("table", "user"))
             .query(cmd.getOptionValue("query", "SELECT * FROM user"))
-            .testType(cmd.getOptionValue("test", "query"));
+            .testType(cmd.getOptionValue("test", "query"))
+            .master(cmd.getOptionValue("master","master"));
 
         // 处理数值类型的参数
         try {
@@ -103,7 +105,8 @@ public class OneClient {
             System.out.printf("User: %s%n", config.getUser());
             System.out.printf("Org: %s%n", config.getOrg());
             System.out.printf("Test Type: %s%n", config.getTestType());
-            
+            System.out.printf("Master Name: %s%n", config.getMaster());
+
             // 根据测试类型打印额外信息
             switch (config.getTestType().toLowerCase()) {
                 case "connectionstress":

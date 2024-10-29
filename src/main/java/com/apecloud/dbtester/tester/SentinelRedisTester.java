@@ -33,8 +33,9 @@ public class SentinelRedisTester implements DatabaseTester {
             ));
 
             JedisSentinelPool pool = new JedisSentinelPool(
-                    "mymaster",
+                    dbConfig.getMaster(),
                     sentinels,
+                    dbConfig.getPassword(),
                     dbConfig.getPassword()
             );
 
