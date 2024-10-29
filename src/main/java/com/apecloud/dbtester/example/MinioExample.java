@@ -1,3 +1,5 @@
+package com.apecloud.dbtester.example;
+
 import io.minio.BucketExistsArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;

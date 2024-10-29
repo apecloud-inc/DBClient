@@ -1,3 +1,5 @@
+package com.apecloud.dbtester.example;
+
 import io.weaviate.client.Config;
 import io.weaviate.client.WeaviateClient;
 import io.weaviate.client.base.Result;

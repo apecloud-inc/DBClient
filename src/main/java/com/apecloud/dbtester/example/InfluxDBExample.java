@@ -1,3 +1,5 @@
+package com.apecloud.dbtester.example;
+
 import com.influxdb.client.InfluxDBClient;
 import com.influxdb.client.InfluxDBClientFactory;
 import com.influxdb.client.InfluxDBClientOptions;

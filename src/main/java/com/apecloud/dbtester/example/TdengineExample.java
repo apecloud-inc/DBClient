@@ -1,3 +1,5 @@
+package com.apecloud.dbtester.example;
+
 import java.sql.*;
 import java.util.Arrays;
 import java.util.List;
