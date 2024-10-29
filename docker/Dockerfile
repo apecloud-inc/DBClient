@@ -1,4 +1,4 @@
-FROM openjdk:8-jdk-slim AS builder
+FROM openjdk:11-jdk-slim AS builder
 
 WORKDIR /app
 
@@ -18,7 +18,7 @@ RUN chmod +x gradlew && \
     rm -rf build/classes && \
     rm -rf build/tmp
 
-FROM openjdk:8-jre-slim
+FROM openjdk:11-jre-slim
 
 WORKDIR /app
 
