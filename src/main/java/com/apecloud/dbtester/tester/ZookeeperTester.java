@@ -230,7 +230,7 @@ public class ZookeeperTester implements DatabaseTester {
             return result.toString();
 
         } finally {
-            if (connection != null && !"connectionstress".equalsIgnoreCase(testType)) {
+            if (connection != null) {
                 connection.close();
             }
         }

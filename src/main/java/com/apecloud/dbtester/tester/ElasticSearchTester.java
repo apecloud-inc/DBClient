@@ -60,8 +60,8 @@ public class ElasticSearchTester implements DatabaseTester {
             throw new IllegalStateException("DBConfig not provided");
         }
 
-        String serverUrl = String.format("http://%s:%d", 
-            dbConfig.getHost(), 
+        String serverUrl = String.format("http://%s:%d",
+            dbConfig.getHost(),
             dbConfig.getPort());
 
         restClient = RestClient.builder(HttpHost.create(serverUrl))
@@ -79,10 +79,10 @@ public class ElasticSearchTester implements DatabaseTester {
             .build();
 
         ElasticsearchTransport transport = new RestClientTransport(
-            restClient, 
+            restClient,
             new JacksonJsonpMapper()
         );
-        
+
         esClient = new ElasticsearchClient(transport);
     }
 
@@ -125,16 +125,16 @@ public class ElasticSearchTester implements DatabaseTester {
         if (documentJson.isEmpty()) {
             documentJson = createSampleDocument();
         }
-        
+
         ObjectMapper mapper = new ObjectMapper();
         ObjectNode document = (ObjectNode) mapper.readTree(documentJson);
-        
+
         IndexResponse response = esClient.index(i -> i
             .index(indexName)
             .document(document)
         );
-        
-        return new ElasticSearchQueryResult(true, 
+
+        return new ElasticSearchQueryResult(true,
             String.format("Document inserted with ID: %s", response.id()));
     }
 
@@ -173,7 +173,7 @@ public class ElasticSearchTester implements DatabaseTester {
 
         StringBuilder results = new StringBuilder();
         results.append("Found ").append(response.hits().total().value()).append(" documents:\n");
-        
+
         for (Hit<ObjectNode> hit : response.hits().hits()) {
             results.append("ID: ").append(hit.id())
                    .append(", Score: ").append(hit.score())
@@ -192,10 +192,10 @@ public class ElasticSearchTester implements DatabaseTester {
         );
 
         if (response.found()) {
-            return new ElasticSearchQueryResult(true, 
+            return new ElasticSearchQueryResult(true,
                 String.format("Document found: %s", response.source()));
         } else {
-            return new ElasticSearchQueryResult(false, 
+            return new ElasticSearchQueryResult(false,
                 String.format("Document not found with ID: %s", documentId));
         }
     }
@@ -206,7 +206,7 @@ public class ElasticSearchTester implements DatabaseTester {
             .id(documentId)
         );
 
-        return new ElasticSearchQueryResult(true, 
+        return new ElasticSearchQueryResult(true,
             String.format("Document deleted with ID: %s", documentId));
     }
 
@@ -223,7 +223,7 @@ public class ElasticSearchTester implements DatabaseTester {
             ObjectNode.class
         );
 
-        return new ElasticSearchQueryResult(true, 
+        return new ElasticSearchQueryResult(true,
             String.format("Document updated with ID: %s", documentId));
     }
 
@@ -297,7 +297,7 @@ public class ElasticSearchTester implements DatabaseTester {
             return result.toString();
 
         } finally {
-            if (connection != null && !"connectionstress".equalsIgnoreCase(testType)) {
+            if (connection != null) {
                 connection.close();
             }
         }
@@ -397,14 +397,16 @@ public class ElasticSearchTester implements DatabaseTester {
     public String connectionStress(int connections, int duration) {
         for (int i = 0; i < connections; i++) {
             try {
-                String serverUrl = String.format("http://%s:%d", 
-                    dbConfig.getHost(), 
+                String serverUrl = String.format("http://%s:%d",
+                    dbConfig.getHost(),
                     dbConfig.getPort());
-                
+
                 RestClient client = RestClient.builder(HttpHost.create(serverUrl)).build();
                 this.connections.add(client);
             } catch (Exception e) {
                 e.printStackTrace();
+            } finally {
+                releaseConnections();
             }
         }
         return String.format("Created %d connections", connections);
@@ -619,11 +621,34 @@ public class ElasticSearchTester implements DatabaseTester {
     }
 
     public static void main(String[] args) throws IOException {
+//        DBConfig dbConfig = new DBConfig.Builder()
+//            .host("localhost")
+//            .port(9200)
+//            .user("elastic")
+//            .password("password")
+//            .testType("connectionstress")
+//            .duration(60)
+//            .table("default")
+//            .org("elastic")
+//            .database("elastic")
+//            .build();
+//
+//        ElasticSearchTester tester = new ElasticSearchTester(dbConfig);
+//
+//        String result = TestExecutor.executeTest(tester, dbConfig);
+//
+//        System.out.println(result);
+
         DBConfig dbConfig = new DBConfig.Builder()
             .host("localhost")
+            .testType("query")
+            .query("search")
+            .table("user")
             .port(9200)
+            .org("elastic")
             .user("elastic")
             .password("password")
+            .database("elastic")
             .build();
 
         ElasticSearchTester tester = new ElasticSearchTester(dbConfig);
@@ -633,14 +658,16 @@ public class ElasticSearchTester implements DatabaseTester {
         System.out.println(tester.execute(connection, "create_index:test_index"));
 
         // 测试文档插入
-        System.out.println(tester.execute(connection, "insert:test_index"));
+        QueryResult qr = tester.execute(connection, "insert:test_index");
+        System.out.println(qr);
+        String[] qrs = qr.toString().split(":");
+        String documentId = qrs[1].trim();
 
         // 测试文档搜索（match_all查询）
         System.out.println(tester.execute(connection, "search:test_index"));
 
         // 测试条件搜索
-        String searchQuery = "{\"field\":\"name\",\"value\":\"Test Document\"}";
-        System.out.println(tester.execute(connection, "search:test_index:" + searchQuery));
+        System.out.println(tester.execute(connection, "get:test_index:"+documentId));
 
         // 清理测试数据
         System.out.println(tester.execute(connection, "delete_index:test_index"));
