@@ -60,7 +60,9 @@ public class OneClient {
             .accessMode(accessMode)
             .table(cmd.getOptionValue("table", "user"))
             .query(cmd.getOptionValue("query", "SELECT * FROM user"))
-            .testType(cmd.getOptionValue("test", "query"));
+            .testType(cmd.getOptionValue("test", "query"))
+            .master(cmd.getOptionValue("master", ""))
+            .sentinelPassword(cmd.getOptionValue("sentinelPassword", ""));
 
         // 处理数值类型的参数
         try {
@@ -105,8 +107,6 @@ public class OneClient {
             System.out.printf("User: %s%n", config.getUser());
             System.out.printf("Org: %s%n", config.getOrg());
             System.out.printf("Test Type: %s%n", config.getTestType());
-            System.out.printf("Master Name: %s%n", config.getMaster());
-            System.out.printf("Sentinel Password: %s%n", config.getSentinelPassword());
 
             // 根据测试类型打印额外信息
             switch (config.getTestType().toLowerCase()) {
