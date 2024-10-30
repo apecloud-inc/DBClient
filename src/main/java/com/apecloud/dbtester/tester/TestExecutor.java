@@ -65,7 +65,7 @@ public class TestExecutor {
             return result;
 
         } finally {
-            if (connection != null && !"connectionstress".equalsIgnoreCase(testType)) {
+            if (connection != null) {
                 connection.close();
             }
         }

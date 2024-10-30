@@ -60,9 +60,7 @@ public class OneClient {
             .accessMode(accessMode)
             .table(cmd.getOptionValue("table", "user"))
             .query(cmd.getOptionValue("query", "SELECT * FROM user"))
-            .testType(cmd.getOptionValue("test", "query"))
-            .master(cmd.getOptionValue("master", ""))
-            .sentinelPassword(cmd.getOptionValue("sentinelPassword", ""));
+            .testType(cmd.getOptionValue("test", "query"));
 
         // 处理数值类型的参数
         try {
