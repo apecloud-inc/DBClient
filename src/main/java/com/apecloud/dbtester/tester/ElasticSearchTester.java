@@ -621,63 +621,57 @@ public class ElasticSearchTester implements DatabaseTester {
     }
 
     public static void main(String[] args) throws IOException {
-        DBConfig dbConfig = new DBConfig.Builder()
-            .host("localhost")
-            .port(9200)
-            .user("elastic")
-            .password("password")
-            .testType("connectionstress")
-            .duration(60)
-            .table("default")
-            .org("elastic")
-            .database("elastic")
-            .build();
-
-        ElasticSearchTester tester = new ElasticSearchTester(dbConfig);
-
-        String result = TestExecutor.executeTest(tester, dbConfig);
-
-
-//        StringBuilder result = new StringBuilder();
-//        result.append(tester.connectionStress(
-//                dbConfig.getConnectionCount(),
-//                dbConfig.getDuration()
-//        ));
-        System.out.println(result);
-
 //        DBConfig dbConfig = new DBConfig.Builder()
 //            .host("localhost")
-//            .testType("query")
-//            .query("search")
-//            .table("user")
 //            .port(9200)
-//            .org("elastic")
 //            .user("elastic")
 //            .password("password")
+//            .testType("connectionstress")
+//            .duration(60)
+//            .table("default")
+//            .org("elastic")
 //            .database("elastic")
 //            .build();
 //
 //        ElasticSearchTester tester = new ElasticSearchTester(dbConfig);
-//        DatabaseConnection connection = tester.connect();
 //
-//        // 测试索引操作
-//        System.out.println(tester.execute(connection, "create_index:test_index"));
+//        String result = TestExecutor.executeTest(tester, dbConfig);
 //
-//        // 测试文档插入
-//        QueryResult qr = tester.execute(connection, "insert:test_index");
-//        System.out.println(qr);
-//        String[] qrs = qr.toString().split(":");
-//        String documentId = qrs[1].trim();
-//
-//        // 测试文档搜索（match_all查询）
-//        System.out.println(tester.execute(connection, "search:test_index"));
-//
-//        // 测试条件搜索
-//        System.out.println(tester.execute(connection, "get:test_index:"+documentId));
-//
-//        // 清理测试数据
-//        System.out.println(tester.execute(connection, "delete_index:test_index"));
-//
-//        connection.close();
+//        System.out.println(result);
+
+        DBConfig dbConfig = new DBConfig.Builder()
+            .host("localhost")
+            .testType("query")
+            .query("search")
+            .table("user")
+            .port(9200)
+            .org("elastic")
+            .user("elastic")
+            .password("password")
+            .database("elastic")
+            .build();
+
+        ElasticSearchTester tester = new ElasticSearchTester(dbConfig);
+        DatabaseConnection connection = tester.connect();
+
+        // 测试索引操作
+        System.out.println(tester.execute(connection, "create_index:test_index"));
+
+        // 测试文档插入
+        QueryResult qr = tester.execute(connection, "insert:test_index");
+        System.out.println(qr);
+        String[] qrs = qr.toString().split(":");
+        String documentId = qrs[1].trim();
+
+        // 测试文档搜索（match_all查询）
+        System.out.println(tester.execute(connection, "search:test_index"));
+
+        // 测试条件搜索
+        System.out.println(tester.execute(connection, "get:test_index:"+documentId));
+
+        // 清理测试数据
+        System.out.println(tester.execute(connection, "delete_index:test_index"));
+
+        connection.close();
     }
 }
