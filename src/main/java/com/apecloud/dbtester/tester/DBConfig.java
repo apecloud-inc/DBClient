@@ -240,27 +240,27 @@ public class DBConfig {
         }
 
         private void validate() {
-            if (database == null || database.isEmpty()) {
-                throw new IllegalStateException("Database must be specified");
-            }
-            if (user == null || user.isEmpty()) {
-                throw new IllegalStateException("User must be specified");
-            }
-            if (org == null || org.isEmpty()) {
-                throw new IllegalStateException("Org must be specified");
-            }
-            if (password == null || password.isEmpty()) {
-                throw new IllegalStateException("Password must be specified");
-            }
+//            if (database == null || database.isEmpty()) {
+//                throw new IllegalStateException("Database must be specified");
+//            }
+//            if (user == null || user.isEmpty()) {
+//                throw new IllegalStateException("User must be specified");
+//            }
+//            if (org == null || org.isEmpty()) {
+//                throw new IllegalStateException("Org must be specified");
+//            }
+//            if (password == null || password.isEmpty()) {
+//                throw new IllegalStateException("Password must be specified");
+//            }
             if (testType == null || testType.isEmpty()) {
                 throw new IllegalStateException("Test type must be specified");
             }
             if (dbType == null || dbType.isEmpty()) {
                 throw new IllegalStateException("Database type must be specified");
             }
-            if (table == null || table.isEmpty()) {
-                throw new IllegalStateException("Table must be specified");
-            }
+//            if (table == null || table.isEmpty()) {
+//                throw new IllegalStateException("Table must be specified");
+//            }
 
             // 根据测试类型验证必要参数
             switch (testType.toLowerCase()) {

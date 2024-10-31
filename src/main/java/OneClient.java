@@ -51,16 +51,16 @@ public class OneClient {
         }
 
         DBConfig.Builder builder = new DBConfig.Builder()
-            .host(cmd.getOptionValue("host", "127.0.0.1"))
-            .user(cmd.getOptionValue("user", "root"))
-            .org(cmd.getOptionValue("org", "primary"))
+            .host(cmd.getOptionValue("host", ""))
+            .user(cmd.getOptionValue("user", ""))
+            .org(cmd.getOptionValue("org", ""))
             .password(cmd.getOptionValue("password", ""))
-            .database(cmd.getOptionValue("database", "mysql"))
-            .dbType(cmd.getOptionValue("dbtype", "mysql"))
+            .database(cmd.getOptionValue("database", ""))
+            .dbType(cmd.getOptionValue("dbtype", ""))
             .accessMode(accessMode)
-            .table(cmd.getOptionValue("table", "user"))
-            .query(cmd.getOptionValue("query", "SELECT * FROM user"))
-            .testType(cmd.getOptionValue("test", "query"))
+            .table(cmd.getOptionValue("table", ""))
+            .query(cmd.getOptionValue("query", ""))
+            .testType(cmd.getOptionValue("test", ""))
             .master(cmd.getOptionValue("master", ""))
             .sentinelPassword(cmd.getOptionValue("sentinelPassword", ""));
 
