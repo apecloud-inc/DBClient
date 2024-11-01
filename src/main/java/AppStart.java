@@ -1,4 +1,4 @@
-import com.apecloud.dbtester.example.*;;
+import com.apecloud.dbtester.example.*;
 
 public class AppStart {
 
