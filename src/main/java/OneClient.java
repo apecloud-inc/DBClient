@@ -44,14 +44,14 @@ public class OneClient {
             String accessModeStr = cmd.getOptionValue("accessmode", "mysql").toUpperCase();
             accessMode = DBConfig.AccessMode.valueOf(accessModeStr);
         } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid access mode. Supported modes: " + 
+            throw new IllegalArgumentException("Invalid access mode. Supported modes: " +
                 String.join(", ", java.util.Arrays.stream(DBConfig.AccessMode.values())
                     .map(mode -> mode.getMode())
                     .toArray(String[]::new)));
         }
 
         DBConfig.Builder builder = new DBConfig.Builder()
-            .host(cmd.getOptionValue("host", ""))
+            .host(cmd.getOptionValue("host", "127.0.0.1"))
             .user(cmd.getOptionValue("user", ""))
             .org(cmd.getOptionValue("org", ""))
             .password(cmd.getOptionValue("password", ""))
@@ -67,12 +67,12 @@ public class OneClient {
         // 处理数值类型的参数
         try {
             // 必需的数值参数
-            builder.port(Integer.parseInt(cmd.getOptionValue("port", "3306")));
-            builder.connectionCount(Integer.parseInt(cmd.getOptionValue("connections", "1000")));
-            
+            builder.port(Integer.parseInt(cmd.getOptionValue("port", "")));
+            builder.connectionCount(Integer.parseInt(cmd.getOptionValue("connections", "100")));
+
             // 可选的数值参数
             if (cmd.hasOption("duration")) {
-                builder.duration(Integer.parseInt(cmd.getOptionValue("duration")));
+                builder.duration(Integer.parseInt(cmd.getOptionValue("duration", "60")));
             }
             if (cmd.hasOption("iterations")) {
                 builder.iterations(Integer.parseInt(cmd.getOptionValue("iterations")));
@@ -91,11 +91,11 @@ public class OneClient {
         try {
             DatabaseTester tester = TesterFactory.createTester(config);
             String result = TestExecutor.executeTest(tester, config);
-            
+
             // 打印测试结果
             System.out.println("Test Result:");
             System.out.println(result);
-            
+
             // 打印配置信息
             System.out.println("\nConnection Information:");
             System.out.printf("Database Type: %s%n", config.getDbType());
