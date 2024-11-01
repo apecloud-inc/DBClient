@@ -62,7 +62,7 @@ public class TesterFactory {
             case "opengauss":
                 return new OpenGaussTester(config);
             case "qdrant":
-                return new QdrantTester(config);
+                return new QdrantTesterHttp(config);
             case "redis":
             case "sentinelredis":
                 return new SentinelRedisTester(config);
