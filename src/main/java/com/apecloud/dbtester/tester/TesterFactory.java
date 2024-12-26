@@ -71,6 +71,8 @@ public class TesterFactory {
                 return new ZookeeperTester(config);
             case "kingbase":
                 return new KingbaseTester(config);
+            case "minio":
+                return new MinioTester(config);
             default:
                 throw new IllegalArgumentException("Unsupported database type: " + config.getDbType());
         }

@@ -331,6 +331,7 @@ public class DBConfig {
                 case "zk":
                 case "zookeeper":
                 case "kingbase":
+                case "minio":
                     break;
                 default:
                     throw new IllegalStateException("Unsupported database type: " + dbType);
