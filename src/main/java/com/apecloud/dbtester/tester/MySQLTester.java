@@ -201,6 +201,9 @@ public class MySQLTester implements DatabaseTester {
                     gen_test_values = "executions_loop_test_" + insert_index;
                     // set test query
                     query = "INSERT INTO " + database + "." + table + " (value) VALUES ('" + gen_test_values + "');";
+                    if (gen_test_query == 2) {
+                        System.out.println("Execution loop start:" + query);
+                    }
                     gen_test_query = 3;
                 }
 
