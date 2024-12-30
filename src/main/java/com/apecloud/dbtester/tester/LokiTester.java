@@ -5,6 +5,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,6 +18,7 @@ public class LokiTester implements DatabaseTester {
     private final OkHttpClient httpClient;
     private List<OkHttpClient> connections = new ArrayList<>();
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
+    private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
 
     public LokiTester(DBConfig dbConfig) {
         this.dbConfig = dbConfig;
