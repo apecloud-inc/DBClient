@@ -197,10 +197,11 @@ public class MySQLTester implements DatabaseTester {
                     gen_test_query = 2;
                 }
 
-                if (gen_test_query == 2 && (query == null || query.equals(""))) {
+                if ((gen_test_query == 2 && (query == null || query.equals("")) || gen_test_query == 3 )) {
                     gen_test_values = "executions_loop_test_" + insert_index;
                     // set test query
                     query = "INSERT INTO " + database + "." + table + " (value) VALUES ('" + gen_test_values + "');";
+                    gen_test_query = 3;
                 }
 
                 execute(connection, query);
@@ -286,16 +287,15 @@ public class MySQLTester implements DatabaseTester {
         DBConfig dbConfig = new DBConfig.Builder()
             .host("localhost")
             .port(3306)
-            .database("mysql")
             .user("root")
             .password("JIbCA8k769351ei3")
             .dbType("mysql")
-            .duration(30)
+            .duration(10)
             .interval(1)
-            //.query("INSERT INTO test_table (value) VALUES ('1');")
+//            .query("INSERT INTO test_table (value) VALUES ('1');")
             .testType("executionloop")
-            .database("test_db")
-            .table("test_table")
+//            .database("test_db")
+//            .table("test_table")
             .build();
         MySQLTester tester = new MySQLTester(dbConfig);
         DatabaseConnection connection = tester.connect();
