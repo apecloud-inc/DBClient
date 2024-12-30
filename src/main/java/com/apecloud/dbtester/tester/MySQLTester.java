@@ -33,18 +33,27 @@ public class MySQLTester implements DatabaseTester {
         try {
             Class.forName("com.mysql.cj.jdbc.Driver");
         } catch (ClassNotFoundException e) {
-            throw new RuntimeException("MySQL JDBC Driver not found,please try again..", e);
+            throw new RuntimeException("MySQL JDBC Driver not found, please try again..", e);
         }
 
-        String url = String.format("jdbc:mysql://%s:%d/%s?useSSL=false",
+        String urlWithDatabase = String.format("jdbc:mysql://%s:%d/%s?useSSL=false",
                 dbConfig.getHost(),
                 dbConfig.getPort(),
                 dbConfig.getDatabase());
 
+        String urlWithoutDatabase = String.format("jdbc:mysql://%s:%d?useSSL=false",
+                dbConfig.getHost(),
+                dbConfig.getPort());
+
         try {
-            return new MySQLConnection(DriverManager.getConnection(url, dbConfig.getUser(), dbConfig.getPassword()));
+            return new MySQLConnection(DriverManager.getConnection(urlWithDatabase, dbConfig.getUser(), dbConfig.getPassword()));
         } catch (SQLException e) {
-            throw new IOException("Failed to connect to MySQL database", e);
+            System.err.println("Failed to connect to MySQL database" + e + ", trying without database.");
+            try {
+                return new MySQLConnection(DriverManager.getConnection(urlWithoutDatabase, dbConfig.getUser(), dbConfig.getPassword()));
+            } catch (SQLException e2) {
+                throw new IOException("Failed to connect to MySQL database", e2);
+            }
         }
     }
 
@@ -119,7 +128,7 @@ public class MySQLTester implements DatabaseTester {
     }
 
     @Override
-    public String executionLoop(DatabaseConnection connection, String query, int duration, int interval) {
+    public String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table) {
         StringBuilder result = new StringBuilder();
         int successfulExecutions = 0;
         int failedExecutions = 0;
@@ -138,8 +147,17 @@ public class MySQLTester implements DatabaseTester {
         int gen_test_query = 0;
         String query_test;
         String gen_test_values;
-        if (query == null || query.equals("")) {
+        
+        if ((query == null || query.equals("")) || (database != "" && !database.equals("")) || table == null || table.equals("")) {
             gen_test_query = 1;
+        }
+        
+        if (database == null || database.equals("")) {
+            database = "executions_loop";
+        }
+
+        if (table == null || table.equals("")) {
+            table = "executions_loop_table";
         }
 
         System.out.println("Execution loop start:" + query);
@@ -160,26 +178,26 @@ public class MySQLTester implements DatabaseTester {
 
                 if (gen_test_query == 1) {
                     // create test databases
-                    System.out.println("create databases executions_loop");
-                    query_test = "CREATE DATABASE IF NOT EXISTS executions_loop;";
+                    System.out.println("create databases " + database);
+                    query_test = "CREATE DATABASE IF NOT EXISTS " + database + ";";
                     execute(connection, query_test);
 
                     // drop test table
-                    query_test = "DROP TABLE IF EXISTS executions_loop.executions_loop_table;";
+                    query_test = "DROP TABLE IF EXISTS " + database + "." + table + ";";
                     execute(connection, query_test);
 
                     // create test table
-                    System.out.println("create table executions_loop_table");
-                    query_test = "CREATE TABLE IF NOT EXISTS executions_loop.executions_loop_table (id INT PRIMARY KEY AUTO_INCREMENT, value VARCHAR(255));";
+                    System.out.println("create table " + table);
+                    query_test = "CREATE TABLE IF NOT EXISTS " + database + "." + table + " (id INT PRIMARY KEY AUTO_INCREMENT, value VARCHAR(255));";
                     execute(connection, query_test);
 
                     gen_test_query = 2;
                 }
 
-                if (gen_test_query == 2) {
+                if (gen_test_query == 2 && (query == null || query.equals(""))) {
                     gen_test_values = "executions_loop_test_" + insert_index;
                     // set test query
-                    query = "INSERT INTO executions_loop.executions_loop_table (value) VALUES ('" + gen_test_values + "');";
+                    query = "INSERT INTO " + database + "." + table + " (value) VALUES ('" + gen_test_values + "');";
                 }
 
                 execute(connection, query);
@@ -271,12 +289,15 @@ public class MySQLTester implements DatabaseTester {
             .dbType("mysql")
             .duration(30)
             .interval(1)
-            //.query("select 1;")
+            //.query("INSERT INTO test_table (value) VALUES ('1');")
             .testType("executionloop")
+            .database("test_db")
+            .table("test_table")
             .build();
         MySQLTester tester = new MySQLTester(dbConfig);
         DatabaseConnection connection = tester.connect();
-        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(), dbConfig.getInterval());
+        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
+                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
         System.out.println(result);
         connection.close();
     }

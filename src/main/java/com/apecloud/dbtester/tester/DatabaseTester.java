@@ -60,9 +60,11 @@ public interface DatabaseTester {
      * @param query        SQL语句或HTTP请求
      * @param duration     测试持续时间(秒)
      * @param interval     报告输出间隔(秒)
+     * @param database     测试数据库名称
+     * @param table        测试表名称
      * @return 包含循环测试结果的字符串
      */
-    String executionLoop(DatabaseConnection connection, String query, int duration, int interval);
+    String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table);
 
     /**
      * 释放所有数据库连接

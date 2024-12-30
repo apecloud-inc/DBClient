@@ -64,7 +64,9 @@ public class TestExecutor {
                         connection,
                         loopQuery,
                         dbConfig.getDuration(),
-                        dbConfig.getInterval()
+                        dbConfig.getInterval(),
+                        dbConfig.getDatabase(),
+                        dbConfig.getTable()
                     );
                     break;
 

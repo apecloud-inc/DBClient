@@ -229,7 +229,7 @@ public class MinioTester implements DatabaseTester {
     }
 
     @Override
-    public String executionLoop(DatabaseConnection connection, String query, int duration, int interval) {
+    public String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table) {
         return null;
     }
 
