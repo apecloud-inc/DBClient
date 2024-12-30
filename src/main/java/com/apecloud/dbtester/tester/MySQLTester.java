@@ -147,11 +147,12 @@ public class MySQLTester implements DatabaseTester {
         int gen_test_query = 0;
         String query_test;
         String gen_test_values;
-        
-        if ((query == null || query.equals("")) || (database != "" && !database.equals("")) || table == null || table.equals("")) {
+
+        // check gen test query
+        if ((query == null || query.equals("")) || (database != null && !database.equals("")) || (table != null && !table.equals(""))) {
             gen_test_query = 1;
         }
-        
+
         if (database == null || database.equals("")) {
             database = "executions_loop";
         }
@@ -182,9 +183,11 @@ public class MySQLTester implements DatabaseTester {
                     query_test = "CREATE DATABASE IF NOT EXISTS " + database + ";";
                     execute(connection, query_test);
 
-                    // drop test table
-                    query_test = "DROP TABLE IF EXISTS " + database + "." + table + ";";
-                    execute(connection, query_test);
+                    if (table.equals("executions_loop_table")) {
+                        // drop test table
+                        query_test = "DROP TABLE IF EXISTS " + database + "." + table + ";";
+                        execute(connection, query_test);
+                    }
 
                     // create test table
                     System.out.println("create table " + table);
