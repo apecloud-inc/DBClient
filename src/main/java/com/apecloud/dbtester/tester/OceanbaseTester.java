@@ -2,6 +2,7 @@ package com.apecloud.dbtester.tester;
 
 import java.io.IOException;
 import java.sql.*;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -11,6 +12,7 @@ import com.oceanbase.jdbc.*;
 
 public class OceanbaseTester implements DatabaseTester {
     private List<DatabaseConnection> connections = new ArrayList<>();
+    private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     private final DBConfig dbConfig;
 
     // 默认构造函数

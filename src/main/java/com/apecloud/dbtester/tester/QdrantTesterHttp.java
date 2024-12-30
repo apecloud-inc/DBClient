@@ -12,6 +12,7 @@ import java.io.Reader;
 import java.math.BigDecimal;
 import java.net.URL;
 import java.sql.*;
+import java.text.SimpleDateFormat;
 import java.sql.Date;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -20,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 
 public class QdrantTesterHttp implements DatabaseTester {
     private List<DatabaseConnection> connections = new ArrayList<>();
+    private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     private final DBConfig dbConfig;
 
     public QdrantTesterHttp() {

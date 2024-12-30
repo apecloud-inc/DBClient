@@ -5,6 +5,7 @@ import org.apache.zookeeper.data.Stat;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -15,6 +16,7 @@ import java.util.concurrent.CountDownLatch;
 
 public class ZookeeperTester implements DatabaseTester {
     private List<DatabaseConnection> connections = new ArrayList<>();
+    private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     private final DBConfig dbConfig;
     
     public ZookeeperTester() {

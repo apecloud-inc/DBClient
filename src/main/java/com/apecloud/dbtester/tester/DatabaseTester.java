@@ -2,6 +2,7 @@ package com.apecloud.dbtester.tester;
 
 import java.io.IOException;
 import java.sql.*;
+import java.text.SimpleDateFormat;
 
 public interface DatabaseTester {
 

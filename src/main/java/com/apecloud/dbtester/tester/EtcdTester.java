@@ -10,6 +10,7 @@ import io.etcd.jetcd.kv.DeleteResponse;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -20,6 +21,7 @@ import java.util.concurrent.CompletableFuture;
 
 public class EtcdTester implements DatabaseTester {
     private List<DatabaseConnection> connections = new ArrayList<>();
+    private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     private final DBConfig dbConfig;
 
     public EtcdTester() {

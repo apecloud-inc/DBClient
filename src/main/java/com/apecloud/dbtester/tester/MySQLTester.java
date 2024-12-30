@@ -185,6 +185,7 @@ public class MySQLTester implements DatabaseTester {
 
                     if (table.equals("executions_loop_table")) {
                         // drop test table
+                        System.out.println("drop table " + table);
                         query_test = "DROP TABLE IF EXISTS " + database + "." + table + ";";
                         execute(connection, query_test);
                     }
