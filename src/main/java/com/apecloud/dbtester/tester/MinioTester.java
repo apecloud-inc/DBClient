@@ -228,6 +228,11 @@ public class MinioTester implements DatabaseTester {
         return results.toString();
     }
 
+    @Override
+    public String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table) {
+        return null;
+    }
+
     private static class MinioConnection implements DatabaseConnection {
         private final MinioClient minioClient;
 

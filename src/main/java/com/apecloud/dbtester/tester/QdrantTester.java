@@ -173,6 +173,11 @@ public class QdrantTester implements DatabaseTester {
         return results.toString();
     }
 
+    @Override
+    public String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table) {
+        return null;
+    }
+
     private static class QdrantConnection implements DatabaseConnection {
         private final QdrantGrpcClient client;
 

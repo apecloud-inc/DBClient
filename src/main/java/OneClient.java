@@ -16,10 +16,11 @@ public class OneClient {
                .addOption("a", "accessmode", true, "Access mode (mysql/postgresql/oracle/redis/influxdb/prometheus)");
 
         // 测试相关选项
-        options.addOption("t", "test", true, "Test type (query/connectionstress/benchmark)")
+        options.addOption("t", "test", true, "Test type (query/connectionstress/benchmark/executionloop)")
                .addOption("q", "query", true, "SQL query to execute")
                .addOption("c", "connections", true, "Number of connections")
                .addOption("s", "duration", true, "Test duration in seconds")
+               .addOption("I", "interval", true, "Periodically report intermediate statistics with a specified interval in seconds. 0 disables intermediate reports")
                .addOption("i", "iterations", true, "Number of iterations for benchmark")
                .addOption("m", "concurrency", true, "Concurrency level for benchmark")
                .addOption("M", "master", true, "Redis sentinel master")
@@ -77,6 +78,9 @@ public class OneClient {
             if (cmd.hasOption("iterations")) {
                 builder.iterations(Integer.parseInt(cmd.getOptionValue("iterations")));
             }
+            if (cmd.hasOption("interval")) {
+                builder.interval(Integer.parseInt(cmd.getOptionValue("interval", "1")));
+            }
             if (cmd.hasOption("concurrency")) {
                 builder.concurrency(Integer.parseInt(cmd.getOptionValue("concurrency")));
             }
@@ -121,6 +125,11 @@ public class OneClient {
                     break;
                 case "query":
                     System.out.printf("Query: %s%n", config.getQuery());
+                    break;
+                case "executionloop":
+                    System.out.printf("Query: %s%n", config.getQuery());
+                    System.out.printf("Duration: %d seconds%n", config.getDuration());
+                    System.out.printf("Interval: %d seconds%n", config.getInterval());
                     break;
             }
         } catch (Exception e) {

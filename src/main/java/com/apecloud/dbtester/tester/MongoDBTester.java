@@ -201,7 +201,12 @@ public class MongoDBTester implements DatabaseTester {
         
         return results.toString();
     }
-    
+
+    @Override
+    public String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table) {
+        return null;
+    }
+
 
     private static class MongoDBConnection implements DatabaseConnection {
         private final MongoClient client;

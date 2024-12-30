@@ -281,6 +281,11 @@ public class KafkaTester implements DatabaseTester {
         return results.toString();
     }
 
+    @Override
+    public String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table) {
+        return null;
+    }
+
     private static class KafkaConnection implements DatabaseConnection {
         private final AdminClient adminClient;
         private final KafkaProducer<String, String> producer;

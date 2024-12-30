@@ -245,6 +245,11 @@ public class VictoriaMetricsTester implements DatabaseTester {
         }
     }
 
+    @Override
+    public String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table) {
+        return null;
+    }
+
     private String formatQueryResult(QueryResult result) {
         if (!(result instanceof VMQueryResult)) {
             return "Invalid result type";
