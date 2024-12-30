@@ -173,6 +173,11 @@ public class LokiTester implements DatabaseTester {
     }
 
     @Override
+    public String executionLoop(DatabaseConnection connection, String query, int duration, int interval) {
+        return null;
+    }
+
+    @Override
     public String bench(DatabaseConnection connection, String operation, int iterations, int concurrency) {
         StringBuilder result = new StringBuilder();
         ExecutorService executor = Executors.newFixedThreadPool(concurrency);

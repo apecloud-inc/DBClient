@@ -37,8 +37,6 @@ public interface DatabaseTester {
     /**
      * 执行连接压力测试
      *
-     * @param databaseType 数据库类型
-     * @param params       连接参数
      * @param connections  并发连接数
      * @param duration     测试持续时间(秒)
      * @return 包含压力测试结果的字符串
@@ -54,6 +52,17 @@ public interface DatabaseTester {
      * @throws IllegalArgumentException 如果测试类型不支持或参数无效
      */
     String executeTest() throws IOException;
+
+    /**
+     * 运行循环测试
+     *
+     * @param connection   数据库连接对象
+     * @param query        SQL语句或HTTP请求
+     * @param duration     测试持续时间(秒)
+     * @param interval     报告输出间隔(秒)
+     * @return 包含循环测试结果的字符串
+     */
+    String executionLoop(DatabaseConnection connection, String query, int duration, int interval);
 
     /**
      * 释放所有数据库连接

@@ -58,6 +58,16 @@ public class TestExecutor {
                     );
                     break;
 
+                case "executionloop":
+                    String loopQuery = dbConfig.getQuery();
+                    result = tester.executionLoop(
+                        connection,
+                        loopQuery,
+                        dbConfig.getDuration(),
+                        dbConfig.getInterval()
+                    );
+                    break;
+
                 default:
                     throw new IllegalArgumentException("Unsupported test type: " + testType);
             }

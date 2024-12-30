@@ -35,6 +35,7 @@ public class DBConfig {
     private final String table;         // 数据表名
     private final int connectionCount;  // 连接数量
     private final int duration;         // 测试持续时间(秒)
+    private final int interval;         // 报告输出间隔(秒)
     private final int iterations;       // 基准测试迭代次数
     private final int concurrency;      // 基准测试并发数
     private final String master;        // Redis sentinel master
@@ -54,6 +55,7 @@ public class DBConfig {
         this.table = builder.table;
         this.connectionCount = builder.connectionCount;
         this.duration = builder.duration;
+        this.interval = builder.interval;
         this.iterations = builder.iterations;
         this.concurrency = builder.concurrency;
         this.master = builder.master;
@@ -112,6 +114,10 @@ public class DBConfig {
         return duration;
     }
 
+    public int getInterval() {
+        return interval;
+    }
+
     public int getIterations() {
         return iterations;
     }
@@ -142,6 +148,7 @@ public class DBConfig {
         private String table;                // 数据表名
         private int connectionCount = 10;    // 默认值
         private int duration = 60;           // 默认60秒
+        private int interval = 1;            // 默认1秒
         private int iterations = 1000;       // 默认值
         private int concurrency = 10;        // 默认值
         private AccessMode accessMode = AccessMode.MYSQL; // 默认访问模式
@@ -214,6 +221,11 @@ public class DBConfig {
             return this;
         }
 
+        public Builder interval(int interval) {
+            this.interval = interval;
+            return this;
+        }
+
         public Builder iterations(int iterations) {
             this.iterations = iterations;
             return this;
@@ -274,6 +286,11 @@ public class DBConfig {
                     if (connectionCount <= 0) {
                         throw new IllegalStateException("Connection count must be positive");
                     }
+                    if (duration <= 0) {
+                        throw new IllegalStateException("Duration must be positive");
+                    }
+                    break;
+                case "executionloop":
                     if (duration <= 0) {
                         throw new IllegalStateException("Duration must be positive");
                     }
@@ -354,6 +371,7 @@ public class DBConfig {
                 ", table='" + table + '\'' +
                 ", connectionCount=" + connectionCount +
                 ", duration=" + duration +
+                ", interval=" + interval +
                 ", iterations=" + iterations +
                 ", concurrency=" + concurrency +
                 ", master=" + master +

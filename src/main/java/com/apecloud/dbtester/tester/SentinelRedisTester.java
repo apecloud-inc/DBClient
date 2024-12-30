@@ -208,6 +208,11 @@ public class SentinelRedisTester implements DatabaseTester {
         return results.toString();
     }
 
+    @Override
+    public String executionLoop(DatabaseConnection connection, String query, int duration, int interval) {
+        return null;
+    }
+
     private static class RedisConnection implements DatabaseConnection {
         private final JedisSentinelPool pool;
 

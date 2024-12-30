@@ -117,6 +117,11 @@ public class SQLServerTester implements DatabaseTester {
         return TestExecutor.executeTest(this, dbConfig);
     }
 
+    @Override
+    public String executionLoop(DatabaseConnection connection, String query, int duration, int interval) {
+        return null;
+    }
+
     private static class SQLServerConnection implements DatabaseConnection {
         private final Connection connection;
 

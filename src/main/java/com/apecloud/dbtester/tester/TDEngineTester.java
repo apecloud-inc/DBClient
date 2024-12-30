@@ -217,6 +217,11 @@ public class TDEngineTester implements DatabaseTester {
         }
     }
 
+    @Override
+    public String executionLoop(DatabaseConnection connection, String query, int duration, int interval) {
+        return null;
+    }
+
     private String formatQueryResult(QueryResult result) throws IOException {
         if (!(result instanceof TDEngineQueryResult)) {
             return "Invalid result type";

@@ -236,6 +236,11 @@ public class ZookeeperTester implements DatabaseTester {
         }
     }
 
+    @Override
+    public String executionLoop(DatabaseConnection connection, String query, int duration, int interval) {
+        return null;
+    }
+
     private String formatQueryResult(QueryResult result) {
         if (!(result instanceof ZookeeperQueryResult)) {
             return "Invalid result type";
