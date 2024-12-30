@@ -211,7 +211,7 @@ public class PostgreSQLTester implements DatabaseTester {
 
                     if (!databaseConnection.equals(database)) {
                         System.out.println("reconnect connection " + database);
-                        databaseConnection = "executions_loop";
+                        databaseConnection = database;
                         connection = this.connect();
                     }
 
