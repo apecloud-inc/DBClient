@@ -54,11 +54,12 @@ public class PostgreSQLTester implements DatabaseTester {
         try {
             return new PostgreSQLConnection(DriverManager.getConnection(url, dbConfig.getUser(), dbConfig.getPassword()));
         } catch (SQLException e) {
-            System.err.println("Failed to connect to PostgreSQL database" + e + ", trying with database postgresql.");
+            System.err.println("Failed to connect to PostgreSQL database: " + e );
+            System.err.println("Trying with database postgresql.");
             try {
                 return new PostgreSQLConnection(DriverManager.getConnection(url2, dbConfig.getUser(), dbConfig.getPassword()));
             } catch (SQLException e2) {
-                throw new IOException("Failed to connect to PostgreSQL database", e2);
+                throw new IOException("Failed to connect to PostgreSQL database: ", e2);
             }
         }
     }
@@ -140,6 +141,7 @@ public class PostgreSQLTester implements DatabaseTester {
         StringBuilder result_db = new StringBuilder();
         int successfulExecutions = 0;
         int failedExecutions = 0;
+        int disconnectCounts = 0;
         boolean executionError = false;
 
         long startTime = System.currentTimeMillis();
@@ -176,7 +178,9 @@ public class PostgreSQLTester implements DatabaseTester {
             if (currentTime - lastOutputTime >= interval * 1000) {
                 outputPassTime = outputPassTime + interval;
                 lastOutputTime = currentTime;
-                System.out.println("[ " + outputPassTime + "s ] executions total: " + (successfulExecutions + failedExecutions) + " successful: " + successfulExecutions + " failed: " + failedExecutions);
+                System.out.println("[ " + outputPassTime + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                        + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                        + " disconnect: " + disconnectCounts);
             }
 
             try {
@@ -254,6 +258,7 @@ public class PostgreSQLTester implements DatabaseTester {
             } catch (IOException e) {
                 failedExecutions++;
                 if (!executionError) {
+                    disconnectCounts++;
                     errorTime = System.currentTimeMillis();
                     errorDate = new Date(errorTime);
                     System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
@@ -265,17 +270,23 @@ public class PostgreSQLTester implements DatabaseTester {
                 e.printStackTrace();
             }
         }
-        System.out.println("[ " + duration + "s ] executions total: " + (successfulExecutions + failedExecutions) + " successful: " + successfulExecutions + " failed: " + failedExecutions);
+
+        System.out.println("[ " + duration + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                + " disconnect: " + disconnectCounts);
+
         releaseConnections();
 
         result.append("Execution loop completed during ").append(duration).append(" seconds");
 
         return String.format("Total Executions: %d\n" +
-                        "Successful Executions: %d\n" +
-                        "Failed Executions: %d",
-                successfulExecutions + failedExecutions,
+                "Successful Executions: %d\n" +
+                "Failed Executions: %d\n" +
+                "Disconnection Counts: %d",
+                successfulExecutions+failedExecutions,
                 successfulExecutions,
-                failedExecutions);
+                failedExecutions,
+                disconnectCounts);
     }
 
 
@@ -327,9 +338,9 @@ public class PostgreSQLTester implements DatabaseTester {
             .host("localhost")
             .port(5432)
             .user("postgres")
-            .password("711Zm29DSx")
+            .password("SOHn9mAVFOzbQzN3VuLPgXC5t1Gn0AQ0zLQlzHOz0w8ws2jfwkhXs9KjJsU28mgJ")
             .dbType("postgresql")
-            .duration(10)
+            .duration(60)
             .interval(1)
 //            .query("INSERT INTO test_table (value) VALUES ('1');")
             .testType("executionloop")

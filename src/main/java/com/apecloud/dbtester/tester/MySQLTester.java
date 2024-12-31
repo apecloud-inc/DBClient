@@ -48,11 +48,12 @@ public class MySQLTester implements DatabaseTester {
         try {
             return new MySQLConnection(DriverManager.getConnection(urlWithDatabase, dbConfig.getUser(), dbConfig.getPassword()));
         } catch (SQLException e) {
-            System.err.println("Failed to connect to MySQL database" + e + ", trying without database.");
+            System.err.println("Failed to connect to MySQL database: " + e );
+            System.err.println("Trying without database.");
             try {
                 return new MySQLConnection(DriverManager.getConnection(urlWithoutDatabase, dbConfig.getUser(), dbConfig.getPassword()));
             } catch (SQLException e2) {
-                throw new IOException("Failed to connect to MySQL database", e2);
+                throw new IOException("Failed to connect to MySQL database: ", e2);
             }
         }
     }
@@ -132,6 +133,7 @@ public class MySQLTester implements DatabaseTester {
         StringBuilder result = new StringBuilder();
         int successfulExecutions = 0;
         int failedExecutions = 0;
+        int disconnectCounts = 0;
         boolean executionError = false;
 
         long startTime = System.currentTimeMillis();
@@ -168,7 +170,9 @@ public class MySQLTester implements DatabaseTester {
             if (currentTime - lastOutputTime >= interval * 1000) {
                 outputPassTime = outputPassTime + interval;
                 lastOutputTime = currentTime;
-                System.out.println("[ " + outputPassTime + "s ] executions total: " + (successfulExecutions + failedExecutions) + " successful: " + successfulExecutions + " failed: " + failedExecutions);
+                System.out.println("[ " + outputPassTime + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                        + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                        + " disconnect: " + disconnectCounts);
             }
 
             try {
@@ -222,6 +226,7 @@ public class MySQLTester implements DatabaseTester {
             } catch (IOException e) {
                 failedExecutions++;
                 if (!executionError) {
+                    disconnectCounts++;
                     errorTime = System.currentTimeMillis();
                     errorDate = new Date(errorTime);
                     System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
@@ -231,17 +236,23 @@ public class MySQLTester implements DatabaseTester {
                 e.printStackTrace();
             }
         }
-        System.out.println("[ " + duration + "s ] executions total: " + (successfulExecutions + failedExecutions) + " successful: " + successfulExecutions + " failed: " + failedExecutions);
+
+        System.out.println("[ " + duration + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                + " disconnect: " + disconnectCounts);
+
         releaseConnections();
 
         result.append("Execution loop completed during ").append(duration).append(" seconds");
 
         return String.format("Total Executions: %d\n" +
                 "Successful Executions: %d\n" +
-                "Failed Executions: %d",
+                "Failed Executions: %d\n" +
+                "Disconnection Counts: %d",
                 successfulExecutions+failedExecutions,
                 successfulExecutions,
-                failedExecutions);
+                failedExecutions,
+                disconnectCounts);
     }
 
     private static class MySQLConnection implements DatabaseConnection {
