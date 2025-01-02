@@ -65,7 +65,7 @@ public class TesterFactory {
                 return new QdrantTesterHttp(config);
             case "redis":
             case "sentinelredis":
-                return new SentinelRedisTester(config);
+                return new RedisTester(config);
             case "zk":
             case "zookeeper":
                 return new ZookeeperTester(config);

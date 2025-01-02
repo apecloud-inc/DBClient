@@ -151,7 +151,7 @@ public class MySQLTester implements DatabaseTester {
         String gen_test_values;
 
         // check gen test query
-        if ((query == null || query.equals("")) || (database != null && !database.equals("")) || (table != null && !table.equals(""))) {
+        if (query == null || query.equals("") || (database != null && !database.equals("")) || (table != null && !table.equals(""))) {
             gen_test_query = 1;
         }
 
