@@ -24,7 +24,8 @@ public class OneClient {
                .addOption("i", "iterations", true, "Number of iterations for benchmark")
                .addOption("m", "concurrency", true, "Concurrency level for benchmark")
                .addOption("M", "master", true, "Redis sentinel master")
-               .addOption("S", "sentinelPassword", true, "Redis sentinel password");
+               .addOption("S", "sentinelPassword", true, "Redis sentinel password")
+               .addOption("k", "key", true, "Database key");
 
         CommandLineParser parser = new DefaultParser();
         try {
@@ -63,7 +64,8 @@ public class OneClient {
             .query(cmd.getOptionValue("query", ""))
             .testType(cmd.getOptionValue("test", ""))
             .master(cmd.getOptionValue("master", ""))
-            .sentinelPassword(cmd.getOptionValue("sentinelPassword", ""));
+            .sentinelPassword(cmd.getOptionValue("sentinelPassword", ""))
+            .key(cmd.getOptionValue("key", ""));
 
         // 处理数值类型的参数
         try {
@@ -130,6 +132,7 @@ public class OneClient {
                     System.out.printf("Query: %s%n", config.getQuery());
                     System.out.printf("Duration: %d seconds%n", config.getDuration());
                     System.out.printf("Interval: %d seconds%n", config.getInterval());
+                    System.out.printf("Key: %s%n", config.getKey());
                     break;
             }
         } catch (Exception e) {

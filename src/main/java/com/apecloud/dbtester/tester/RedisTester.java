@@ -1,7 +1,8 @@
 package com.apecloud.dbtester.tester;
 
 import redis.clients.jedis.Jedis;
-import redis.clients.jedis.JedisSentinelPool;
+import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
 
 import java.io.IOException;
 import java.sql.Date;
@@ -11,16 +12,16 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public class SentinelRedisTester implements DatabaseTester {
+public class RedisTester implements DatabaseTester {
     private List<DatabaseConnection> connections = new ArrayList<>();
     private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     private final DBConfig dbConfig;
 
-    public SentinelRedisTester() {
+    public RedisTester() {
         this.dbConfig = null;
     }
 
-    public SentinelRedisTester(DBConfig dbConfig) {
+    public RedisTester(DBConfig dbConfig) {
         this.dbConfig = dbConfig;
     }
 
@@ -31,20 +32,16 @@ public class SentinelRedisTester implements DatabaseTester {
         }
 
         try {
-            Set<String> sentinels = new HashSet<>(Arrays.asList(
-                    dbConfig.getHost() + ":" + dbConfig.getPort()
-            ));
-
-            JedisSentinelPool pool = new JedisSentinelPool(
-                    dbConfig.getMaster(),
-                    sentinels,
-                    dbConfig.getPassword(),
-                    dbConfig.getSentinelPassword()
-            );
+            JedisPoolConfig poolConfig = new JedisPoolConfig();
+            poolConfig.setMaxTotal(800); // 设置最大连接数
+            poolConfig.setMaxIdle(100); // 设置最大空闲连接数
+            poolConfig.setMinIdle(10); // 设置最小空闲连接数
+            poolConfig.setMaxWaitMillis(3000); // 设置最大等待时间
+            JedisPool pool = new JedisPool(poolConfig, dbConfig.getHost(), dbConfig.getPort(), 2000, dbConfig.getPassword());
 
             return new RedisConnection(pool);
         } catch (Exception e) {
-            throw new IOException("Failed to connect to Redis Sentinel", e);
+            throw new IOException("Failed to connect to Redis", e);
         }
     }
 
@@ -59,7 +56,7 @@ public class SentinelRedisTester implements DatabaseTester {
 
             Jedis jedis = redisConnection.getResource();
             String operation = parts[0].toLowerCase();
-            
+
             switch (operation) {
                 case "get":
                     if (parts.length != 2) {
@@ -67,28 +64,28 @@ public class SentinelRedisTester implements DatabaseTester {
                     }
                     String result = jedis.get(parts[1]);
                     return new RedisQueryResult(Collections.singletonList(result));
-                    
+
                 case "set":
                     if (parts.length != 3) {
                         throw new IOException("SET command requires key and value");
                     }
                     jedis.set(parts[1], parts[2]);
                     return new RedisQueryResult(1);
-                    
+
                 case "del":
                     if (parts.length != 2) {
                         throw new IOException("DEL command requires one key");
                     }
                     Long delResult = jedis.del(parts[1]);
                     return new RedisQueryResult(delResult.intValue());
-                    
+
                 case "keys":
                     if (parts.length != 2) {
                         throw new IOException("KEYS command requires pattern");
                     }
                     Set<String> keys = jedis.keys(parts[1]);
                     return new RedisQueryResult(new ArrayList<>(keys));
-                    
+
                 default:
                     throw new IOException("Unsupported operation: " + operation);
             }
@@ -125,10 +122,10 @@ public class SentinelRedisTester implements DatabaseTester {
         double qps = iterations / duration;
 
         result.append("Benchmark results:\n")
-              .append("Total iterations: ").append(iterations).append("\n")
-              .append("Concurrency level: ").append(concurrency).append("\n")
-              .append("Total time: ").append(duration).append(" seconds\n")
-              .append("Queries per second: ").append(String.format("%.2f", qps));
+                .append("Total iterations: ").append(iterations).append("\n")
+                .append("Concurrency level: ").append(concurrency).append("\n")
+                .append("Total time: ").append(duration).append(" seconds\n")
+                .append("Queries per second: ").append(String.format("%.2f", qps));
 
         return result.toString();
     }
@@ -150,9 +147,9 @@ public class SentinelRedisTester implements DatabaseTester {
         }
 
         return String.format("Connection stress test results:\n" +
-                "Duration: %d seconds\n" +
-                "Successful connections: %d\n" +
-                "Failed connections: %d",
+                        "Duration: %d seconds\n" +
+                        "Successful connections: %d\n" +
+                        "Failed connections: %d",
                 duration, successfulConnections, failedConnections);
     }
 
@@ -173,29 +170,29 @@ public class SentinelRedisTester implements DatabaseTester {
         DatabaseConnection connection = null;
         StringBuilder results = new StringBuilder();
         String testType = dbConfig.getTestType();
-        
+
         try {
             connection = connect();
             String testCommand = "set test_key test_value";
-            
+
             switch (testType) {
                 case "query":
                     execute(connection, testCommand);
                     results.append("Basic query test: SUCCESS\n");
                     break;
-                    
+
                 case "connectionstress":
                     results.append("Connection stress test:\n")
-                           .append(connectionStress(10, 5))
-                           .append("\n");
+                            .append(connectionStress(10, 5))
+                            .append("\n");
                     break;
-                    
+
                 case "benchmark":
                     results.append("Benchmark test:\n")
-                           .append(bench(connection, testCommand, 1000, 10))
-                           .append("\n");
+                            .append(bench(connection, testCommand, 1000, 10))
+                            .append("\n");
                     break;
-                    
+
                 default:
                     results.append("Unknown test type\n");
             }
@@ -207,7 +204,7 @@ public class SentinelRedisTester implements DatabaseTester {
             }
             releaseConnections();
         }
-        
+
         return results.toString();
     }
 
@@ -270,7 +267,7 @@ public class SentinelRedisTester implements DatabaseTester {
                 if ((gen_test_query == 2 && (query == null || query.equals("")) || gen_test_query == 3 )) {
                     gen_test_values = "executions_loop_test_" + insert_index;
                     // set test query
-                    query = "set " + table + " '" + gen_test_values + "'";
+                    query = "set " + table + " " + gen_test_values;
                     if (gen_test_query == 2) {
                         System.out.println("Execution loop start:" + query);
                     }
@@ -321,9 +318,9 @@ public class SentinelRedisTester implements DatabaseTester {
     }
 
     private static class RedisConnection implements DatabaseConnection {
-        private final JedisSentinelPool pool;
+        private final JedisPool pool;
 
-        RedisConnection(JedisSentinelPool pool) {
+        RedisConnection(JedisPool pool) {
             this.pool = pool;
         }
 
@@ -374,23 +371,39 @@ public class SentinelRedisTester implements DatabaseTester {
     public static void main(String[] args) throws IOException {
         DBConfig dbConfig = new DBConfig.Builder()
                 .host("localhost")
-                .port(26379)
-                .master("redis-ljgsrt-redis")
+                .port(6379) // Change port to default Redis port
                 .user("default")
                 .password("9AT1200pTA")
-                .sentinelPassword("gIW574Zz99")
                 .dbType("redis")
                 .duration(10)
                 .interval(1)
                 .testType("executionloop")
-                .key("test")
+//                .key("test")
                 .build();
 
-        SentinelRedisTester tester = new SentinelRedisTester(dbConfig);
+        RedisTester tester = new RedisTester(dbConfig);
         DatabaseConnection connection = tester.connect();
         String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
                 dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
         System.out.println(result);
         connection.close();
+
+//        DBConfig dbConfig = new DBConfig.Builder()
+//                .host("localhost")
+//                .port(6379) // Change port to default Redis port
+//                .user("default")
+//                .password("9AT1200pTA")
+//                .dbType("redis")
+//                .duration(10)
+//                .connectionCount(100)
+//                .testType("connectionStress")
+//                .key("test")
+//                .build();
+//
+//        RedisTester tester = new RedisTester(dbConfig);
+//        DatabaseConnection connection = tester.connect();
+//        String result = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
+//        System.out.println(result);
+//        connection.close();
     }
 }
