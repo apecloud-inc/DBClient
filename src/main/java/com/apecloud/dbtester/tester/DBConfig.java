@@ -326,6 +326,7 @@ public class DBConfig {
                 case "opentenbase":
                 case "gaussdb":
                 case "vastbase":
+                case "gbase":
                 case "gbase8c":
                 case "oracle":
                 case "ob":
