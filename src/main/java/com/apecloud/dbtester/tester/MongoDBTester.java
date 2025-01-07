@@ -3,11 +3,13 @@ package com.apecloud.dbtester.tester;
 import com.mongodb.*;
 import com.mongodb.client.*;
 import com.mongodb.client.result.DeleteResult;
+import com.mongodb.client.result.InsertOneResult;
 import com.mongodb.client.result.UpdateResult;
+import com.mongodb.connection.ClusterSettings;
 import org.bson.Document;
-import org.bson.conversions.Bson;
 
 import java.io.IOException;
+import java.sql.Date;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,22 +38,52 @@ public class MongoDBTester implements DatabaseTester {
         }
 
         try {
+            String databaseConnection = "admin";
+            if (dbConfig.getDatabase() != null && !dbConfig.getDatabase().equals("")) {
+                databaseConnection = dbConfig.getDatabase();
+            }
+
             MongoCredential credential = MongoCredential.createCredential(
                     dbConfig.getUser(),
-                    dbConfig.getDatabase(),
+                    databaseConnection,
                     dbConfig.getPassword().toCharArray()
             );
 
-            MongoClientSettings settings = MongoClientSettings.builder()
+
+
+            MongoClientSettings settings;
+
+            if ("executionloop".equals(dbConfig.getTestType())){
+                long serverSelectionTimeout = 1000;
+
+
+                // 创建 ClusterSettings
+                ClusterSettings clusterSettings = ClusterSettings.builder()
+                        .serverSelectionTimeout(serverSelectionTimeout, TimeUnit.MILLISECONDS)
+                        .build();
+
+                // 创建 MongoClientSettings
+               settings = MongoClientSettings.builder()
+                       .applyToClusterSettings(builder -> builder.applySettings(clusterSettings))
+                       .credential(credential)
+                       .applyToClusterSettings(builder ->
+                            builder.hosts(Arrays.asList(
+                                new ServerAddress(dbConfig.getHost(), dbConfig.getPort())
+                            )))
+                       .build();
+
+            } else {
+                settings = MongoClientSettings.builder()
                     .credential(credential)
                     .applyToClusterSettings(builder ->
                             builder.hosts(Arrays.asList(
                                     new ServerAddress(dbConfig.getHost(), dbConfig.getPort())
                             )))
                     .build();
+            }
 
             MongoClient mongoClient = MongoClients.create(settings);
-            return new MongoDBConnection(mongoClient, dbConfig.getDatabase());
+            return new MongoDBConnection(mongoClient, databaseConnection);
         } catch (Exception e) {
             throw new IOException("Failed to connect to MongoDB", e);
         }
@@ -206,9 +238,115 @@ public class MongoDBTester implements DatabaseTester {
 
     @Override
     public String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table) {
-        return null;
-    }
+        MongoDBConnection mongoConnection;
+        StringBuilder result = new StringBuilder();
+        int successfulExecutions = 0;
+        int failedExecutions = 0;
+        int disconnectCounts = 0;
+        boolean executionError = false;
 
+        long startTime = System.currentTimeMillis();
+        long endTime = startTime + duration * 1000;
+        long errorTime = 0;
+        long recoveryTime;
+        long errorToRecoveryTime;
+        java.sql.Date errorDate = null;
+        long lastOutputTime = System.currentTimeMillis();
+        int outputPassTime = 0;
+
+        int insert_index = 0;
+        int gen_test_query = 0;
+        String gen_test_values;
+
+        // check gen test query
+        if (query == null || query.equals("") || (table != null && !table.equals(""))) {
+            gen_test_query = 1;
+        }
+
+        if (table == null || table.equals("")) {
+            table = "executions_loop_table";
+        }
+
+        System.out.println("Execution loop start:" + query);
+        while (System.currentTimeMillis() < endTime) {
+            insert_index = insert_index + 1;
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastOutputTime >= interval * 1000) {
+                outputPassTime = outputPassTime + interval;
+                lastOutputTime = currentTime;
+                System.out.println("[ " + outputPassTime + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                        + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                        + " disconnect: " + disconnectCounts);
+            }
+
+            try {
+                if (executionError) {
+//                    Thread.sleep(1000);
+                    connection = this.connect();
+                }
+                mongoConnection = (MongoDBConnection) connection;
+                if (gen_test_query == 1) {
+                    if (table.equals("executions_loop_table")) {
+                        // drop test table
+                        System.out.println("drop table " + table);
+                        mongoConnection.getDatabase().getCollection(table).drop();
+                    }
+                    gen_test_query = 2;
+                }
+
+                if ((gen_test_query == 2 && (query == null || query.equals("")) || gen_test_query == 3)) {
+                    gen_test_values = "executions_loop_test_" + insert_index;
+                    // set test query
+                    query = "{ value: '" + gen_test_values + "' }";
+                    if (gen_test_query == 2) {
+                        System.out.println("Execution loop start:" + query);
+                    }
+                    gen_test_query = 3;
+                }
+
+                // Execute the query (insert operation in MongoDB)
+                InsertOneResult insert_result = mongoConnection.getDatabase().getCollection(table).insertOne(Document.parse(query));
+                System.out.println("Inserted document: " + insert_result.getInsertedId());
+                successfulExecutions++;
+                if (executionError) {
+                    recoveryTime = System.currentTimeMillis();
+                    java.sql.Date recoveryDate = new java.sql.Date(recoveryTime);
+                    System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                    System.out.println("[" + sdf.format(recoveryDate) + "] Connection successfully recovered!");
+                    errorToRecoveryTime = recoveryTime - errorTime;
+                    System.out.println("The connection was restored in " + errorToRecoveryTime + " milliseconds.");
+                    executionError = false;
+                }
+            } catch (Exception e) {
+                System.out.println("Execution loop failed: " + e.getMessage());
+                failedExecutions++;
+                if (!executionError) {
+                    disconnectCounts++;
+                    errorTime = System.currentTimeMillis();
+                    errorDate = new Date(errorTime);
+                    System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                    executionError = true;
+                }
+            }
+        }
+
+        System.out.println("[ " + duration + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                + " disconnect: " + disconnectCounts);
+
+        releaseConnections();
+
+        result.append("Execution loop completed during ").append(duration).append(" seconds");
+
+        return String.format("Total Executions: %d\n" +
+                        "Successful Executions: %d\n" +
+                        "Failed Executions: %d\n" +
+                        "Disconnection Counts: %d",
+                successfulExecutions + failedExecutions,
+                successfulExecutions,
+                failedExecutions,
+                disconnectCounts);
+    }
 
     private static class MongoDBConnection implements DatabaseConnection {
         private final MongoClient client;
@@ -276,15 +414,22 @@ public class MongoDBTester implements DatabaseTester {
 
     public static void main(String[] args) throws IOException {
         DBConfig dbConfig = new DBConfig.Builder()
-                .host("localhost")
+                .host("127.0.0.1")
                 .port(27017)
-                .database("test")
+//                .table("test")
                 .user("root")
-                .password("password")
+                .password("08xN3j826yV2va1r")
+                .dbType("mongodb")
+                .duration(60)
+                .interval(1)
+                .testType("executionloop")
                 .build();
 
         MongoDBTester tester = new MongoDBTester(dbConfig);
-        String testResults = tester.executeTest();
-        System.out.println(testResults);
+        DatabaseConnection connection = tester.connect();
+        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
+                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
+        System.out.println(result);
+        connection.close();
     }
 }

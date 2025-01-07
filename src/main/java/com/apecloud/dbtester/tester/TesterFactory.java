@@ -18,6 +18,7 @@ public class TesterFactory {
             case "gaussdb":
             case "vastbase":
                 return new PostgreSQLTester(config);
+            case "gbase":
             case "gbase8c":
                 return new Gbase8cTester(config);
             case "oracle":
