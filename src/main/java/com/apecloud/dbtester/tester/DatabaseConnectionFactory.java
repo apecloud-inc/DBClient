@@ -38,6 +38,9 @@ public class DatabaseConnectionFactory {
             case "postgresql":
                 Class.forName("org.postgresql.Driver");
                 break;
+            case "gaussdb":
+                Class.forName("com.huawei.opengauss.jdbc.Driver");
+                break;
             case "ck":
             case "clickhouse":
                 Class.forName("ru.yandex.clickhouse.ClickHouseDriver");
@@ -91,6 +94,9 @@ public class DatabaseConnectionFactory {
             case "pg":
             case "postgresql":
                 url = "jdbc:postgresql://" + host + ":" + port + "/" + database;
+                break;
+            case "gaussdb":
+                url = "jdbc:opengauss://" + host + ":" + port + "/" + database;
                 break;
             case "ck":
             case "clickhouse":

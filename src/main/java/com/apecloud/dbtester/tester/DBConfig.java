@@ -3,6 +3,7 @@ package com.apecloud.dbtester.tester;
 public class DBConfig {
     // 支持的数据库访问模式枚举
     public enum AccessMode {
+        EMPTY(""),
         MYSQL("mysql"),
         POSTGRESQL("postgresql"),
         ORACLE("oracle"),
@@ -157,7 +158,7 @@ public class DBConfig {
         private int interval = 1;            // 默认1秒
         private int iterations = 1000;       // 默认值
         private int concurrency = 10;        // 默认值
-        private AccessMode accessMode = AccessMode.MYSQL; // 默认访问模式
+        private AccessMode accessMode = AccessMode.EMPTY; // 默认访问模式
         private String master;
         private String sentinelPassword;
         private String key;

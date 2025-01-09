@@ -105,13 +105,13 @@ public class OneClient {
             // 打印配置信息
             System.out.println("\nConnection Information:");
             System.out.printf("Database Type: %s%n", config.getDbType());
-            System.out.printf("Access Mode: %s%n", config.getAccessMode().getMode());
             System.out.printf("Host: %s%n", config.getHost());
             System.out.printf("Port: %d%n", config.getPort());
             System.out.printf("Database: %s%n", config.getDatabase());
             System.out.printf("Table: %s%n", config.getTable());
             System.out.printf("User: %s%n", config.getUser());
             System.out.printf("Org: %s%n", config.getOrg());
+            System.out.printf("Access Mode: %s%n", config.getAccessMode().getMode());
             System.out.printf("Test Type: %s%n", config.getTestType());
 
             // 根据测试类型打印额外信息
