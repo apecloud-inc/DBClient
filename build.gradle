@@ -80,6 +80,9 @@ dependencies {
     implementation group: 'org.postgresql', name: 'postgresql', version: '42.0.0'
     runtimeOnly group: 'org.postgresql', name: 'postgresql'
 
+    // This is for GaussDB Java connector
+    implementation files('libs/opengaussjdbc.jar')
+
     // This is for Gbase8c Java connector
     implementation files('libs/GBase8cV5_JDBC_3.0.0/gbase8c-jdbc-3.0.0B02.jar')
 
