@@ -228,7 +228,6 @@ public class RedisTester implements DatabaseTester {
 
         int insert_index = 0;
         int gen_test_query = 0;
-        String query_test;
         String gen_test_values;
 
         // check gen test query

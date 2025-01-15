@@ -138,7 +138,6 @@ public class DamengTester implements DatabaseTester {
         int gen_test_query = 0;
         String query_test;
         String gen_test_values;
-        String queryTable;
         QueryResult queryResult;
         String table_count = "0";
 
@@ -170,8 +169,8 @@ public class DamengTester implements DatabaseTester {
                 }
 
                 if (gen_test_query == 1) {
-                    queryTable = "SELECT COUNT(*) FROM USER_TABLES WHERE TABLE_NAME ='" + table + "';";
-                    queryResult = this.execute(connection, queryTable);
+                    query_test = "SELECT COUNT(*) FROM USER_TABLES WHERE TABLE_NAME ='" + table + "';";
+                    queryResult = this.execute(connection, query_test);
                     if (queryResult.hasResultSet()) {
                         ResultSet rs = queryResult.getResultSet();
                         while (rs.next()) {
