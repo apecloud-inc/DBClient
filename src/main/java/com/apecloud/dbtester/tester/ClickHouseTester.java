@@ -13,6 +13,7 @@ public class ClickHouseTester implements DatabaseTester {
     private List<DatabaseConnection> connections = new ArrayList<>();
     private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     private final DBConfig dbConfig;
+    private String databaseConnection = "default";
 
     public ClickHouseTester() {
         this.dbConfig = null;
@@ -22,6 +23,8 @@ public class ClickHouseTester implements DatabaseTester {
         this.dbConfig = dbConfig;
     }
 
+
+    // 使用 DBConfig 的 connect 方法
     public DatabaseConnection connect() throws IOException {
         if (dbConfig == null) {
             throw new IllegalStateException("DBConfig not provided");
@@ -38,10 +41,25 @@ public class ClickHouseTester implements DatabaseTester {
                 dbConfig.getPort(),
                 dbConfig.getDatabase());
 
+        String url2 = String.format("jdbc:clickhouse://%s:%d/%s",
+                dbConfig.getHost(),
+                dbConfig.getPort(),
+                databaseConnection);
+
+        if (dbConfig.getDatabase() == null || dbConfig.getDatabase().equals("")) {
+            url = url2;
+        }
+
         try {
             return new ClickHouseConnection(DriverManager.getConnection(url, dbConfig.getUser(), dbConfig.getPassword()));
         } catch (SQLException e) {
-            throw new IOException("Failed to connect to ClickHouse database", e);
+            System.err.println("Failed to connect to ClickHouse database: " + e);
+            System.err.println("Trying with default database.");
+            try {
+                return new ClickHouseConnection(DriverManager.getConnection(url2, dbConfig.getUser(), dbConfig.getPassword()));
+            } catch (SQLException e2) {
+                throw new IOException("Failed to connect to ClickHouse database: ", e2);
+            }
         }
     }
 
@@ -115,8 +133,131 @@ public class ClickHouseTester implements DatabaseTester {
 
     @Override
     public String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table) {
-        return null;
+        StringBuilder result = new StringBuilder();
+        int successfulExecutions = 0;
+        int failedExecutions = 0;
+        int disconnectCounts = 0;
+        boolean executionError = false;
+
+        long startTime = System.currentTimeMillis();
+        long endTime = startTime + duration * 1000;
+        long errorTime = 0;
+        long recoveryTime;
+        long errorToRecoveryTime;
+        Date errorDate = null;
+        long lastOutputTime = System.currentTimeMillis();
+        int outputPassTime = 0;
+
+        int insert_index = 0;
+        int gen_test_query = 0;
+        String query_test;
+        String gen_test_values;
+
+        // check gen test query
+        if (query == null || query.equals("") || (database != null && !database.equals("")) || (table != null && !table.equals(""))) {
+            gen_test_query = 1;
+        }
+
+        if (database == null || database.equals("")) {
+            database = "executions_loop";
+        }
+
+        if (table == null || table.equals("")) {
+            table = "executions_loop_table";
+        }
+
+        System.out.println("Execution loop start:" + query);
+        while (System.currentTimeMillis() < endTime) {
+            insert_index = insert_index + 1;
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastOutputTime >= interval * 1000) {
+                outputPassTime = outputPassTime + interval;
+                lastOutputTime = currentTime;
+                System.out.println("[ " + outputPassTime + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                        + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                        + " disconnect: " + disconnectCounts);
+            }
+
+            try {
+                if (executionError) {
+                    Thread.sleep(1000);
+                    connection = this.connect();
+                }
+
+                if (gen_test_query == 1) {
+                    // create test database
+                    System.out.println("create database " + database);
+                    query_test = "CREATE DATABASE IF NOT EXISTS " + database + ";";
+                    execute(connection, query_test);
+
+                    if (table.equals("executions_loop_table")) {
+                        // drop test table
+                        System.out.println("drop table " + table);
+                        query_test = "DROP TABLE IF EXISTS " + database + "." + table + ";";
+                        execute(connection, query_test);
+                    }
+
+                    // create test table
+                    System.out.println("create table " + table);
+                    query_test = "CREATE TABLE IF NOT EXISTS " + database + "." + table + " (id UInt32, value String) ENGINE = MergeTree() ORDER BY id;";
+                    execute(connection, query_test);
+
+                    gen_test_query = 2;
+                }
+
+                if ((gen_test_query == 2 && (query == null || query.equals("")) || gen_test_query == 3)) {
+                    gen_test_values = "executions_loop_test_" + insert_index;
+                    // set test query
+                    query = "INSERT INTO " + database + "." + table + " (id, value) VALUES (" + insert_index + ", '" + gen_test_values + "');";
+                    if (gen_test_query == 2) {
+                        System.out.println("Execution loop start:" + query);
+                    }
+                    gen_test_query = 3;
+                }
+
+                execute(connection, query);
+                successfulExecutions++;
+                if (executionError) {
+                    recoveryTime = System.currentTimeMillis();
+                    Date recoveryDate = new Date(recoveryTime);
+                    System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                    System.out.println("[" + sdf.format(recoveryDate) + "] Connection successfully recovered!");
+                    errorToRecoveryTime = recoveryTime - errorTime;
+                    System.out.println("The connection was restored in " + errorToRecoveryTime + " milliseconds.");
+                    executionError = false;
+                }
+            } catch (IOException e) {
+                failedExecutions++;
+                if (!executionError) {
+                    disconnectCounts++;
+                    errorTime = System.currentTimeMillis();
+                    errorDate = new Date(errorTime);
+                    System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                    executionError = true;
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        System.out.println("[ " + duration + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                + " disconnect: " + disconnectCounts);
+
+        releaseConnections();
+
+        result.append("Execution loop completed during ").append(duration).append(" seconds");
+
+        return String.format("Total Executions: %d\n" +
+                "Successful Executions: %d\n" +
+                "Failed Executions: %d\n" +
+                "Disconnection Counts: %d",
+                successfulExecutions + failedExecutions,
+                successfulExecutions,
+                failedExecutions,
+                disconnectCounts);
     }
+
 
     private static class ClickHouseConnection implements DatabaseConnection {
         private final Connection connection;
@@ -161,16 +302,26 @@ public class ClickHouseTester implements DatabaseTester {
     }
 
     public static void main(String[] args) throws IOException {
+        // 使用 DBConfig 方式
         DBConfig dbConfig = new DBConfig.Builder()
-            .host("localhost")
-            .port(8123)
-            .database("default")
-            .user("default")
-            .password("")
-            .build();
+                .host("localhost")
+                .port(8123)
+                .user("admin")
+//                .database("default")
+                .password("8hH1rueHB79pIePT")
+                .dbType("clickhouse")
+                .duration(10)
+                .interval(1)
+//            .query("INSERT INTO test_table (value) VALUES ('1');")
+                .testType("executionloop")
+//            .database("test_db")
+                .table("test_table")
+                .build();
         ClickHouseTester tester = new ClickHouseTester(dbConfig);
         DatabaseConnection connection = tester.connect();
-        QueryResult result = tester.execute(connection, "SHOW DATABASES");
+        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
+                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
+        System.out.println(result);
         connection.close();
     }
 }
