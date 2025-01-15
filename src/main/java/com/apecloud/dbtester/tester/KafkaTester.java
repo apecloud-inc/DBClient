@@ -1,9 +1,10 @@
 package com.apecloud.dbtester.tester;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.clients.consumer.*;
 import org.apache.kafka.clients.producer.*;
-import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 
@@ -79,7 +80,6 @@ public class KafkaTester implements DatabaseTester {
             Map<String, Object> queryMap = parseJsonQuery(query);
             String operation = (String) queryMap.get("operation");
             String topic = (String) queryMap.get("topic");
-            
             switch (operation.toLowerCase()) {
                 case "produce":
                     return handleProduce(kafkaConn, topic, queryMap);
@@ -101,9 +101,9 @@ public class KafkaTester implements DatabaseTester {
         }
     }
 
-    private Map<String, Object> parseJsonQuery(String query) {
-        // 实际应用中应使用proper JSON parser
-        return new HashMap<>(); // 示例实现
+    private Map<String, Object> parseJsonQuery(String query) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        return objectMapper.readValue(query, new TypeReference<HashMap<String, Object>>() {});
     }
 
     private QueryResult handleProduce(KafkaConnection conn, String topic, Map<String, Object> queryMap) throws Exception {
@@ -285,7 +285,139 @@ public class KafkaTester implements DatabaseTester {
 
     @Override
     public String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table) {
-        return null;
+        StringBuilder result = new StringBuilder();
+        String topic = dbConfig.getTopic();
+
+        int successfulExecutions = 0;
+        int failedExecutions = 0;
+        int disconnectCounts = 0;
+        boolean executionError = false;
+
+        long startTime = System.currentTimeMillis();
+        long endTime = startTime + duration * 1000;
+        long errorTime = 0;
+        long recoveryTime;
+        long errorToRecoveryTime;
+        Date errorDate = null;
+        long lastOutputTime = System.currentTimeMillis();
+        int outputPassTime = 0;
+
+        int insert_index = 0;
+        int gen_test_query = 0;
+        String query_test;
+        String gen_test_key;
+        String gen_test_values;
+        QueryResult queryResult;
+        KafkaQueryResult kafkaQueryResult;
+        int table_count = 0;
+
+        // check gen test query
+        if (query == null || query.equals("") || (topic != null && !topic.equals(""))) {
+            gen_test_query = 1;
+        }
+
+        if (topic != null && !topic.equals("")) {
+            table = topic;
+        } else {
+            table = "executions_loop_topic";
+        }
+
+        System.out.println("Execution loop start:" + query);
+        while (System.currentTimeMillis() < endTime) {
+            insert_index = insert_index + 1;
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastOutputTime >= interval * 1000) {
+                outputPassTime = outputPassTime + interval;
+                lastOutputTime = currentTime;
+                System.out.println("[ " + outputPassTime + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                        + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                        + " disconnect: " + disconnectCounts);
+            }
+
+            try {
+                if (executionError) {
+                    Thread.sleep(1000);
+                    connection = this.connect();
+                }
+
+                if (gen_test_query == 1) {
+                    // check topics exists
+                    query_test = "{\"operation\":\"list_topics\"}";
+                    queryResult = execute(connection, query_test);
+                    kafkaQueryResult = (KafkaQueryResult) queryResult;
+                    if (queryResult.hasResultSet()) {
+                        List<String> topicsList = kafkaQueryResult.getResults();
+                        for (String topicTmp:topicsList) {
+                            if (topicTmp == table || topicTmp.equals(table) ) {
+                                table_count = 1;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (table_count == 0) {
+                        // create test topic
+                        System.out.println("create topic " + table);
+                        query_test = "{\"operation\":\"create_topic\",\"topic\":\"" + table + "\"}";
+                        execute(connection, query_test);
+                    }
+
+                    gen_test_query = 2;
+                }
+                if ((gen_test_query == 2 && (query == null || query.equals("")) || gen_test_query == 3 )) {
+                    gen_test_key = "executions_loop_key_" + insert_index;
+                    gen_test_values = "executions_loop_value_" + insert_index;
+                    // set test query
+                    query = "{\"operation\":\"produce\",\"topic\":\"" + table + "\",\"key\":\""
+                            + gen_test_key + "\",\"value\":\"" + gen_test_values + "\"}";
+                    if (gen_test_query == 2) {
+                        System.out.println("Execution loop start:" + query);
+                    }
+                    gen_test_query = 3;
+                }
+
+                execute(connection, query);
+                successfulExecutions++;
+
+                if (executionError) {
+                    recoveryTime = System.currentTimeMillis();
+                    Date recoveryDate = new Date(recoveryTime);
+                    System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                    System.out.println("[" + sdf.format(recoveryDate) + "] Connection successfully recovered!");
+                    errorToRecoveryTime = recoveryTime - errorTime;
+                    System.out.println("The connection was restored in " + errorToRecoveryTime + " milliseconds.");
+                    executionError = false;
+                }
+            } catch (IOException e) {
+                failedExecutions++;
+                if (!executionError) {
+                    disconnectCounts++;
+                    errorTime = System.currentTimeMillis();
+                    errorDate = new Date(errorTime);
+                    System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                    executionError = true;
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        System.out.println("[ " + duration + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                + " disconnect: " + disconnectCounts);
+
+        releaseConnections();
+
+        result.append("Execution loop completed during ").append(duration).append(" seconds");
+
+        return String.format("Total Executions: %d\n" +
+                        "Successful Executions: %d\n" +
+                        "Failed Executions: %d\n" +
+                        "Disconnection Counts: %d",
+                successfulExecutions + failedExecutions,
+                successfulExecutions,
+                failedExecutions,
+                disconnectCounts);
     }
 
     private static class KafkaConnection implements DatabaseConnection {
@@ -358,13 +490,50 @@ public class KafkaTester implements DatabaseTester {
     }
 
     public static void main(String[] args) throws IOException {
+//        DBConfig dbConfig = new DBConfig.Builder()
+//                .host("localhost")
+//                .port(9092)
+//                .build();
+//
+//        KafkaTester tester = new KafkaTester(dbConfig);
+//        String testResults = tester.executeTest();
+//        System.out.println(testResults);
+
+        // 使用 DBConfig 方式
         DBConfig dbConfig = new DBConfig.Builder()
                 .host("localhost")
                 .port(9092)
+                .user("admin")
+                .password("test")
+                .dbType("kafka")
+                .duration(2)
+                .interval(1)
+//            .query("{\"operation\":\"list_topics\"}")
+                .testType("executionloop")
+//                .topic("test_table")
                 .build();
-
         KafkaTester tester = new KafkaTester(dbConfig);
-        String testResults = tester.executeTest();
-        System.out.println(testResults);
+        DatabaseConnection connection = tester.connect();
+        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
+                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
+        System.out.println(result);
+        connection.close();
+
+//        String query_test = "{\"operation\":\"delete_topic\",\"topic\":\"test\"}";
+//        tester.execute(connection, query_test);
+//
+//        query_test = "{\"operation\":\"create_topic\",\"topic\":\"test\"}";
+//        tester.execute(connection, query_test);
+//
+//        query_test = "{\"operation\":\"list_topics\"}";
+//        QueryResult queryResult = tester.execute(connection, query_test);
+//        KafkaQueryResult kafkaQueryResult = (KafkaQueryResult)queryResult;
+//        if (queryResult.hasResultSet()) {
+//            List<String> rs = kafkaQueryResult.getResults();
+//            System.out.println(rs);
+//            for (String r:rs) {
+//                System.out.println(r);
+//            }
+//        }
     }
 }

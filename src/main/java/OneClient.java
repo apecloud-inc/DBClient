@@ -12,7 +12,7 @@ public class OneClient {
                .addOption("P", "port", true, "Database port number")
                .addOption("d", "database", true, "Database name")
                .addOption("e", "dbtype", true, "Database type (mysql/postgresql/oceanbase/etc)")
-               .addOption("t", "table", true, "Table name")
+               .addOption("tb", "table", true, "Table name")
                .addOption("a", "accessmode", true, "Access mode (mysql/postgresql/oracle/redis/influxdb/prometheus)");
 
         // 测试相关选项
@@ -25,7 +25,8 @@ public class OneClient {
                .addOption("m", "concurrency", true, "Concurrency level for benchmark")
                .addOption("M", "master", true, "Redis sentinel master")
                .addOption("S", "sentinelPassword", true, "Redis sentinel password")
-               .addOption("k", "key", true, "Database key");
+               .addOption("k", "key", true, "Database key")
+               .addOption("T", "topic", true, "Database topic");
 
         CommandLineParser parser = new DefaultParser();
         try {
@@ -65,7 +66,8 @@ public class OneClient {
             .testType(cmd.getOptionValue("test", ""))
             .master(cmd.getOptionValue("master", ""))
             .sentinelPassword(cmd.getOptionValue("sentinelPassword", ""))
-            .key(cmd.getOptionValue("key", ""));
+            .key(cmd.getOptionValue("key", ""))
+            .topic(cmd.getOptionValue("topic", ""));
 
         // 处理数值类型的参数
         try {
@@ -132,7 +134,15 @@ public class OneClient {
                     System.out.printf("Query: %s%n", config.getQuery());
                     System.out.printf("Duration: %d seconds%n", config.getDuration());
                     System.out.printf("Interval: %d seconds%n", config.getInterval());
-                    System.out.printf("Key: %s%n", config.getKey());
+                    switch (config.getDbType().toLowerCase()) {
+                        case "redis":
+                            System.out.printf("Key: %s%n", config.getKey());
+                            break;
+                        case "kafka":
+                            System.out.printf("Topic: %s%n", config.getTopic());
+                            break;
+                        default:
+                    }
                     break;
             }
         } catch (Exception e) {
