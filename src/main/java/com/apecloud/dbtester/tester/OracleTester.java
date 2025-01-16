@@ -166,7 +166,7 @@ public class OracleTester implements DatabaseTester {
         String gen_test_values;
         QueryResult queryResult;
         String table_count = "0";
-        int max_id = 0;
+        int max_id;
 
         if (database == null || database.equals("")) {
             database = dbConfig.getUser();
