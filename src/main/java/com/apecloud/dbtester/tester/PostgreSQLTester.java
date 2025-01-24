@@ -5,6 +5,8 @@ import java.sql.*;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -158,6 +160,10 @@ public class PostgreSQLTester implements DatabaseTester {
         String query_test;
         String gen_test_values;
 
+        byte[] blobData = new byte[10];
+        byte[] binaryData = new byte[10];
+        byte[] varbinaryData = new byte[255];
+
         // check gen test query
         if (query == null || query.equals("") || (database != null && !database.equals("")) || (table != null && !table.equals(""))) {
             gen_test_query = 1;
@@ -191,7 +197,7 @@ public class PostgreSQLTester implements DatabaseTester {
 
                 if (gen_test_query == 1) {
                     // check if database exists
-                    query_test = "SELECT datname FROM pg_database where datname = '" + database + "';";
+                    query_test = "SELECT datname FROM pg_database WHERE datname = '" + database + "';";
                     QueryResult queryResult = execute(connection, query_test);
                     if (queryResult.hasResultSet()) {
                         ResultSet rs = queryResult.getResultSet();
@@ -226,18 +232,144 @@ public class PostgreSQLTester implements DatabaseTester {
                         execute(connection, query_test);
                     }
 
-                    // create test table
+                    // create test table with more field types
                     System.out.println("create table " + table);
-                    query_test = "CREATE TABLE IF NOT EXISTS " + table + " (id SERIAL PRIMARY KEY , value text); ";
+                    query_test = "CREATE TABLE IF NOT EXISTS " + table + " ("
+                            + "id SERIAL PRIMARY KEY, "
+                            + "value TEXT, "
+                            + "tinyint_col SMALLINT, " // PostgreSQL does not have TINYINT, using SMALLINT instead
+                            + "smallint_col SMALLINT, "
+                            + "integer_col INTEGER, "
+                            + "bigint_col BIGINT, "
+                            + "real_col REAL, "
+                            + "double_col DOUBLE PRECISION, "
+                            + "numeric_col NUMERIC(10, 2), "
+                            + "date_col DATE, "
+                            + "time_col TIME, "
+                            + "timestamp_col TIMESTAMP, "
+                            + "timestamptz_col TIMESTAMP WITH TIME ZONE, "
+                            + "interval_col INTERVAL, "
+                            + "boolean_col BOOLEAN, "
+                            + "char_col CHAR(10), "
+                            + "varchar_col VARCHAR(255), "
+                            + "text_col TEXT, "
+                            + "bytea_col BYTEA, "
+                            + "uuid_col UUID, "
+                            + "json_col JSON, "
+                            + "jsonb_col JSONB, "
+                            + "xml_col XML, "
+                            + "enum_col VARCHAR(10) CHECK (enum_col IN ('Option1', 'Option2', 'Option3')), "
+                            + "set_col VARCHAR(255) CHECK (set_col IN ('Value1', 'Value2', 'Value3')), "
+                            + "int_array_col INTEGER[], "
+                            + "text_array_col TEXT[], "
+                            + "point_col POINT, "
+                            + "line_col LINE, "
+                            + "lseg_col LSEG, "
+                            + "box_col BOX, "
+                            + "path_col PATH, "
+                            + "polygon_col POLYGON, "
+                            + "circle_col CIRCLE, "
+                            + "cidr_col CIDR, "
+                            + "inet_col INET, "
+                            + "macaddr_col MACADDR, "
+                            + "macaddr8_col MACADDR8, "
+                            + "bit_col BIT(8), "
+                            + "bit_var_col BIT VARYING(8), "
+                            + "varbit_col BIT VARYING(8), "
+                            + "money_col MONEY, "
+                            + "oid_col OID, "
+                            + "regproc_col REGPROC, "
+                            + "regprocedure_col REGPROCEDURE, "
+                            + "regoper_col REGOPER, "
+                            + "regoperator_col REGOPERATOR, "
+                            + "regclass_col REGCLASS, "
+                            + "regtype_col REGTYPE, "
+                            + "regrole_col REGROLE, "
+                            + "regnamespace_col REGNAMESPACE, "
+                            + "regconfig_col REGCONFIG, "
+                            + "regdictionary_col REGDICTIONARY "
+                            + ");";
                     execute(connection, query_test);
 
                     gen_test_query = 2;
                 }
 
                 if ((gen_test_query == 2 && (query == null || query.equals("")) || gen_test_query == 3)) {
+                    Random random = new Random();
+
+                    // Generate random values
                     gen_test_values = "executions_loop_test_" + insert_index;
+
+                    random.nextBytes(blobData);
+                    random.nextBytes(binaryData);
+                    random.nextBytes(varbinaryData);
+
                     // set test query
-                    query = "INSERT INTO " + table + " (value) VALUES ('" + gen_test_values + "');";
+                    query = "INSERT INTO " + table + " (value, tinyint_col, smallint_col, "
+                            + "integer_col, bigint_col, real_col, double_col, numeric_col, "
+                            + "date_col, time_col, timestamp_col, timestamptz_col, interval_col, "
+                            + "boolean_col, char_col, varchar_col, text_col, bytea_col, "
+                            + "uuid_col, json_col, jsonb_col, xml_col, enum_col, set_col, "
+                            + "int_array_col, text_array_col, point_col, line_col, lseg_col, "
+                            + "box_col, path_col, polygon_col, circle_col, cidr_col, inet_col, "
+                            + "macaddr_col, macaddr8_col, bit_col, bit_var_col, varbit_col, "
+                            + "money_col, oid_col, regproc_col, regprocedure_col, regoper_col, "
+                            + "regoperator_col, regclass_col, regtype_col, regrole_col, "
+                            + "regnamespace_col, regconfig_col, regdictionary_col) "
+                            + "VALUES ("
+                            + "'" + gen_test_values + "', "
+                            + random.nextInt(128) + ", " // TINYINT (using SMALLINT)
+                            + random.nextInt(32768) + ", " // SMALLINT
+                            + random.nextInt() + ", " // INTEGER
+                            + random.nextLong() + ", " // BIGINT
+                            + random.nextFloat() + ", " // REAL
+                            + random.nextDouble() + ", " // DOUBLE PRECISION
+                            + random.nextDouble() * 100 + ", " // NUMERIC
+                            + "'" + new java.sql.Date(System.currentTimeMillis()) + "', " // DATE
+                            + "'" + new java.sql.Time(System.currentTimeMillis()) + "', " // TIME
+                            + "'" + new java.sql.Timestamp(System.currentTimeMillis()) + "', " // TIMESTAMP
+                            + "CURRENT_TIMESTAMP, " // TIMESTAMP WITH TIME ZONE
+                            + "'" + random.nextInt(24) + " hours " + random.nextInt(60) + " minutes " + random.nextInt(60) + " seconds', " // INTERVAL
+                            + (random.nextBoolean() ? "TRUE" : "FALSE") + ", " // BOOLEAN
+                            + "'" + randomString(10) + "', " // CHAR
+                            + "'" + randomString(255) + "', " // VARCHAR
+                            + "'" + randomString(255) + "', " // TEXT
+                            + "decode('" + bytesToHex(blobData) + "', 'hex'), " // BYTEA
+                            + "'" + UUID.randomUUID() + "', " // UUID
+                            + "'" + randomJson() + "', " // JSON
+                            + "'" + randomJson() + "', " // JSONB
+                            + "'" + randomXml() + "', " // XML
+                            + "'Option" + (random.nextInt(3) + 1) + "', " // ENUM
+                            + "'Value" + (random.nextInt(3) + 1) + "', " // SET
+                            + "ARRAY[" + random.nextInt(100) + ", " + random.nextInt(100) + ", " + random.nextInt(100) + "], " // INT ARRAY
+                            + "ARRAY['" + randomString(10) + "', '" + randomString(10) + "', '" + randomString(10) + "'], " // TEXT ARRAY
+                            + "'(" + random.nextDouble() * 100 + ", " + random.nextDouble() * 100 + ")', " // POINT
+                            + "'{" + random.nextDouble() * 100 + ", " + random.nextDouble() * 100 + ", " + random.nextDouble() * 100 + "}', " // LINE
+                            + "'[(" + random.nextDouble() * 100 + ", " + random.nextDouble() * 100 + "), (" + random.nextDouble() * 100 + ", " + random.nextDouble() * 100 + ")]', " // LSEG
+                            + "'((" + random.nextDouble() * 100 + ", " + random.nextDouble() * 100 + "), (" + random.nextDouble() * 100 + ", " + random.nextDouble() * 100 + "))', " // BOX
+                            + "'((" + random.nextDouble() * 100 + ", " + random.nextDouble() * 100 + "), (" + random.nextDouble() * 100 + ", " + random.nextDouble() * 100 + "), (" + random.nextDouble() * 100 + ", " + random.nextDouble() * 100 + "))', " // PATH
+                            + "'((" + random.nextDouble() * 100 + ", " + random.nextDouble() * 100 + "), (" + random.nextDouble() * 100 + ", " + random.nextDouble() * 100 + "), (" + random.nextDouble() * 100 + ", " + random.nextDouble() * 100 + "), (" + random.nextDouble() * 100 + ", " + random.nextDouble() * 100 + "))', " // POLYGON
+                            + "'" + get_circle_string() + "', " // CIRCLE
+                            + "'192.168." + random.nextInt(256) + ".0" + "/24', " // CIDR
+                            + "'192.168." + random.nextInt(256) + "." + random.nextInt(256) + "', " // INET
+                            + "'08:00:2b:01:02:03', " // MACADDR
+                            + "'08:00:2b:01:02:03:04:05', " // MACADDR8
+                            + "B'10101010', " // BIT(8)
+                            + "B'10101010', " // BIT VARYING(8)
+                            + "B'10101010', " // VARBIT(8)
+                            + "'$" + random.nextDouble() * 1000 + "', " // MONEY
+                            + random.nextInt() + ", " // OID
+                            + "'acos', " // REGPROC
+                            + "abs(1), " // REGPROCEDURE
+                            + "'#-', " // REGOPER
+                            + "+1, " // REGOPERATOR
+                            + "'pg_class', " // REGCLASS
+                            + "'integer', " // REGTYPE
+                            + "'postgres', " // REGROLE
+                            + "'pg_catalog', " // REGNAMESPACE
+                            + "'simple', " // REGCONFIG
+                            + "'english_stem' " // REGDICTIONARY
+                            + ");";
                     if (gen_test_query == 2) {
                         System.out.println("Execution loop start:" + query);
                     }
@@ -256,6 +388,7 @@ public class PostgreSQLTester implements DatabaseTester {
                     executionError = false;
                 }
             } catch (IOException e) {
+                System.out.println(e);
                 failedExecutions++;
                 if (!executionError) {
                     disconnectCounts++;
@@ -267,6 +400,7 @@ public class PostgreSQLTester implements DatabaseTester {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             } catch (SQLException e) {
+                System.out.println(e);
                 e.printStackTrace();
             }
         }
@@ -280,15 +414,59 @@ public class PostgreSQLTester implements DatabaseTester {
         result.append("Execution loop completed during ").append(duration).append(" seconds");
 
         return String.format("Total Executions: %d\n" +
-                "Successful Executions: %d\n" +
-                "Failed Executions: %d\n" +
-                "Disconnection Counts: %d",
-                successfulExecutions+failedExecutions,
+                        "Successful Executions: %d\n" +
+                        "Failed Executions: %d\n" +
+                        "Disconnection Counts: %d",
+                successfulExecutions + failedExecutions,
                 successfulExecutions,
                 failedExecutions,
                 disconnectCounts);
     }
 
+    private String get_circle_string() {
+        Random random = new Random();
+
+        // 生成随机圆心坐标和半径
+        double centerX = random.nextDouble() * 100;
+        double centerY = random.nextDouble() * 100;
+        double radius = random.nextDouble() * 10; // 假设最大半径为 10
+
+        String circleValue = String.format("<(%f, %f), %f>", centerX, centerY, radius);
+        return circleValue;
+    }
+
+    // Helper method to generate random string
+    private String randomString(int length) {
+        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        StringBuilder sb = new StringBuilder(length);
+        Random random = new Random();
+        for (int i = 0; i < length; i++) {
+            int index = random.nextInt(characters.length());
+            sb.append(characters.charAt(index));
+        }
+        return sb.toString();
+    }
+
+    // Helper method to convert bytes to hex string
+    private String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
+    }
+
+    // Helper method to generate random JSON
+    private String randomJson() {
+        Random random = new Random();
+        return "{\"key1\": \"" + randomString(10) + "\", \"key2\": " + random.nextInt(100) + "}";
+    }
+
+    // Helper method to generate random XML
+    private String randomXml() {
+        Random random = new Random();
+        return "<root><element>" + randomString(10) + "</element><value>" + random.nextInt(100) + "</value></root>";
+    }
 
     private static class PostgreSQLConnection implements DatabaseConnection {
         private final Connection connection;
@@ -336,16 +514,16 @@ public class PostgreSQLTester implements DatabaseTester {
         // 使用示例
         DBConfig dbConfig = new DBConfig.Builder()
             .host("localhost")
-            .port(5432)
+            .port(1640)
             .user("postgres")
-            .password("SOHn9mAVFOzbQzN3VuLPgXC5t1Gn0AQ0zLQlzHOz0w8ws2jfwkhXs9KjJsU28mgJ")
+            .password("Mj10827fwU")
             .dbType("postgresql")
-            .duration(60)
+            .duration(10)
             .interval(1)
 //            .query("INSERT INTO test_table (value) VALUES ('1');")
             .testType("executionloop")
-            .database("test_db")
-            .table("test_table")
+//            .database("test_db")
+//            .table("test_table")
             .build();
         PostgreSQLTester tester = new PostgreSQLTester(dbConfig);
         DatabaseConnection connection = tester.connect();
