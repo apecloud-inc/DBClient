@@ -54,3 +54,18 @@ jobs:
       APECD_REF: "v0.3.0"
       BUILDX_PLATFORMS: "${{ needs.release-version.outputs.release-platform }}"
     secrets: inherit
+
+  release-image-latest:
+    permissions:
+      id-token: write
+      contents: read
+    if: ${{ github.event.action == 'published' }}
+    needs: [ release-version ]
+    uses: apecloud-inc/apecloud-cd/.github/workflows/release-image-cache.yml@v0.3.0
+    with:
+      IMG: "apecloud/dbclient"
+      VERSION: "latest"
+      DOCKERFILE_PATH: "./docker/Dockerfile"
+      APECD_REF: "v0.3.0"
+      BUILDX_PLATFORMS: "${{ needs.release-version.outputs.release-platform }}"
+    secrets: inherit
