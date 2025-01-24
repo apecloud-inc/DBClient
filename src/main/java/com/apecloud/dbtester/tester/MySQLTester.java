@@ -38,12 +38,12 @@ public class MySQLTester implements DatabaseTester {
             throw new RuntimeException("MySQL JDBC Driver not found, please try again..", e);
         }
 
-        String url = String.format("jdbc:mysql://%s:%d/%s?useSSL=false",
+        String url = String.format("jdbc:mysql://%s:%d/%s?useSSL=false&allowPublicKeyRetrieval=true",
                 dbConfig.getHost(),
                 dbConfig.getPort(),
                 dbConfig.getDatabase());
 
-        String url2 = String.format("jdbc:mysql://%s:%d?useSSL=false",
+        String url2 = String.format("jdbc:mysql://%s:%d?useSSL=false&allowPublicKeyRetrieval=true",
                 dbConfig.getHost(),
                 dbConfig.getPort(),
                 databaseConnection);
@@ -393,9 +393,9 @@ public class MySQLTester implements DatabaseTester {
         // 使用 DBConfig 方式
         DBConfig dbConfig = new DBConfig.Builder()
             .host("localhost")
-            .port(3380)
+            .port(3306)
             .user("root")
-            .password("j1iX6w0V78")
+            .password("l8Ose3g5TJ5489L0")
             .dbType("mysql")
             .duration(10)
             .interval(1)
