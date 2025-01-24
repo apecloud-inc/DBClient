@@ -56,7 +56,7 @@ public class MariaDBTester implements DatabaseTester {
             boolean isResultSet = statement.execute(query);
             return new MySQLQueryResult(statement.getResultSet(), statement.getUpdateCount());
         } catch (SQLException e) {
-            throw new IOException("Failed to execute query", e);
+            throw new IOException("Failed to execute query: " + e, e);
         }
     }
 

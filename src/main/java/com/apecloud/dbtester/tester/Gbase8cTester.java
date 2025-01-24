@@ -55,7 +55,7 @@ public class Gbase8cTester implements DatabaseTester {
             boolean isResultSet = statement.execute(query);
             return new Gbase8cQueryResult(statement.getResultSet(), statement.getUpdateCount());
         } catch (SQLException e) {
-            throw new IOException("Failed to execute query", e);
+            throw new IOException("Failed to execute query: " + e, e);
         }
     }
 

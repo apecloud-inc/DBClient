@@ -55,7 +55,7 @@ public class PostgreSQLTester implements DatabaseTester {
             return new PostgreSQLConnection(DriverManager.getConnection(url, dbConfig.getUser(), dbConfig.getPassword()));
         } catch (SQLException e) {
             System.err.println("Failed to connect to PostgreSQL database: " + e );
-            System.err.println("Trying with database postgresql.");
+            System.err.println("Trying with database PostgreSQL.");
             try {
                 return new PostgreSQLConnection(DriverManager.getConnection(url2, dbConfig.getUser(), dbConfig.getPassword()));
             } catch (SQLException e2) {
@@ -73,7 +73,7 @@ public class PostgreSQLTester implements DatabaseTester {
             boolean isResultSet = statement.execute(query);
             return new PostgreSQLQueryResult(statement.getResultSet(), statement.getUpdateCount());
         } catch (SQLException e) {
-            throw new IOException("Failed to execute query", e);
+            throw new IOException("Failed to execute query: " + e, e);
         }
     }
 
