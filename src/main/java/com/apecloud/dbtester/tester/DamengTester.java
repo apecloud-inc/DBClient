@@ -56,7 +56,7 @@ public class DamengTester implements DatabaseTester {
             boolean isResultSet = statement.execute(query);
             return new DamengQueryResult(statement.getResultSet(), statement.getUpdateCount());
         } catch (SQLException e) {
-            throw new IOException("Failed to execute query", e);
+            throw new IOException("Failed to execute query: " + e, e);
         }
     }
 

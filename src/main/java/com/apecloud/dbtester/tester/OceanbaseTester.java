@@ -98,7 +98,7 @@ public class OceanbaseTester implements DatabaseTester {
             boolean isResultSet = statement.execute(query);
             return new OceanbaseQueryResult(statement.getResultSet(), statement.getUpdateCount());
         } catch (SQLException e) {
-            throw new IOException("Failed to execute query", e);
+            throw new IOException("Failed to execute query: " + e, e);
         }
     }
 

@@ -73,7 +73,7 @@ public class GaussdbTester implements DatabaseTester {
             boolean isResultSet = statement.execute(query);
             return new GaussDBQueryResult(statement.getResultSet(), statement.getUpdateCount());
         } catch (SQLException e) {
-            throw new IOException("Failed to execute query", e);
+            throw new IOException("Failed to execute query: " + e, e);
         }
     }
 

@@ -57,7 +57,7 @@ public class QdrantTester implements DatabaseTester {
                     .get();
             return new QdrantQueryResult(response);
         } catch (Exception e) {
-            throw new IOException("Failed to execute query", e);
+            throw new IOException("Failed to execute query: " + e, e);
         }
     }
 
