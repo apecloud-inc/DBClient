@@ -286,6 +286,7 @@ public class RedisTester implements DatabaseTester {
                 }
             } catch (IOException e) {
                 failedExecutions++;
+                insert_index = insert_index + 1;
                 if (!executionError) {
                     disconnectCounts++;
                     errorTime = System.currentTimeMillis();
