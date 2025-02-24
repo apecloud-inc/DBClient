@@ -56,12 +56,12 @@ public class OceanbaseTester implements DatabaseTester {
                 case "oracle":
                     Class.forName("com.oceanbase.jdbc.Driver");
                     databaseConnection = "SYS";
-                    url = String.format("jdbc:oceanbase:oracle://%s:%d/%s",
+                    url = String.format("jdbc:oceanbase:oracle://%s:%d/%s?serverTimezone=Asia/Shanghai",
                             dbConfig.getHost(),
                             dbConfig.getPort(),
                             dbConfig.getDatabase());
 
-                    url2 = String.format("jdbc:oceanbase:oracle://%s:%d/%s",
+                    url2 = String.format("jdbc:oceanbase:oracle://%s:%d/%s?serverTimezone=Asia/Shanghai",
                             dbConfig.getHost(),
                             dbConfig.getPort(),
                             databaseConnection);

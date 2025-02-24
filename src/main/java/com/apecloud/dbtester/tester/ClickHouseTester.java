@@ -14,6 +14,7 @@ public class ClickHouseTester implements DatabaseTester {
     private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     private final DBConfig dbConfig;
     private String databaseConnection = "default";
+    private String databaseCluster = "default";
 
     public ClickHouseTester() {
         this.dbConfig = null;
@@ -134,6 +135,10 @@ public class ClickHouseTester implements DatabaseTester {
     @Override
     public String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table) {
         StringBuilder result = new StringBuilder();
+        String cluster = dbConfig.getCluster();
+        if (cluster != null && !cluster.equals("")) {
+            databaseCluster = cluster;
+        }
         int successfulExecutions = 0;
         int failedExecutions = 0;
         int disconnectCounts = 0;
@@ -187,19 +192,20 @@ public class ClickHouseTester implements DatabaseTester {
                 if (gen_test_query == 1) {
                     // create test database
                     System.out.println("create database " + database);
-                    query_test = "CREATE DATABASE IF NOT EXISTS " + database + ";";
+                    query_test = "CREATE DATABASE IF NOT EXISTS " + database + " ON CLUSTER " + databaseCluster + ";";
                     execute(connection, query_test);
 
                     if (table.equals("executions_loop_table")) {
                         // drop test table
                         System.out.println("drop table " + table);
-                        query_test = "DROP TABLE IF EXISTS " + database + "." + table + ";";
+                        query_test = "DROP TABLE IF EXISTS " + database + "." + table + " ON CLUSTER " + databaseCluster + ";";
                         execute(connection, query_test);
                     }
 
                     // create test table
                     System.out.println("create table " + table);
-                    query_test = "CREATE TABLE IF NOT EXISTS " + database + "." + table + " (id UInt32, value String) ENGINE = MergeTree() ORDER BY id;";
+                    query_test = "CREATE TABLE IF NOT EXISTS " + database + "." + table + " ON CLUSTER " + databaseCluster
+                            + " (id UInt32, value String) ENGINE = ReplicatedMergeTree() ORDER BY id;";
                     execute(connection, query_test);
 
                     gen_test_query = 2;
