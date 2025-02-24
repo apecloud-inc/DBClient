@@ -26,7 +26,8 @@ public class OneClient {
                .addOption("M", "master", true, "Redis sentinel master")
                .addOption("S", "sentinelPassword", true, "Redis sentinel password")
                .addOption("k", "key", true, "Database key")
-               .addOption("T", "topic", true, "Database topic");
+               .addOption("T", "topic", true, "Database topic")
+               .addOption("C", "cluster", true, "Database cluster");
 
         CommandLineParser parser = new DefaultParser();
         try {
@@ -67,7 +68,8 @@ public class OneClient {
             .master(cmd.getOptionValue("master", ""))
             .sentinelPassword(cmd.getOptionValue("sentinelPassword", ""))
             .key(cmd.getOptionValue("key", ""))
-            .topic(cmd.getOptionValue("topic", ""));
+            .topic(cmd.getOptionValue("topic", ""))
+            .cluster(cmd.getOptionValue("cluster", ""));
 
         // 处理数值类型的参数
         try {
@@ -140,6 +142,10 @@ public class OneClient {
                             break;
                         case "kafka":
                             System.out.printf("Topic: %s%n", config.getTopic());
+                            break;
+                        case "ck":
+                        case "clickhouse":
+                            System.out.printf("Cluster: %s%n", config.getCluster());
                             break;
                         default:
                     }
