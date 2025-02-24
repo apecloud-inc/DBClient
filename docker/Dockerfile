@@ -20,6 +20,8 @@ RUN chmod +x gradlew && \
 
 FROM openjdk:11-jre-slim
 
+RUN apt-get update && apt-get install -y tzdata
+
 WORKDIR /app
 
 COPY --from=builder /app/build/libs/oneclient-1.0-all.jar .
