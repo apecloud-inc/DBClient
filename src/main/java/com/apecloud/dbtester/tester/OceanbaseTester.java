@@ -56,12 +56,12 @@ public class OceanbaseTester implements DatabaseTester {
                 case "oracle":
                     Class.forName("com.oceanbase.jdbc.Driver");
                     databaseConnection = "SYS";
-                    url = String.format("jdbc:oceanbase:oracle://%s:%d/%s?sessionVariables=time_zone='Asia/Shanghai'",
+                    url = String.format("jdbc:oceanbase:oracle://%s:%d/%s?sessionVariables=time_zone='+08:00'",
                             dbConfig.getHost(),
                             dbConfig.getPort(),
                             dbConfig.getDatabase());
 
-                    url2 = String.format("jdbc:oceanbase:oracle://%s:%d/%s?sessionVariables=time_zone='Asia/Shanghai'",
+                    url2 = String.format("jdbc:oceanbase:oracle://%s:%d/%s?sessionVariables=time_zone='+08:00'",
                             dbConfig.getHost(),
                             dbConfig.getPort(),
                             databaseConnection);
@@ -425,19 +425,19 @@ public class OceanbaseTester implements DatabaseTester {
         DBConfig dbConfig = new DBConfig.Builder()
                 .host("localhost")
                 .port(2881)
-                .user("root@tenant2")
-                .accessMode(DBConfig.AccessMode.MYSQL)
+//                .user("root@tenant2")
+//                .accessMode(DBConfig.AccessMode.MYSQL)
 //                .port(2882)
-//                .user("sys@tenant2")
-//                .accessMode(DBConfig.AccessMode.ORACLE)
+                .user("sys@tenant2")
+                .accessMode(DBConfig.AccessMode.ORACLE)
                 .password("")
                 .dbType("oceanbase")
                 .duration(10)
                 .interval(1)
 //            .query("INSERT INTO test_table (value) VALUES ('1');")
                 .testType("executionloop")
-            .database("test_db")
-            .table("test_table")
+//            .database("test_db")
+//            .table("test_table")
                 .build();
         OceanbaseTester tester = new OceanbaseTester(dbConfig);
         DatabaseConnection connection = tester.connect();
