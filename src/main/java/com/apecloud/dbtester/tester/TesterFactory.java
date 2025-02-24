@@ -15,8 +15,9 @@ public class TesterFactory {
             case "postgres":
             case "postgresql":
             case "opentenbase":
-            case "vastbase":
                 return new PostgreSQLTester(config);
+            case "vastbase":
+                return new VastbaseTester(config);
             case "gaussdb":
                 return new GaussdbTester(config);
             case "gbase":
