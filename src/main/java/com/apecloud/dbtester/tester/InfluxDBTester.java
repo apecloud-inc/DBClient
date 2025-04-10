@@ -1,15 +1,14 @@
 package com.apecloud.dbtester.tester;
 
-import com.influxdb.client.InfluxDBClient;
-import com.influxdb.client.InfluxDBClientFactory;
-import com.influxdb.client.InfluxDBClientOptions;
-import com.influxdb.client.WriteApi;
-import com.influxdb.client.QueryApi;
+import com.influxdb.client.*;
+import com.influxdb.client.domain.Bucket;
+import com.influxdb.client.domain.Organization;
 import com.influxdb.client.domain.WritePrecision;
 import com.influxdb.query.FluxRecord;
 import com.influxdb.query.FluxTable;
 
 import java.io.IOException;
+import java.sql.Date;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -34,7 +33,7 @@ public class InfluxDBTester implements DatabaseTester {
     @Override
     public DatabaseConnection connect() throws IOException {
         if (dbConfig == null) {
-            throw new IOException("Database configuration is not set");
+            throw new IOException("Configuration is not set");
         }
 
         try {
@@ -48,7 +47,10 @@ public class InfluxDBTester implements DatabaseTester {
             String url = "http://" + hostname + ":" + port;
             String token = dbConfig.getPassword();
             String org = dbConfig.getOrg();
-            String bucket = dbConfig.getDatabase();
+            if (org == null || org.equals("")) {
+                org = dbConfig.getDatabase();
+            }
+            String bucket = dbConfig.getTable();
 
             // 使用 InfluxDBClientOptions 构建客户端选项
             InfluxDBClientOptions options = InfluxDBClientOptions.builder()
@@ -84,11 +86,12 @@ public class InfluxDBTester implements DatabaseTester {
                 case "QUERY":
                     QueryApi queryApi = client.getQueryApi();
                     List<FluxTable> tables = queryApi.query(content);
+                    System.out.println("Query result:" + tables.size());
                     return new InfluxDBQueryResult(operation, tables);
                     
                 case "WRITE":
-                    WriteApi writeApi = client.getWriteApi();
-                    writeApi.writeRecord(dbConfig.getDatabase(), "default", WritePrecision.NS, content);
+                    WriteApi writeApi = client.makeWriteApi();
+                    writeApi.writeRecord(dbConfig.getTable(), "default", WritePrecision.NS, content);
                     writeApi.flush();
                     return new InfluxDBQueryResult(operation, null);
                     
@@ -96,7 +99,7 @@ public class InfluxDBTester implements DatabaseTester {
                     throw new IOException("Unsupported operation: " + operation);
             }
         } catch (Exception e) {
-            throw new IOException("Failed to execute command", e);
+            throw new IOException("Failed to execute command " + e.getMessage(), e);
         }
     }
 
@@ -145,7 +148,7 @@ public class InfluxDBTester implements DatabaseTester {
                 DatabaseConnection connection = connect();
                 this.connections.add(connection);
                 // 执行一个简单的查询来验证连接
-                execute(connection, "QUERY from(bucket:\"" + dbConfig.getDatabase() + "\") |> range(start: -1m)");
+                execute(connection, "QUERY from(bucket:\"" + dbConfig.getTable() + "\") |> range(start: -1m)");
             } catch (IOException e) {
                 result.append("Failed to establish connection ").append(i).append(": ").append(e.getMessage()).append("\n");
             }
@@ -239,8 +242,163 @@ public class InfluxDBTester implements DatabaseTester {
 
     @Override
     public String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table) {
-        return null;
+        InfluxDBConnection influxConnection;
+        StringBuilder result = new StringBuilder();
+        int successfulExecutions = 0;
+        int failedExecutions = 0;
+        int disconnectCounts = 0;
+        boolean executionError = false;
+
+        long startTime = System.currentTimeMillis();
+        long endTime = startTime + duration * 1000;
+        long errorTime = 0;
+        long recoveryTime;
+        long errorToRecoveryTime;
+        Date errorDate = null;
+        long lastOutputTime = System.currentTimeMillis();
+        int outputPassTime = 0;
+
+        int insert_index = 0;
+        int gen_test_query = 0;
+        String query_test;
+        String gen_test_values;
+        Organization organization = null;
+        String bucketId = null;
+
+        // Check gen test query
+        if (query == null || query.equals("") || (table != null && !table.equals(""))) {
+            gen_test_query = 1;
+        }
+
+        if (database == null || database.equals("")) {
+            database = dbConfig.getOrg();
+            if (database == null || database.equals("")) {
+                database = "primary";
+            }
+        }
+
+        if (table == null || table.equals("")) {
+            table = "executions_loop_bucket";
+        }
+
+        System.out.println("Execution loop start: " + query);
+        while (System.currentTimeMillis() < endTime) {
+            insert_index = insert_index + 1;
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastOutputTime >= interval * 1000) {
+                outputPassTime = outputPassTime + interval;
+                lastOutputTime = currentTime;
+                System.out.println("[ " + outputPassTime + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                        + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                        + " disconnect: " + disconnectCounts);
+            }
+
+            try {
+                if (executionError) {
+                    Thread.sleep(1000);
+                    connection = this.connect();
+                }
+                influxConnection = (InfluxDBConnection) connection;
+                InfluxDBClient client = influxConnection.client;
+                if (gen_test_query == 1) {
+                    OrganizationsApi orgApi = client.getOrganizationsApi();
+                    List<Organization> organizations = orgApi.findOrganizations();
+                    for (Organization org : organizations) {
+                        if (org.getName().equals(database)) {
+                            organization = org;
+                            break;
+                        }
+                    }
+
+
+                    // Check if bucket exists, if not create it
+                    BucketsApi bucketsApi = client.getBucketsApi();
+                    List<Bucket> buckets = bucketsApi.findBucketsByOrgName(database);
+
+                    boolean bucketExists = false;
+                    for (Bucket b : buckets) {
+                        if (b.getName().equals(table)) {
+                            bucketExists = true;
+                            bucketId = b.getId();
+                            break;
+                        }
+                    }
+
+                    if (!bucketExists) {
+                        System.out.println("Bucket " + table + " does not exist. Creating bucket...");
+                        bucketsApi.createBucket(table, organization);
+                        System.out.println("Bucket " + table + " created successfully.");
+                    } else {
+                        System.out.println("Bucket " + table + " already exists.");
+                        if (table.equals("executions_loop_bucket")) {
+                            // delete bucket
+                            System.out.println("Delete bucket " + table);
+                            bucketsApi.deleteBucket(bucketId);
+                            System.out.println("Bucket " + table + " deleted successfully.");
+
+                            System.out.println("Create bucket " + table);
+                            bucketsApi.createBucket(table, organization);
+                            System.out.println("Bucket " + table + " created successfully.");
+                        }
+                    }
+
+                    gen_test_query = 2;
+                }
+
+                if ((gen_test_query == 2 && (query == null || query.equals("")) || gen_test_query == 3)) {
+                    gen_test_values =  "executions_loop executions_loop=" + insert_index;
+                    // Set test query
+                    query = gen_test_values;
+                    if (gen_test_query == 2) {
+                        System.out.println("Execution loop start: " + query);
+                    }
+                    gen_test_query = 3;
+                }
+
+                // Execute the query (write operation in InfluxDB)
+                WriteApiBlocking writeApiBlocking = client.getWriteApiBlocking();
+                writeApiBlocking.writeRecord(table, database, WritePrecision.NS, query);
+                successfulExecutions++;
+                if (executionError) {
+                    recoveryTime = System.currentTimeMillis();
+                    java.sql.Date recoveryDate = new java.sql.Date(recoveryTime);
+                    System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                    System.out.println("[" + sdf.format(recoveryDate) + "] Connection successfully recovered!");
+                    errorToRecoveryTime = recoveryTime - errorTime;
+                    System.out.println("The connection was restored in " + errorToRecoveryTime + " milliseconds.");
+                    executionError = false;
+                }
+            } catch (Exception e) {
+                System.out.println("Execution loop failed: " + e.getMessage());
+                failedExecutions++;
+                if (!executionError) {
+                    disconnectCounts++;
+                    errorTime = System.currentTimeMillis();
+                    errorDate = new Date(errorTime);
+                    System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                    executionError = true;
+                }
+            }
+        }
+
+        System.out.println("[ " + duration + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                + " disconnect: " + disconnectCounts);
+
+        releaseConnections();
+
+        result.append("Execution loop completed during ").append(duration).append(" seconds");
+
+        return String.format("Total Executions: %d\n" +
+                        "Successful Executions: %d\n" +
+                        "Failed Executions: %d\n" +
+                        "Disconnection Counts: %d",
+                successfulExecutions + failedExecutions,
+                successfulExecutions,
+                failedExecutions,
+                disconnectCounts);
     }
+
 
     private String formatQueryResult(QueryResult result) {
         if (!(result instanceof InfluxDBQueryResult)) {
@@ -374,5 +532,47 @@ public class InfluxDBTester implements DatabaseTester {
 
             return sb.toString();
         }
+    }
+
+    public static void main(String[] args) throws IOException {
+        // 使用示例
+        DBConfig dbConfig = new DBConfig.Builder()
+                .host("localhost")
+                .port(8086)
+                .user("admin")
+                .password("4@&@L#e4M4")
+                .dbType("influxdb")
+                .duration(10)
+                .interval(1)
+//            .query("INSERT INTO test_table (value) VALUES ('1');")
+                .testType("executionloop")
+                .database("primary")
+//                .table("test_table")
+                .build();
+        InfluxDBTester tester = new InfluxDBTester(dbConfig);
+        DatabaseConnection connection = tester.connect();
+        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
+                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
+        System.out.println(result);
+        connection.close();
+
+//        DBConfig dbConfig = new DBConfig.Builder()
+//                .host("localhost")
+//                .port(8086)
+//                .user("admin")
+//                .password("4@&@L#e4M4")
+//                .dbType("influxdb")
+//                .duration(10)
+//                .connectionCount(10)
+//                .testType("connectionStress")
+//                .database("primary")
+//                .table("primary")
+//                .build();
+//
+//        InfluxDBTester tester = new InfluxDBTester(dbConfig);
+//        DatabaseConnection connection = tester.connect();
+//        String result = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
+//        System.out.println(result);
+//        connection.close();
     }
 }
