@@ -86,7 +86,7 @@ public class InfluxDBTester implements DatabaseTester {
                 case "QUERY":
                     QueryApi queryApi = client.getQueryApi();
                     List<FluxTable> tables = queryApi.query(content);
-                    System.out.println("Query result:" + tables.size());
+                    System.out.println("Query result:" + tables.toString());
                     return new InfluxDBQueryResult(operation, tables);
                     
                 case "WRITE":
@@ -148,7 +148,7 @@ public class InfluxDBTester implements DatabaseTester {
                 DatabaseConnection connection = connect();
                 this.connections.add(connection);
                 // 执行一个简单的查询来验证连接
-                execute(connection, "QUERY from(bucket:\"" + dbConfig.getTable() + "\") |> range(start: -1m)");
+                execute(connection, "QUERY from(bucket:\"" + dbConfig.getTable() + "\") |> range(start: -1h)");
             } catch (IOException e) {
                 result.append("Failed to establish connection ").append(i).append(": ").append(e.getMessage()).append("\n");
             }
@@ -535,27 +535,7 @@ public class InfluxDBTester implements DatabaseTester {
     }
 
     public static void main(String[] args) throws IOException {
-        // 使用示例
-        DBConfig dbConfig = new DBConfig.Builder()
-                .host("localhost")
-                .port(8086)
-                .user("admin")
-                .password("4@&@L#e4M4")
-                .dbType("influxdb")
-                .duration(10)
-                .interval(1)
-//            .query("INSERT INTO test_table (value) VALUES ('1');")
-                .testType("executionloop")
-                .database("primary")
-//                .table("test_table")
-                .build();
-        InfluxDBTester tester = new InfluxDBTester(dbConfig);
-        DatabaseConnection connection = tester.connect();
-        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
-                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
-        System.out.println(result);
-        connection.close();
-
+//        // 使用示例
 //        DBConfig dbConfig = new DBConfig.Builder()
 //                .host("localhost")
 //                .port(8086)
@@ -563,16 +543,36 @@ public class InfluxDBTester implements DatabaseTester {
 //                .password("4@&@L#e4M4")
 //                .dbType("influxdb")
 //                .duration(10)
-//                .connectionCount(10)
-//                .testType("connectionStress")
+//                .interval(1)
+////            .query("INSERT INTO test_table (value) VALUES ('1');")
+//                .testType("executionloop")
 //                .database("primary")
-//                .table("primary")
+////                .table("test_table")
 //                .build();
-//
 //        InfluxDBTester tester = new InfluxDBTester(dbConfig);
 //        DatabaseConnection connection = tester.connect();
-//        String result = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
+//        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
+//                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
 //        System.out.println(result);
 //        connection.close();
+
+        DBConfig dbConfig = new DBConfig.Builder()
+                .host("localhost")
+                .port(8086)
+                .user("admin")
+                .password("n7*#j*G9!7")
+                .dbType("influxdb")
+                .duration(10)
+                .connectionCount(10)
+                .testType("connectionStress")
+                .database("primary")
+                .table("executions_loop_bucket")
+                .build();
+
+        InfluxDBTester tester = new InfluxDBTester(dbConfig);
+        DatabaseConnection connection = tester.connect();
+        String result = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
+        System.out.println(result);
+        connection.close();
     }
 }
