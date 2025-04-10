@@ -50,7 +50,10 @@ public class InfluxDBTester implements DatabaseTester {
             if (org == null || org.equals("")) {
                 org = dbConfig.getDatabase();
             }
-            String bucket = dbConfig.getTable();
+            String bucket = dbConfig.getBucket();
+            if (bucket == null || bucket.equals("")) {
+                bucket = dbConfig.getTable();
+            }
 
             // 使用 InfluxDBClientOptions 构建客户端选项
             InfluxDBClientOptions options = InfluxDBClientOptions.builder()
@@ -146,9 +149,14 @@ public class InfluxDBTester implements DatabaseTester {
         for (int i = 0; i < connections; i++) {
             try {
                 DatabaseConnection connection = connect();
+                String bucket = dbConfig.getBucket();
+                if (bucket == null || bucket.equals("")) {
+                    bucket = dbConfig.getTable();
+                }
+
                 this.connections.add(connection);
                 // 执行一个简单的查询来验证连接
-                execute(connection, "QUERY from(bucket:\"" + dbConfig.getTable() + "\") |> range(start: -1h)");
+                execute(connection, "QUERY from(bucket:\"" + bucket + "\") |> range(start: -1h)");
             } catch (IOException e) {
                 result.append("Failed to establish connection ").append(i).append(": ").append(e.getMessage()).append("\n");
             }
@@ -278,7 +286,10 @@ public class InfluxDBTester implements DatabaseTester {
         }
 
         if (table == null || table.equals("")) {
-            table = "executions_loop_bucket";
+            table = dbConfig.getBucket();
+            if (table == null || table.equals("")) {
+                table = "executions_loop_bucket";
+            }
         }
 
         System.out.println("Execution loop start: " + query);
@@ -535,44 +546,43 @@ public class InfluxDBTester implements DatabaseTester {
     }
 
     public static void main(String[] args) throws IOException {
-//        // 使用示例
-//        DBConfig dbConfig = new DBConfig.Builder()
-//                .host("localhost")
-//                .port(8086)
-//                .user("admin")
-//                .password("4@&@L#e4M4")
-//                .dbType("influxdb")
-//                .duration(10)
-//                .interval(1)
-////            .query("INSERT INTO test_table (value) VALUES ('1');")
-//                .testType("executionloop")
-//                .database("primary")
-////                .table("test_table")
-//                .build();
-//        InfluxDBTester tester = new InfluxDBTester(dbConfig);
-//        DatabaseConnection connection = tester.connect();
-//        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
-//                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
-//        System.out.println(result);
-//        connection.close();
-
+        // 使用示例
         DBConfig dbConfig = new DBConfig.Builder()
                 .host("localhost")
                 .port(8086)
                 .user("admin")
-                .password("n7*#j*G9!7")
+                .password("3S#9&Rb!8*")
                 .dbType("influxdb")
                 .duration(10)
-                .connectionCount(10)
-                .testType("connectionStress")
-                .database("primary")
-                .table("executions_loop_bucket")
+                .interval(1)
+                .testType("executionloop")
+                .org("primary")
+                .bucket("executions_loop_bucket")
                 .build();
-
         InfluxDBTester tester = new InfluxDBTester(dbConfig);
         DatabaseConnection connection = tester.connect();
-        String result = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
+        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
+                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
         System.out.println(result);
         connection.close();
+
+//        DBConfig dbConfig = new DBConfig.Builder()
+//                .host("localhost")
+//                .port(8086)
+//                .user("admin")
+//                .password("3S#9&Rb!8*")
+//                .dbType("influxdb")
+//                .duration(10)
+//                .connectionCount(10)
+//                .testType("connectionStress")
+//                .org("primary")
+//                .bucket("executions_loop_bucket")
+//                .build();
+//
+//        InfluxDBTester tester = new InfluxDBTester(dbConfig);
+//        DatabaseConnection connection = tester.connect();
+//        String result = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
+//        System.out.println(result);
+//        connection.close();
     }
 }
