@@ -27,6 +27,7 @@ public class OneClient {
                .addOption("S", "sentinelPassword", true, "Redis sentinel password")
                .addOption("k", "key", true, "Database key")
                .addOption("T", "topic", true, "Database topic")
+               .addOption("B", "bucket", true, "Database bucket")
                .addOption("C", "cluster", true, "Database cluster");
 
         CommandLineParser parser = new DefaultParser();
@@ -69,6 +70,7 @@ public class OneClient {
             .sentinelPassword(cmd.getOptionValue("sentinelPassword", ""))
             .key(cmd.getOptionValue("key", ""))
             .topic(cmd.getOptionValue("topic", ""))
+            .bucket(cmd.getOptionValue("bucket", ""))
             .cluster(cmd.getOptionValue("cluster", ""));
 
         // 处理数值类型的参数
@@ -142,6 +144,11 @@ public class OneClient {
                             break;
                         case "kafka":
                             System.out.printf("Topic: %s%n", config.getTopic());
+                            break;
+                        case "minio":
+                        case "influx":
+                        case "influxdb":
+                            System.out.printf("Bucket: %s%n", config.getBucket());
                             break;
                         case "ck":
                         case "clickhouse":

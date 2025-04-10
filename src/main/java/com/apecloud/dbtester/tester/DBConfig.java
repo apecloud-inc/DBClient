@@ -43,6 +43,7 @@ public class DBConfig {
     private final String sentinelPassword;        // Redis sentinel password
     private final String key;           // Database key
     private final String topic;           // Database topic
+    private final String bucket;           // Database bucket
     private final String cluster;           // Database cluster
 
     private DBConfig(Builder builder) {
@@ -66,6 +67,7 @@ public class DBConfig {
         this.sentinelPassword = builder.sentinelPassword;
         this.key = builder.key;
         this.topic = builder.topic;
+        this.bucket = builder.bucket;
         this.cluster = builder.cluster;
     }
 
@@ -149,6 +151,10 @@ public class DBConfig {
         return topic;
     }
 
+    public String getBucket() {
+        return bucket;
+    }
+
     public String getCluster() {
         return cluster;
     }
@@ -175,6 +181,7 @@ public class DBConfig {
         private String sentinelPassword;
         private String key;
         private String topic;
+        private String bucket;
         private String cluster;
 
 
@@ -275,6 +282,11 @@ public class DBConfig {
 
         public Builder topic(String topic) {
             this.topic = topic;
+            return this;
+        }
+
+        public Builder bucket(String bucket) {
+            this.bucket = bucket;
             return this;
         }
 
@@ -417,6 +429,7 @@ public class DBConfig {
                 ", sentinelPassword=" + sentinelPassword +
                 ", key=" + key +
                 ", topic=" + topic +
+                ", bucket=" + bucket +
                 ", cluster=" + cluster +
                 '}';
     }
