@@ -68,17 +68,13 @@ dependencies {
 
     // Use SLF4J
     implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.30'
-    runtimeOnly group: 'org.slf4j', name: 'slf4j-api', version: '1.7.30'
     implementation group: 'ch.qos.logback', name: 'logback-classic', version: '1.4.12'
-    runtimeOnly group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
 
     // This is for MySQL Java connector
     implementation group: 'mysql', name: 'mysql-connector-java', version: '8.0.28'
-    runtimeOnly group: 'mysql', name: 'mysql-connector-java', version: '8.0.15'
 
     // This is for PostgreSQL Java connector
     implementation group: 'org.postgresql', name: 'postgresql', version: '42.0.0'
-    runtimeOnly group: 'org.postgresql', name: 'postgresql'
 
     // This is for GaussDB Java connector
     implementation files('libs/opengaussjdbc.jar')
@@ -91,26 +87,22 @@ dependencies {
 
     // This is for MongoDB Java connector
     implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.6.1'
-    runtimeOnly group: 'org.mongodb', name: 'mongodb-driver-reactivestreams', version: '4.6.1'
+    implementation group: 'org.mongodb', name: 'mongodb-driver-reactivestreams', version: '4.6.1'
 
     // This is for Redis Sentinel connector
     implementation group: 'redis.clients', name: 'jedis', version: '3.7.0'
-    runtimeOnly group: 'redis.clients', name: 'jedis', version: '3.7.0'
 
     // This is for Kafka connector
     implementation group: 'org.apache.kafka', name: 'kafka-clients', version: '2.8.0'
-    runtimeOnly group: 'org.apache.kafka', name: 'kafka-clients', version: '2.8.0'
+    //  group: 'org.apache.kafka', name: 'kafka-clients', version: '2.8.0'
 
     // This is for Qdrant connect
     implementation 'io.qdrant:client:1.12.0'  // 确保使用最新版本
     implementation group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.13'
-    runtimeOnly group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.13'
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.13.0'
-    runtimeOnly group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.13.0'
 
     // This is for Pulsar connector
     implementation group: 'org.apache.pulsar', name: 'pulsar-client', version: '2.10.0'
-    runtimeOnly group: 'org.apache.pulsar', name: 'pulsar-client', version: '2.10.0'
 
     // This is for Elasticsearch connector
     implementation 'co.elastic.clients:elasticsearch-java:8.8.2'
@@ -187,6 +179,9 @@ dependencies {
 
     // This is for KingBase connector
     implementation 'cn.com.kingbase:kingbase8:8.6.0'
+
+    // This is for SqlServer connector
+    implementation group: 'com.microsoft.sqlserver', name: 'mssql-jdbc', version: '12.8.1.jre11'
 }
 
 
