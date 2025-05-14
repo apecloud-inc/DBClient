@@ -138,6 +138,8 @@ public class SQLServerTester implements DatabaseTester {
     @Override
     public String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table) {
         StringBuilder result = new StringBuilder();
+        QueryResult executeResult;
+        int executeUpdateCount;
         int successfulExecutions = 0;
         int failedExecutions = 0;
         int disconnectCounts = 0;
@@ -178,7 +180,7 @@ public class SQLServerTester implements DatabaseTester {
         System.out.println("Execution loop start: " + query);
 
         while (System.currentTimeMillis() < endTime) {
-            insert_index++;
+            insert_index = insert_index + 1;
             long currentTime = System.currentTimeMillis();
 
             if (currentTime - lastOutputTime >= interval * 1000) {
@@ -282,22 +284,28 @@ public class SQLServerTester implements DatabaseTester {
                     gen_test_query = 3;
                 }
 
-                execute(connection, query); // 执行查询
-                successfulExecutions++;
-
-                if (executionError) {
-                    recoveryTime = System.currentTimeMillis();
-                    java.util.Date recoveryDate = new java.util.Date(recoveryTime);
-                    System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
-                    System.out.println("[" + sdf.format(recoveryDate) + "] Connection successfully recovered!");
-                    errorToRecoveryTime = recoveryTime - errorTime;
-                    System.out.println("The connection was restored in " + errorToRecoveryTime + " milliseconds.");
-                    executionError = false;
+                executeResult = execute(connection, query);
+                executeUpdateCount = executeResult.getUpdateCount();
+                if (executeUpdateCount != -1) {
+                    successfulExecutions++;
+                    if (executionError) {
+                        recoveryTime = System.currentTimeMillis();
+                        java.util.Date recoveryDate = new java.util.Date(recoveryTime);
+                        System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                        System.out.println("[" + sdf.format(recoveryDate) + "] Connection successfully recovered!");
+                        errorToRecoveryTime = recoveryTime - errorTime;
+                        System.out.println("The connection was restored in " + errorToRecoveryTime + " milliseconds.");
+                        executionError = false;
+                    }
+                } else {
+                    failedExecutions++;
+                    insert_index = insert_index - 1;
+                    executionError = true;
                 }
-
             } catch (IOException | InterruptedException e) {
                 System.out.println(e.getMessage());
                 failedExecutions++;
+                insert_index = insert_index - 1;
                 if (!executionError) {
                     disconnectCounts++;
                     errorTime = System.currentTimeMillis();

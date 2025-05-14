@@ -252,6 +252,7 @@ public class InfluxDBTester implements DatabaseTester {
     public String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table) {
         InfluxDBConnection influxConnection;
         StringBuilder result = new StringBuilder();
+        WriteApiBlocking writeApiBlocking;
         int successfulExecutions = 0;
         int failedExecutions = 0;
         int disconnectCounts = 0;
@@ -367,7 +368,7 @@ public class InfluxDBTester implements DatabaseTester {
                 }
 
                 // Execute the query (write operation in InfluxDB)
-                WriteApiBlocking writeApiBlocking = client.getWriteApiBlocking();
+                writeApiBlocking = client.getWriteApiBlocking();
                 writeApiBlocking.writeRecord(table, database, WritePrecision.NS, query);
                 successfulExecutions++;
                 if (executionError) {
@@ -382,6 +383,7 @@ public class InfluxDBTester implements DatabaseTester {
             } catch (Exception e) {
                 System.out.println("Execution loop failed: " + e.getMessage());
                 failedExecutions++;
+                insert_index = insert_index - 1;
                 if (!executionError) {
                     disconnectCounts++;
                     errorTime = System.currentTimeMillis();
