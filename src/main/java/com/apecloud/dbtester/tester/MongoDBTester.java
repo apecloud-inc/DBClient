@@ -240,6 +240,7 @@ public class MongoDBTester implements DatabaseTester {
     public String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table) {
         MongoDBConnection mongoConnection;
         StringBuilder result = new StringBuilder();
+        InsertOneResult insert_result;
         int successfulExecutions = 0;
         int failedExecutions = 0;
         int disconnectCounts = 0;
@@ -305,21 +306,28 @@ public class MongoDBTester implements DatabaseTester {
                 }
 
                 // Execute the query (insert operation in MongoDB)
-                InsertOneResult insert_result = mongoConnection.getDatabase().getCollection(table).insertOne(Document.parse(query));
+                insert_result = mongoConnection.getDatabase().getCollection(table).insertOne(Document.parse(query));
                 System.out.println("Inserted document: " + insert_result.getInsertedId());
-                successfulExecutions++;
-                if (executionError) {
-                    recoveryTime = System.currentTimeMillis();
-                    java.sql.Date recoveryDate = new java.sql.Date(recoveryTime);
-                    System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
-                    System.out.println("[" + sdf.format(recoveryDate) + "] Connection successfully recovered!");
-                    errorToRecoveryTime = recoveryTime - errorTime;
-                    System.out.println("The connection was restored in " + errorToRecoveryTime + " milliseconds.");
-                    executionError = false;
+                if (insert_result.getInsertedId() != null) {
+                    successfulExecutions++;
+                    if (executionError) {
+                        recoveryTime = System.currentTimeMillis();
+                        java.sql.Date recoveryDate = new java.sql.Date(recoveryTime);
+                        System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                        System.out.println("[" + sdf.format(recoveryDate) + "] Connection successfully recovered!");
+                        errorToRecoveryTime = recoveryTime - errorTime;
+                        System.out.println("The connection was restored in " + errorToRecoveryTime + " milliseconds.");
+                        executionError = false;
+                    }
+                } else {
+                    failedExecutions++;
+                    insert_index = insert_index - 1;
+                    executionError = true;
                 }
             } catch (Exception e) {
                 System.out.println("Execution loop failed: " + e.getMessage());
                 failedExecutions++;
+                insert_index = insert_index - 1;
                 if (!executionError) {
                     disconnectCounts++;
                     errorTime = System.currentTimeMillis();

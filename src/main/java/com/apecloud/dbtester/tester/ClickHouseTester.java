@@ -135,6 +135,8 @@ public class ClickHouseTester implements DatabaseTester {
     @Override
     public String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table) {
         StringBuilder result = new StringBuilder();
+        QueryResult executeResult;
+        int executeUpdateCount;
         String cluster = dbConfig.getCluster();
         if (cluster != null && !cluster.equals("")) {
             databaseCluster = cluster;
@@ -221,19 +223,27 @@ public class ClickHouseTester implements DatabaseTester {
                     gen_test_query = 3;
                 }
 
-                execute(connection, query);
-                successfulExecutions++;
-                if (executionError) {
-                    recoveryTime = System.currentTimeMillis();
-                    Date recoveryDate = new Date(recoveryTime);
-                    System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
-                    System.out.println("[" + sdf.format(recoveryDate) + "] Connection successfully recovered!");
-                    errorToRecoveryTime = recoveryTime - errorTime;
-                    System.out.println("The connection was restored in " + errorToRecoveryTime + " milliseconds.");
-                    executionError = false;
+                executeResult = execute(connection, query);
+                executeUpdateCount = executeResult.getUpdateCount();
+                if (executeUpdateCount != -1) {
+                    successfulExecutions++;
+                    if (executionError) {
+                        recoveryTime = System.currentTimeMillis();
+                        Date recoveryDate = new Date(recoveryTime);
+                        System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                        System.out.println("[" + sdf.format(recoveryDate) + "] Connection successfully recovered!");
+                        errorToRecoveryTime = recoveryTime - errorTime;
+                        System.out.println("The connection was restored in " + errorToRecoveryTime + " milliseconds.");
+                        executionError = false;
+                    }
+                } else {
+                    failedExecutions++;
+                    insert_index = insert_index - 1;
+                    executionError = true;
                 }
             } catch (IOException e) {
                 failedExecutions++;
+                insert_index = insert_index - 1;
                 if (!executionError) {
                     disconnectCounts++;
                     errorTime = System.currentTimeMillis();
