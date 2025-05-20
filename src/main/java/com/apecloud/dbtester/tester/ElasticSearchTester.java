@@ -5,6 +5,7 @@ import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.transport.ElasticsearchTransport;
 import co.elastic.clients.transport.rest_client.RestClientTransport;
 import org.apache.http.HttpHost;
+import org.elasticsearch.client.Request;
 import org.elasticsearch.client.RestClient;
 
 // Elasticsearch Query & Search
@@ -27,11 +28,8 @@ import jakarta.json.stream.JsonParser;
 // Java Utils
 import java.io.IOException;
 import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.text.SimpleDateFormat;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -42,6 +40,7 @@ import org.apache.http.impl.client.BasicCredentialsProvider;
 
 public class ElasticSearchTester implements DatabaseTester {
     private final DBConfig dbConfig;
+    private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     private List<RestClient> connections = new ArrayList<>();
     private ElasticsearchClient esClient;
     private RestClient restClient;
@@ -97,8 +96,7 @@ public class ElasticSearchTester implements DatabaseTester {
         String[] parts = operation.split(":");
         String operationType = parts[0].toLowerCase();
         String indexName = parts.length > 1 ? parts[1] : "test_index";
-        String queryParams = parts.length > 2 ? parts[2] : "";
-
+        String queryParams = parts.length > 2 ? String.join(":", Arrays.asList(parts).subList(2, parts.length)) : "";
         switch (operationType) {
             case "create_index":
                 return createIndex(indexName);
@@ -305,8 +303,147 @@ public class ElasticSearchTester implements DatabaseTester {
 
     @Override
     public String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table) {
-        return null;
+        StringBuilder result = new StringBuilder();
+        QueryResult executeResult;
+        int executeUpdateCount;
+        int successfulExecutions = 0;
+        int failedExecutions = 0;
+        int disconnectCounts = 0;
+        boolean executionError = false;
+
+        long startTime = System.currentTimeMillis();
+        long endTime = startTime + duration * 1000;
+        long errorTime = 0;
+        long recoveryTime;
+        long errorToRecoveryTime;
+        Date errorDate = null;
+        long lastOutputTime = System.currentTimeMillis();
+        int outputPassTime = 0;
+
+        int insert_index = 0;
+        int gen_test_query = 0;
+        String gen_test_value;
+        ElasticSearchQueryResult queryResult;
+
+        // Check gen test query
+        if (query == null || query.equals("") || (table != null && !table.equals(""))) {
+            gen_test_query = 1;
+        }
+
+        if (table == null || table.equals("")) {
+            table = "executions_loop_index";
+        }
+
+        System.out.println("Execution loop start: " + query);
+        while (System.currentTimeMillis() < endTime) {
+            insert_index++;
+            long currentTime = System.currentTimeMillis();
+
+            if (currentTime - lastOutputTime >= interval * 1000) {
+                outputPassTime += interval;
+                lastOutputTime = currentTime;
+                System.out.println("[ " + outputPassTime + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                        + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                        + " disconnect: " + disconnectCounts);
+            }
+
+            try {
+                if (executionError) {
+                    Thread.sleep(1000);
+                    connection = this.connect();
+                }
+
+                if (gen_test_query == 1) {
+                    // Check if index exists, if not create it
+                    queryResult = (ElasticSearchQueryResult) execute(connection, "check_index:" + table);
+                    if (!queryResult.getMessage().contains("true")) {
+                        System.out.println("Index " + table + " does not exist. Creating index...");
+                        execute(connection, "create_index:" + table);
+                        System.out.println("Index " + table + " created successfully.");
+                    } else {
+                        System.out.println("Index " + table + " already exists.");
+                        if (table.equals("executions_loop_index")) {
+                            // Delete index
+                            System.out.println("Delete index " + table);
+                            execute(connection, "delete_index:" + table);
+                            System.out.println("Index " + table + " deleted successfully.");
+
+                            System.out.println("Create index " + table);
+                            execute(connection, "create_index:" + table);
+                            System.out.println("Index " + table + " created successfully.");
+                        }
+                    }
+
+                    gen_test_query = 2;
+                }
+
+                if ((gen_test_query == 2 && (query == null || query.equals("")) || gen_test_query == 3)) {
+                    // Set test query
+                    gen_test_value = "executions_loop_" + insert_index;
+                    String document = String.format(
+                            "{\"id\": \"%d\", \"name\": \"%s\", \"value\": \"%s\"}",
+                            System.currentTimeMillis(),
+                            gen_test_value,
+                            insert_index
+                    );
+                    query = String.format("insert:%s:%s", table, document);
+                    if (gen_test_query == 2) {
+                        System.out.println("Execution loop start: " + query);
+                    }
+                    gen_test_query = 3;
+                }
+
+                executeResult = execute(connection, query);
+                executeUpdateCount = executeResult.getUpdateCount();
+                if (executeUpdateCount != -1) {
+                    successfulExecutions++;
+                    if (executionError) {
+                        recoveryTime = System.currentTimeMillis();
+                        java.util.Date recoveryDate = new java.util.Date(recoveryTime);
+                        System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                        System.out.println("[" + sdf.format(recoveryDate) + "] Connection successfully recovered!");
+                        errorToRecoveryTime = recoveryTime - errorTime;
+                        System.out.println("The connection was restored in " + errorToRecoveryTime + " milliseconds.");
+                        executionError = false;
+                    }
+                } else {
+                    failedExecutions++;
+                    insert_index = insert_index - 1;
+                    executionError = true;
+                }
+            } catch (Exception e) {
+                System.out.println("Execution loop failed: " + e.getMessage());
+                failedExecutions++;
+                insert_index--;
+
+                if (!executionError) {
+                    disconnectCounts++;
+                    errorTime = System.currentTimeMillis();
+                    errorDate = new Date(errorTime);
+                    System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                    executionError = true;
+                }
+            }
+        }
+
+        System.out.println("[ " + duration + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                + " disconnect: " + disconnectCounts);
+
+        releaseConnections();
+
+        result.append("Execution loop completed during ").append(duration).append(" seconds");
+
+        return String.format("Total Executions: %d\n" +
+                        "Successful Executions: %d\n" +
+                        "Failed Executions: %d\n" +
+                        "Disconnection Counts: %d",
+                successfulExecutions + failedExecutions,
+                successfulExecutions,
+                failedExecutions,
+                disconnectCounts);
     }
+
 
     private String formatSearchResult(QueryResult result) {
         if (result instanceof ElasticSearchQueryResult) {
@@ -408,6 +545,10 @@ public class ElasticSearchTester implements DatabaseTester {
 
                 RestClient client = RestClient.builder(HttpHost.create(serverUrl)).build();
                 this.connections.add(client);
+
+                Request request = new Request("GET", "/_cluster/health");
+                request.addParameter("pretty", "true");
+                client.performRequest(request);
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
@@ -625,58 +766,77 @@ public class ElasticSearchTester implements DatabaseTester {
         }
     }
 
-    public static void main(String[] args) throws IOException {
+    public static void main(String[] args) throws IOException, InterruptedException {
         DBConfig dbConfig = new DBConfig.Builder()
-            .host("localhost")
-            .port(9200)
-            .user("elastic")
-            .password("JQh6H02s33")
-            .testType("connectionstress")
-            .duration(60)
-            .table("default")
-            .org("elastic")
-            .database("elastic")
-            .build();
-
+                .host("localhost")
+                .port(9200)
+                .user("elastic")
+                .password("4335f9Zxyf")
+                .dbType("elasticsearch")
+                .duration(10)
+                .interval(1)
+                .testType("executionloop")
+//            .database("test_db")
+//            .table("test_table")
+//            .query("INSERT INTO test_table (value) VALUES ('1');")
+                .build();
         ElasticSearchTester tester = new ElasticSearchTester(dbConfig);
         DatabaseConnection connection = tester.connect();
-        String result = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
+        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
+                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
         System.out.println(result);
         connection.close();
 
+        Thread.sleep(2000);
+        dbConfig = new DBConfig.Builder()
+            .host("127.0.0.1")
+            .testType("query")
+            .query("search")
+            .dbType("elasticsearch")
+            .port(9200)
+            .user("elastic")
+            .password("4335f9Zxyf")
+            .build();
+
+        tester = new ElasticSearchTester(dbConfig);
+        connection = tester.connect();
+
+        // 测试索引操作
+        // System.out.println(tester.execute(connection, "create_index:test_index"));
+
+        // 测试文档插入
+        // QueryResult qr = tester.execute(connection, "insert:test_index");
+        // System.out.println(qr);
+        // String[] qrs = qr.toString().split(":");
+        // String documentId = qrs[1].trim();
+
+        // 测试文档搜索（match_all查询）
+        System.out.println(tester.execute(connection, "search:executions_loop_index"));
+
+        // 测试条件搜索
+        // System.out.println(tester.execute(connection, "get:test_index:"+documentId));
+
+        // 清理测试数据
+        // System.out.println(tester.execute(connection, "delete_index:test_index"));
+
+        connection.close();
+
 //        DBConfig dbConfig = new DBConfig.Builder()
-//            .host("localhost")
-//            .testType("query")
-//            .query("search")
-//            .table("user")
-//            .port(9200)
-//            .org("elastic")
-//            .user("elastic")
-//            .password("password")
-//            .database("elastic")
-//            .build();
+//                .host("127.0.0.1")
+//                .port(9200)
+//                .user("elastic")
+//                .password("4335f9Zxyf")
+//                .testType("connectionstress")
+//                .duration(60)
+//                .table("default")
+//                .org("elastic")
+//                .database("elastic")
+//                .build();
 //
 //        ElasticSearchTester tester = new ElasticSearchTester(dbConfig);
 //        DatabaseConnection connection = tester.connect();
-//
-//        // 测试索引操作
-//        System.out.println(tester.execute(connection, "create_index:test_index"));
-//
-//        // 测试文档插入
-//        QueryResult qr = tester.execute(connection, "insert:test_index");
-//        System.out.println(qr);
-//        String[] qrs = qr.toString().split(":");
-//        String documentId = qrs[1].trim();
-//
-//        // 测试文档搜索（match_all查询）
-//        System.out.println(tester.execute(connection, "search:test_index"));
-//
-//        // 测试条件搜索
-//        System.out.println(tester.execute(connection, "get:test_index:"+documentId));
-//
-//        // 清理测试数据
-//        System.out.println(tester.execute(connection, "delete_index:test_index"));
-//
+//        String result = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
+//        System.out.println(result);
 //        connection.close();
     }
 }
