@@ -1,0 +1,810 @@
+package com.apecloud.dbtester.tester;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.http.HttpHost;
+import org.apache.http.auth.AuthScope;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.opensearch.client.Request;
+import org.opensearch.client.Response;
+import org.opensearch.client.RestClient;
+import org.opensearch.client.RestHighLevelClient;
+
+import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+public class OpenSearchTester implements DatabaseTester {
+    private final DBConfig dbConfig;
+    private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+    private List<RestHighLevelClient> connections = new ArrayList<>();
+    private RestHighLevelClient client;
+
+    public OpenSearchTester() {
+        this.dbConfig = null;
+    }
+
+    public OpenSearchTester(DBConfig dbConfig) {
+        this.dbConfig = dbConfig;
+    }
+
+    private void createOpenSearchConnection() throws IOException {
+        if (dbConfig == null) {
+            throw new IllegalStateException("DBConfig not provided");
+        }
+
+        String serverUrl = String.format("%s:%d",
+                dbConfig.getHost(),
+                dbConfig.getPort());
+
+        BasicCredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+        if (dbConfig.getUser() != null && dbConfig.getPassword() != null) {
+            credentialsProvider.setCredentials(
+                    AuthScope.ANY,
+                    new UsernamePasswordCredentials(dbConfig.getUser(), dbConfig.getPassword())
+            );
+        }
+
+        client = new RestHighLevelClient(
+                RestClient.builder(HttpHost.create(serverUrl))
+                        .setHttpClientConfigCallback(httpClientBuilder -> {
+                            httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+                            return httpClientBuilder;
+                        })
+        );
+    }
+
+    @Override
+    public DatabaseConnection connect() throws IOException {
+        createOpenSearchConnection();
+        return new OpenSearchConnection(client);
+    }
+
+    @Override
+    public QueryResult execute(DatabaseConnection connection, String operation) throws IOException {
+        String[] parts = operation.split(":");
+        String operationType = parts[0].toLowerCase();
+        String indexName = parts.length > 1 ? parts[1] : "test_index";
+        String queryParams = parts.length > 2 ? String.join(":", Arrays.asList(parts).subList(2, parts.length)) : "";
+        switch (operationType) {
+            case "create_index":
+                return createIndex(indexName);
+            case "delete_index":
+                return deleteIndex(indexName);
+            case "check_index":
+                return checkIndex(indexName);
+            case "insert":
+                return insertDocument(indexName, queryParams);
+            case "search":
+                return searchDocuments(indexName, queryParams);
+            case "get":
+                return getDocument(indexName, queryParams);
+            case "delete_doc":
+                return deleteDocument(indexName, queryParams);
+            case "update":
+                return updateDocument(indexName, queryParams);
+            default:
+                throw new IOException("Unsupported operation: " + operationType);
+        }
+    }
+
+    private static final ObjectMapper mapper = new ObjectMapper();
+
+    private QueryResult insertDocument(String indexName, String documentJson) throws IOException {
+        if (documentJson.isEmpty()) {
+            documentJson = createSampleDocument();
+        }
+
+        Request request = new Request("POST", "/" + indexName + "/_doc");
+        request.setJsonEntity(documentJson);
+
+        Response response = client.getLowLevelClient().performRequest(request);
+        JsonNode result = mapper.readTree(response.getEntity().getContent());
+        String id = result.get("_id").asText();
+
+        return new OpenSearchQueryResult(true, "Document inserted with ID: " + id);
+    }
+
+    private String createSampleDocument() {
+        return "{"
+                + "\"id\": \"" + System.currentTimeMillis() + "\","
+                + "\"name\": \"Test Document\","
+                + "\"value\": " + (int)(Math.random() * 100)
+                + "}";
+    }
+
+    private QueryResult searchDocuments(String indexName, String searchQuery) throws IOException {
+        String body = "{\n" +
+                "  \"query\": {\n" +
+                "    \"match_all\": {}\n" +
+                "  }\n" +
+                "}";
+
+        if (!searchQuery.isEmpty()) {
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode queryNode = objectMapper.readTree(searchQuery);
+            String field = queryNode.get("field").asText();
+            String value = queryNode.get("value").asText();
+
+            body = String.format("{\n" +
+                    "  \"query\": {\n" +
+                    "    \"match\": {\n" +
+                    "      \"%s\": \"%s\"\n" +
+                    "    }\n" +
+                    "  }\n" +
+                    "}", field, value);
+        }
+
+        Request request = new Request("GET", "/" + indexName + "/_search");
+        request.setJsonEntity(body);
+
+        Response response = client.getLowLevelClient().performRequest(request);
+        JsonNode result = mapper.readTree(response.getEntity().getContent());
+
+        StringBuilder output = new StringBuilder();
+        int totalHits = result.get("hits").get("total").get("value").asInt();
+        output.append("Found ").append(totalHits).append(" documents:\n");
+
+        for (JsonNode hit : result.get("hits").get("hits")) {
+            output.append("ID: ").append(hit.get("_id"))
+                    .append(", Score: ").append(hit.get("_score"))
+                    .append(", Source: ").append(hit.get("_source")).append("\n");
+        }
+
+        return new OpenSearchQueryResult(true, output.toString());
+    }
+
+    private QueryResult getDocument(String indexName, String documentId) throws IOException {
+        Request request = new Request("GET", "/" + indexName + "/_doc/" + documentId);
+        try {
+            Response response = client.getLowLevelClient().performRequest(request);
+            JsonNode result = mapper.readTree(response.getEntity().getContent());
+            return new OpenSearchQueryResult(true, "Document found: " + result.get("_source"));
+        } catch (IOException e) {
+            return new OpenSearchQueryResult(false, "Document not found with ID: " + documentId);
+        }
+    }
+
+    private QueryResult deleteDocument(String indexName, String documentId) throws IOException {
+        Request request = new Request("DELETE", "/" + indexName + "/_doc/" + documentId);
+        client.getLowLevelClient().performRequest(request);
+        return new OpenSearchQueryResult(true, "Document deleted with ID: " + documentId);
+    }
+
+    private QueryResult updateDocument(String indexName, String updateInfo) throws IOException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode updateNode = objectMapper.readTree(updateInfo);
+        String documentId = updateNode.get("id").asText();
+        JsonNode doc = updateNode.get("doc");
+
+        String body = "{\n" +
+                "  \"doc\": " + doc.toString() + "\n" +
+                "}";
+
+        Request request = new Request("POST", "/" + indexName + "/_update/" + documentId);
+        request.setJsonEntity(body);
+
+        client.getLowLevelClient().performRequest(request);
+        return new OpenSearchQueryResult(true, "Document updated with ID: " + documentId);
+    }
+
+    private QueryResult createIndex(String indexName) throws IOException {
+        String mappings = "{\n" +
+                "  \"mappings\": {\n" +
+                "    \"properties\": {\n" +
+                "      \"id\": { \"type\": \"keyword\" },\n" +
+                "      \"name\": { \"type\": \"text\" },\n" +
+                "      \"value\": { \"type\": \"long\" }\n" +
+                "    }\n" +
+                "  }\n" +
+                "}";
+
+        Request request = new Request("PUT", "/" + indexName);
+        request.setJsonEntity(mappings);
+
+        client.getLowLevelClient().performRequest(request);
+        return new OpenSearchQueryResult(true, "Index created: " + indexName);
+    }
+
+    private QueryResult deleteIndex(String indexName) throws IOException {
+        Request request = new Request("DELETE", "/" + indexName);
+        client.getLowLevelClient().performRequest(request);
+        return new OpenSearchQueryResult(true, "Index deleted: " + indexName);
+    }
+
+    private QueryResult checkIndex(String indexName) throws IOException {
+        Request request = new Request("HEAD", "/" + indexName);
+        try {
+            client.getLowLevelClient().performRequest(request);
+            return new OpenSearchQueryResult(true, "Index exists: true");
+        } catch (IOException e) {
+            return new OpenSearchQueryResult(false, "Index exists: false");
+        }
+    }
+
+    @Override
+    public String executeTest() throws IOException {
+        if (dbConfig == null) {
+            throw new IllegalStateException("DBConfig not provided");
+        }
+
+        String testType = dbConfig.getTestType();
+        if (testType == null || testType.isEmpty()) {
+            throw new IllegalArgumentException("Test type not specified in DBConfig");
+        }
+
+        DatabaseConnection connection = null;
+        StringBuilder result = new StringBuilder();
+
+        try {
+            connection = connect();
+            OpenSearchConnection esConnection = (OpenSearchConnection) connection;
+
+            switch (testType.toLowerCase()) {
+                case "connectionstress":
+                    result.append(connectionStress(
+                            dbConfig.getConnectionCount(),
+                            dbConfig.getDuration()
+                    ));
+                    break;
+
+                case "search":
+                    String searchQuery = dbConfig.getQuery();
+                    if (searchQuery == null || searchQuery.isEmpty()) {
+                        throw new IllegalArgumentException("Search query not specified in DBConfig");
+                    }
+                    // 执行搜索操作
+                    QueryResult searchResult = execute(connection, String.format(
+                            "SEARCH %s", searchQuery
+                    ));
+                    result.append(formatSearchResult(searchResult));
+                    break;
+
+                case "index":
+                    String indexOperation = dbConfig.getQuery();
+                    if (indexOperation == null || indexOperation.isEmpty()) {
+                        throw new IllegalArgumentException("Index operation not specified");
+                    }
+                    // 执行索引操作
+                    QueryResult indexResult = execute(connection, String.format(
+                            "INDEX %s", indexOperation
+                    ));
+                    result.append(formatIndexResult(indexResult));
+                    break;
+
+                case "benchmark":
+                    String benchQuery = dbConfig.getQuery();
+                    if (benchQuery == null || benchQuery.isEmpty()) {
+                        throw new IllegalArgumentException("Query not specified for benchmark");
+                    }
+                    result.append(bench(
+                            connection,
+                            benchQuery,
+                            dbConfig.getIterations(),
+                            dbConfig.getConcurrency()
+                    ));
+                    break;
+
+                default:
+                    throw new IllegalArgumentException("Unsupported test type: " + testType);
+            }
+
+            return result.toString();
+
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+
+    @Override
+    public String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table) {
+        StringBuilder result = new StringBuilder();
+        QueryResult executeResult;
+        int executeUpdateCount;
+        int successfulExecutions = 0;
+        int failedExecutions = 0;
+        int disconnectCounts = 0;
+        boolean executionError = false;
+
+        long startTime = System.currentTimeMillis();
+        long endTime = startTime + duration * 1000;
+        long errorTime = 0;
+        long recoveryTime;
+        long errorToRecoveryTime;
+        Date errorDate = null;
+        long lastOutputTime = System.currentTimeMillis();
+        int outputPassTime = 0;
+
+        int insert_index = 0;
+        int gen_test_query = 0;
+        String gen_test_value;
+        OpenSearchQueryResult queryResult;
+
+        // Check gen test query
+        if (query == null || query.equals("") || (table != null && !table.equals(""))) {
+            gen_test_query = 1;
+        }
+
+        if (table == null || table.equals("")) {
+            table = "executions_loop_index";
+        }
+
+        System.out.println("Execution loop start: " + query);
+        while (System.currentTimeMillis() < endTime) {
+            insert_index++;
+            long currentTime = System.currentTimeMillis();
+
+            if (currentTime - lastOutputTime >= interval * 1000) {
+                outputPassTime += interval;
+                lastOutputTime = currentTime;
+                System.out.println("[ " + outputPassTime + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                        + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                        + " disconnect: " + disconnectCounts);
+            }
+
+            try {
+                if (executionError) {
+                    Thread.sleep(1000);
+                    connection = this.connect();
+                }
+
+                if (gen_test_query == 1) {
+                    // Check if index exists, if not create it
+                    queryResult = (OpenSearchQueryResult) execute(connection, "check_index:" + table);
+                    if (!queryResult.getMessage().contains("true")) {
+                        System.out.println("Index " + table + " does not exist. Creating index...");
+                        execute(connection, "create_index:" + table);
+                        System.out.println("Index " + table + " created successfully.");
+                    } else {
+                        System.out.println("Index " + table + " already exists.");
+                        if (table.equals("executions_loop_index")) {
+                            // Delete index
+                            System.out.println("Delete index " + table);
+                            execute(connection, "delete_index:" + table);
+                            System.out.println("Index " + table + " deleted successfully.");
+
+                            System.out.println("Create index " + table);
+                            execute(connection, "create_index:" + table);
+                            System.out.println("Index " + table + " created successfully.");
+                        }
+                    }
+
+                    gen_test_query = 2;
+                }
+
+                if ((gen_test_query == 2 && (query == null || query.equals("")) || gen_test_query == 3)) {
+                    // Set test query
+                    gen_test_value = "executions_loop_" + insert_index;
+                    String document = String.format(
+                            "{\"id\": \"%d\", \"name\": \"%s\", \"value\": \"%s\"}",
+                            System.currentTimeMillis(),
+                            gen_test_value,
+                            insert_index
+                    );
+                    query = String.format("insert:%s:%s", table, document);
+                    if (gen_test_query == 2) {
+                        System.out.println("Execution loop start: " + query);
+                    }
+                    gen_test_query = 3;
+                }
+
+                executeResult = execute(connection, query);
+                executeUpdateCount = executeResult.getUpdateCount();
+                if (executeUpdateCount != -1) {
+                    successfulExecutions++;
+                    if (executionError) {
+                        recoveryTime = System.currentTimeMillis();
+                        java.util.Date recoveryDate = new java.util.Date(recoveryTime);
+                        System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                        System.out.println("[" + sdf.format(recoveryDate) + "] Connection successfully recovered!");
+                        errorToRecoveryTime = recoveryTime - errorTime;
+                        System.out.println("The connection was restored in " + errorToRecoveryTime + " milliseconds.");
+                        executionError = false;
+                    }
+                } else {
+                    failedExecutions++;
+                    insert_index = insert_index - 1;
+                    executionError = true;
+                }
+            } catch (Exception e) {
+                System.out.println("Execution loop failed: " + e.getMessage());
+                failedExecutions++;
+                insert_index--;
+
+                if (!executionError) {
+                    disconnectCounts++;
+                    errorTime = System.currentTimeMillis();
+                    errorDate = new Date(errorTime);
+                    System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                    executionError = true;
+                }
+            }
+        }
+
+        System.out.println("[ " + duration + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                + " disconnect: " + disconnectCounts);
+
+        releaseConnections();
+
+        result.append("Execution loop completed during ").append(duration).append(" seconds");
+
+        return String.format("Total Executions: %d\n" +
+                        "Successful Executions: %d\n" +
+                        "Failed Executions: %d\n" +
+                        "Disconnection Counts: %d",
+                successfulExecutions + failedExecutions,
+                successfulExecutions,
+                failedExecutions,
+                disconnectCounts);
+    }
+
+
+    private String formatSearchResult(QueryResult result) {
+        if (result instanceof OpenSearchQueryResult) {
+            OpenSearchQueryResult esResult = (OpenSearchQueryResult) result;
+            return String.format(
+                    "Search Results:\nTotal Hits: %d\nDocuments: %s\n",
+                    esResult.getTotalHits(),
+                    esResult.getDocuments()
+            );
+        }
+        return "No results found";
+    }
+
+    private String formatIndexResult(QueryResult result) {
+        if (result instanceof OpenSearchQueryResult) {
+            OpenSearchQueryResult esResult = (OpenSearchQueryResult) result;
+            return String.format(
+                    "Index Operation Result:\nSuccess: %b\nDocument ID: %s\nVersion: %d\n",
+                    esResult.isSuccessful(),
+                    esResult.getDocumentId(),
+                    esResult.getVersion()
+            );
+        }
+        return "Index operation failed";
+    }
+
+    @Override
+    public String bench(DatabaseConnection connection, String operation, int iterations, int concurrency) {
+        StringBuilder result = new StringBuilder();
+        ExecutorService executor = Executors.newFixedThreadPool(concurrency);
+
+        for (int i = 0; i < iterations; i++) {
+            executor.execute(() -> {
+                try {
+                    execute(connection, operation);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+        }
+
+        executor.shutdown();
+        try {
+            executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        result.append("Benchmark completed with ")
+                .append(iterations)
+                .append(" iterations and ")
+                .append(concurrency)
+                .append(" concurrency");
+        return result.toString();
+    }
+
+    @Override
+    public String connectionStress(int connections, int duration) {
+        for (int i = 0; i < connections; i++) {
+            try {
+                String serverUrl = String.format("%s:%d",
+                        dbConfig.getHost(),
+                        dbConfig.getPort());
+
+                RestHighLevelClient client = new RestHighLevelClient(
+                        RestClient.builder(HttpHost.create(serverUrl))
+                );
+                this.connections.add(client);
+
+                Request request = new Request("GET", "/_cluster/health");
+                request.addParameter("pretty", "true");
+                client.getLowLevelClient().performRequest(request);
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                releaseConnections();
+            }
+        }
+        return String.format("Created %d connections", connections);
+    }
+
+    @Override
+    public void releaseConnections() {
+        for (RestHighLevelClient client : connections) {
+            try {
+                client.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        connections.clear();
+    }
+
+    private static class OpenSearchConnection implements DatabaseConnection {
+        private final RestHighLevelClient client;
+
+        OpenSearchConnection(RestHighLevelClient client) {
+            this.client = client;
+        }
+
+        @Override
+        public void close() throws IOException {
+            client.close();
+        }
+    }
+
+    private static class OpenSearchQueryResult implements QueryResult {
+        private final boolean success;
+        private final String message;
+        private final long totalHits;
+        private final List<String> documents;
+        private final String documentId;
+        private final long version;
+        private final Map<String, Object> metadata;
+
+        // 基础构造函数
+        OpenSearchQueryResult(boolean success, String message) {
+            this(success, message, 0, Collections.emptyList(), null, 0, Collections.emptyMap());
+        }
+
+        // 完整构造函数
+        OpenSearchQueryResult(boolean success,
+                                 String message,
+                                 long totalHits,
+                                 List<String> documents,
+                                 String documentId,
+                                 long version,
+                                 Map<String, Object> metadata) {
+            this.success = success;
+            this.message = message;
+            this.totalHits = totalHits;
+            this.documents = documents != null ? documents : Collections.emptyList();
+            this.documentId = documentId;
+            this.version = version;
+            this.metadata = metadata != null ? metadata : Collections.emptyMap();
+        }
+
+        // 搜索结果构造器
+        public static OpenSearchQueryResult forSearch(long totalHits, List<String> documents) {
+            return new OpenSearchQueryResult(true,
+                    "Search completed successfully",
+                    totalHits,
+                    documents,
+                    null,
+                    0,
+                    Collections.emptyMap());
+        }
+
+        // 索引操作结果构造器
+        public static OpenSearchQueryResult forIndex(String documentId, long version) {
+            return new OpenSearchQueryResult(true,
+                    "Document indexed successfully",
+                    0,
+                    Collections.emptyList(),
+                    documentId,
+                    version,
+                    Collections.emptyMap());
+        }
+
+        // 错误结果构造器
+        public static OpenSearchQueryResult error(String errorMessage) {
+            return new OpenSearchQueryResult(false,
+                    errorMessage,
+                    0,
+                    Collections.emptyList(),
+                    null,
+                    0,
+                    Collections.emptyMap());
+        }
+
+        @Override
+        public boolean hasResultSet() {
+            return success;
+        }
+
+        @Override
+        public java.sql.ResultSet getResultSet() {
+            return null; // ES 不使用 JDBC ResultSet
+        }
+
+        @Override
+        public int getUpdateCount() {
+            return 0;
+        }
+
+        @Override
+        public String toString() {
+            return message;
+        }
+
+        // OpenSearch 特定的方法
+        public boolean isSuccessful() {
+            return success;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public long getTotalHits() {
+            return totalHits;
+        }
+
+        public List<String> getDocuments() {
+            return Collections.unmodifiableList(documents);
+        }
+
+        public String getDocumentId() {
+            return documentId;
+        }
+
+        public long getVersion() {
+            return version;
+        }
+
+        public Map<String, Object> getMetadata() {
+            return Collections.unmodifiableMap(metadata);
+        }
+
+        // 用于检查特定操作类型的方法
+        public boolean isSearchResult() {
+            return totalHits > 0 || !documents.isEmpty();
+        }
+
+        public boolean isIndexResult() {
+            return documentId != null && version > 0;
+        }
+
+        public boolean hasError() {
+            return !success;
+        }
+
+        // 用于构建复杂结果的内部构建器
+        public static class Builder {
+            private boolean success = true;
+            private String message = "";
+            private long totalHits = 0;
+            private List<String> documents = new ArrayList<>();
+            private String documentId;
+            private long version = 0;
+            private Map<String, Object> metadata = new HashMap<>();
+
+            public Builder success(boolean success) {
+                this.success = success;
+                return this;
+            }
+
+            public Builder message(String message) {
+                this.message = message;
+                return this;
+            }
+
+            public Builder totalHits(long totalHits) {
+                this.totalHits = totalHits;
+                return this;
+            }
+
+            public Builder documents(List<String> documents) {
+                this.documents = new ArrayList<>(documents);
+                return this;
+            }
+
+            public Builder documentId(String documentId) {
+                this.documentId = documentId;
+                return this;
+            }
+
+            public Builder version(long version) {
+                this.version = version;
+                return this;
+            }
+
+            public Builder addMetadata(String key, Object value) {
+                this.metadata.put(key, value);
+                return this;
+            }
+
+            public OpenSearchQueryResult build() {
+                return new OpenSearchQueryResult(success,
+                        message,
+                        totalHits,
+                        documents,
+                        documentId,
+                        version,
+                        metadata);
+            }
+        }
+    }
+
+    public static void main(String[] args) throws IOException, InterruptedException {
+        DBConfig dbConfig = new DBConfig.Builder()
+                .host("localhost")
+                .port(9200)
+                .user("elastic")
+                .password("4335f9Zxyf")
+                .dbType("elasticsearch")
+                .duration(2)
+                .interval(1)
+                .testType("executionloop")
+//            .database("test_db")
+//            .table("test_table")
+//            .query("INSERT INTO test_table (value) VALUES ('1');")
+                .build();
+        OpenSearchTester tester = new OpenSearchTester(dbConfig);
+        DatabaseConnection connection = tester.connect();
+        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
+                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
+        System.out.println(result);
+        connection.close();
+
+        Thread.sleep(2000);
+        dbConfig = new DBConfig.Builder()
+                .host("127.0.0.1")
+                .testType("query")
+                .query("search")
+                .dbType("elasticsearch")
+                .port(9200)
+                .user("elastic")
+                .password("4335f9Zxyf")
+                .build();
+
+        tester = new OpenSearchTester(dbConfig);
+        connection = tester.connect();
+
+        // 测试索引操作
+        // System.out.println(tester.execute(connection, "create_index:test_index"));
+
+        // 测试文档插入
+        // QueryResult qr = tester.execute(connection, "insert:test_index");
+        // System.out.println(qr);
+        // String[] qrs = qr.toString().split(":");
+        // String documentId = qrs[1].trim();
+
+        // 测试文档搜索（match_all查询）
+        System.out.println(tester.execute(connection, "search:executions_loop_index"));
+
+        // 测试条件搜索
+        // System.out.println(tester.execute(connection, "get:test_index:"+documentId));
+
+        // 清理测试数据
+        // System.out.println(tester.execute(connection, "delete_index:test_index"));
+
+        connection.close();
+
+//        DBConfig dbConfig = new DBConfig.Builder()
+//                .host("127.0.0.1")
+//                .port(9200)
+//                .user("elastic")
+//                .password("4335f9Zxyf")
+//                .testType("connectionstress")
+//                .duration(60)
+//                .table("default")
+//                .org("elastic")
+//                .database("elastic")
+//                .build();
+//
+//        OpenSearchTester tester = new OpenSearchTester(dbConfig);
+//        DatabaseConnection connection = tester.connect();
+//        String result = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
+//        System.out.println(result);
+//        connection.close();
+    }
+}
