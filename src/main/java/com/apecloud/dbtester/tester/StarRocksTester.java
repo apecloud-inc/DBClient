@@ -195,12 +195,14 @@ public class StarRocksTester implements DatabaseTester {
                     // create test databases
                     System.out.println("create databases " + database);
                     query_test = "CREATE DATABASE IF NOT EXISTS " + database + ";";
+                    System.out.println(query_test);
                     execute(connection, query_test);
 
                     if (table.equals("executions_loop_table")) {
                         // drop test table
                         System.out.println("drop table " + table);
                         query_test = "DROP TABLE IF EXISTS " + database + "." + table + ";";
+                        System.out.println(query_test);
                         execute(connection, query_test);
                     }
 
@@ -228,6 +230,7 @@ public class StarRocksTester implements DatabaseTester {
                             + "DUPLICATE KEY(id) "
                             + "DISTRIBUTED BY HASH(id) BUCKETS 3 "
                             + "PROPERTIES ( 'replication_num' = '1' );";
+                    System.out.println(query_test);
                     execute(connection, query_test);
 
                     gen_test_query = 2;
@@ -404,7 +407,7 @@ public class StarRocksTester implements DatabaseTester {
             .host("localhost")
             .port(9030)
             .user("root")
-            .password("0Gt1MY60x7")
+            .password("Lc94v24bM3")
             .dbType("starrocks")
             .duration(10)
             .interval(1)

@@ -195,12 +195,14 @@ public class ClickHouseTester implements DatabaseTester {
                     // create test database
                     System.out.println("create database " + database);
                     query_test = "CREATE DATABASE IF NOT EXISTS " + database + " ON CLUSTER " + databaseCluster + ";";
+                    System.out.println(query_test);
                     execute(connection, query_test);
 
                     if (table.equals("executions_loop_table")) {
                         // drop test table
                         System.out.println("drop table " + table);
                         query_test = "DROP TABLE IF EXISTS " + database + "." + table + " ON CLUSTER " + databaseCluster + ";";
+                        System.out.println(query_test);
                         execute(connection, query_test);
                     }
 
@@ -208,6 +210,7 @@ public class ClickHouseTester implements DatabaseTester {
                     System.out.println("create table " + table);
                     query_test = "CREATE TABLE IF NOT EXISTS " + database + "." + table + " ON CLUSTER " + databaseCluster
                             + " (id UInt32, value String) ENGINE = ReplicatedMergeTree() ORDER BY id;";
+                    System.out.println(query_test);
                     execute(connection, query_test);
 
                     gen_test_query = 2;

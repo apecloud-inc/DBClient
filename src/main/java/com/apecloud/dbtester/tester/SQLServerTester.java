@@ -201,12 +201,14 @@ public class SQLServerTester implements DatabaseTester {
                     // create test databases
                     System.out.println("create databases " + database);
                     query_test = "IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = '" + database + "') CREATE DATABASE " + database;
+                    System.out.println(query_test);
                     execute(connection, query_test);
 
                     if (table.equals("executions_loop_table")) {
                         // drop test table
                         System.out.println("drop table " + table);
                         query_test = "IF OBJECT_ID('" + database + ".." + table + "', 'U') IS NOT NULL DROP TABLE " + database + ".." + table;
+                        System.out.println(query_test);
                         execute(connection, query_test);
                     }
 

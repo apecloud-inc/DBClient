@@ -217,6 +217,7 @@ public class OracleTester implements DatabaseTester {
                         // drop test table
                         System.out.println("drop table " + table);
                         query_test = "DROP TABLE " + database + "." + table;
+                        System.out.println(query_test);
                         execute(connection, query_test);
                         table_count = "0";
                     }else if (!table_count.equals("0")){

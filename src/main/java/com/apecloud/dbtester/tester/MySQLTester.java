@@ -199,12 +199,14 @@ public class MySQLTester implements DatabaseTester {
                     // create test databases
                     System.out.println("create databases " + database);
                     query_test = "CREATE DATABASE IF NOT EXISTS " + database + ";";
+                    System.out.println(query_test);
                     execute(connection, query_test);
 
                     if (table.equals("executions_loop_table")) {
                         // drop test table
                         System.out.println("drop table " + table);
                         query_test = "DROP TABLE IF EXISTS " + database + "." + table + ";";
+                        System.out.println(query_test);
                         execute(connection, query_test);
                     }
 
@@ -234,6 +236,7 @@ public class MySQLTester implements DatabaseTester {
                             + "enum_col ENUM('Option1', 'Option2', 'Option3'), "
                             + "set_col SET('Value1', 'Value2', 'Value3') "
                             + ");";
+                    System.out.println(query_test);
                     execute(connection, query_test);
 
                     gen_test_query = 2;

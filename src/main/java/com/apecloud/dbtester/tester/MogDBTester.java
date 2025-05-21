@@ -212,6 +212,7 @@ public class MogDBTester implements DatabaseTester {
                         // create test databases
                         System.out.println("create databases " + database);
                         query_test = "CREATE DATABASE " + database + ";";
+                        System.out.println(query_test);
                         execute(connection, query_test);
                     }
 
@@ -225,12 +226,14 @@ public class MogDBTester implements DatabaseTester {
                         // drop test table
                         System.out.println("drop table " + table);
                         query_test = "DROP TABLE IF EXISTS " + table + ";";
+                        System.out.println(query_test);
                         execute(connection, query_test);
                     }
 
                     // create test table
                     System.out.println("create table " + table);
                     query_test = "CREATE TABLE IF NOT EXISTS " + table + " (id SERIAL PRIMARY KEY , value text); ";
+                    System.out.println(query_test);
                     execute(connection, query_test);
 
                     gen_test_query = 2;

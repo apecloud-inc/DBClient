@@ -250,18 +250,21 @@ public class OceanbaseTester implements DatabaseTester {
                             // create test databases
                             System.out.println("create databases " + database);
                             query_test = "CREATE DATABASE IF NOT EXISTS " + database + ";";
+                            System.out.println(query_test);
                             execute(connection, query_test);
 
                             if (table.equals("executions_loop_table")) {
                                 // drop test table
                                 System.out.println("drop table " + table);
                                 query_test = "DROP TABLE IF EXISTS " + database + "." + table + ";";
+                                System.out.println(query_test);
                                 execute(connection, query_test);
                             }
 
                             // create test table
                             System.out.println("create table " + table);
                             query_test = "CREATE TABLE IF NOT EXISTS " + database + "." + table + " (id INT PRIMARY KEY AUTO_INCREMENT, value VARCHAR(255));";
+                            System.out.println(query_test);
                             execute(connection, query_test);
 
                             gen_test_query = 2;
@@ -295,6 +298,7 @@ public class OceanbaseTester implements DatabaseTester {
                                 // drop test table
                                 System.out.println("drop table " + table);
                                 query_test = "DROP TABLE " + database + "." + table;
+                                System.out.println(query_test);
                                 execute(connection, query_test);
                                 table_count = "0";
                             }else if (!table_count.equals("0")){

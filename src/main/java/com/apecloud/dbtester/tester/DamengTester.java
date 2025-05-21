@@ -186,6 +186,7 @@ public class DamengTester implements DatabaseTester {
                         // drop test table
                         System.out.println("drop table " + table);
                         query_test = "DROP TABLE IF EXISTS " + table + ";";
+                        System.out.println(query_test);
                         execute(connection, query_test);
                         table_count = "0";
                     }
@@ -194,6 +195,7 @@ public class DamengTester implements DatabaseTester {
                         // create test table
                         System.out.println("create table " + table);
                         query_test = "CREATE TABLE IF NOT EXISTS " + table + " (id INT PRIMARY KEY AUTO_INCREMENT, value VARCHAR(255));";
+                        System.out.println(query_test);
                         execute(connection, query_test);
                     }
 
