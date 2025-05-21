@@ -39,8 +39,11 @@ public class TesterFactory {
             case "es":
             case "elastic":
             case "elasticsearch":
-            case "opensearch":
+            case "elasticsearch8":
                 return new ElasticSearchTester(config);
+            case "elasticsearch7":
+            case "opensearch":
+                return new OpenSearchTester(config);
             case "loki":
                 return new LokiTester(config);
             case "etcd":

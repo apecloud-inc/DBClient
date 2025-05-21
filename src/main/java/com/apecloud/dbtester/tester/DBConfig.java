@@ -378,6 +378,8 @@ public class DBConfig {
                 case "es":
                 case "elastic":
                 case "elasticsearch":
+                case "elasticsearch7":
+                case "elasticsearch8":
                 case "opensearch":
                 case "loki":
                 case "etcd":
