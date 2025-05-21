@@ -6,8 +6,6 @@ public class TesterFactory {
             case "mysql":
             case "foxlake":
             case "polardbx":
-            case "starrocks":
-            case "sr":
             case "greptime":
             case "greptimedb":
                 return new MySQLTester(config);
@@ -78,6 +76,9 @@ public class TesterFactory {
                 return new MinioTester(config);
             case "mogdb":
                 return new MogDBTester(config);
+            case "starrocks":
+            case "sr":
+                return new StarRocksTester(config);
             default:
                 throw new IllegalArgumentException("Unsupported database type: " + config.getDbType());
         }
