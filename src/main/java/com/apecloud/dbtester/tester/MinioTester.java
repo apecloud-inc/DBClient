@@ -4,10 +4,13 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.minio.*;
 import io.minio.messages.Bucket;
+import io.minio.messages.Item;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.sql.Date;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -63,6 +66,10 @@ public class MinioTester implements DatabaseTester {
                     return handleUploadFile(minioConn, bucketName, queryMap);
                 case "download_file":
                     return handleDownloadFile(minioConn, bucketName, queryMap);
+                case "write_data":
+                    return handleWriteData(minioConn, bucketName, queryMap);
+                case "empty_bucket":
+                    return handleEmptyBucket(minioConn, bucketName);
                 default:
                     throw new IOException("Unsupported operation: " + operation);
             }
@@ -143,44 +150,73 @@ public class MinioTester implements DatabaseTester {
         return new MinioQueryResult("File downloaded successfully from bucket=" + bucketName + ", object=" + objectName + " to " + downloadPath);
     }
 
+    private QueryResult handleWriteData(MinioConnection conn, String bucketName, Map<String, Object> queryMap) throws Exception {
+        String objectName = (String) queryMap.get("object_name");
+        String content = (String) queryMap.get("content");
+
+        if (content == null || content.isEmpty()) {
+            throw new IllegalArgumentException("Content cannot be null or empty");
+        }
+
+        ByteArrayInputStream stream = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
+
+        conn.getMinioClient().putObject(PutObjectArgs.builder()
+                .bucket(bucketName)
+                .object(objectName)
+                .stream(stream, content.length(), -1)
+                .contentType("text/plain")
+                .build());
+
+        return new MinioQueryResult("Data written successfully to bucket=" + bucketName + ", object=" + objectName);
+    }
+
+
+    private QueryResult handleEmptyBucket(MinioConnection conn, String bucketName) throws Exception {
+        MinioClient minioClient = conn.getMinioClient();
+        Iterable<Result<Item>> results = minioClient.listObjects(ListObjectsArgs.builder()
+                .bucket(bucketName)
+                .recursive(true)
+                .build());
+
+        for (Result<Item> result : results) {
+            Item item = result.get();
+            minioClient.removeObject(RemoveObjectArgs.builder()
+                    .bucket(bucketName)
+                    .object(item.objectName())
+                    .build());
+            System.out.println("Deleted object: " + item.objectName());
+        }
+
+        return new MinioQueryResult("Bucket " + bucketName + " has been emptied.");
+    }
+
     @Override
     public String connectionStress(int connections, int duration) {
-        int successfulConnections = 0;
-        int failedConnections = 0;
-
+        String query_json="{\"operation\": \"list_bucket\"}";
         for (int i = 0; i < connections; i++) {
             try {
                 DatabaseConnection connection = connect();
                 this.connections.add(connection);
-                String query_json="{\"operation\": \"create_bucket\", \"bucket\": \"my-bucket-" + i + "\"}";
                 execute(connection, query_json);
-
-                query_json="{\"operation\": \"list_bucket\"}";
-                execute(connection, query_json);
-
-                query_json="{\"operation\": \"delete_bucket\", \"bucket\": \"my-bucket-" + i + "\"}";
-                execute(connection, query_json);
-
-                successfulConnections++;
             } catch (IOException e) {
                 e.printStackTrace();
-                failedConnections++;
             }finally {
                 releaseConnections();
             }
         }
 
-        return String.format("Successful connections: %d\n" +
-                             "Failed connections: %d",
-                             successfulConnections, failedConnections);
+        return null;
     }
 
 
     @Override
     public void releaseConnections() {
+        MinioConnection minioConn;
         for (DatabaseConnection connection : connections) {
             try {
                 connection.close();
+                minioConn = (MinioConnection) connection;
+                minioConn.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -230,9 +266,169 @@ public class MinioTester implements DatabaseTester {
         return results.toString();
     }
 
+
+
     @Override
     public String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table) {
-        return null;
+        MinioConnection minioConn = null;
+        StringBuilder result = new StringBuilder();
+        int successfulExecutions = 0;
+        int failedExecutions = 0;
+        int disconnectCounts = 0;
+        boolean executionError = false;
+
+        long startTime = System.currentTimeMillis();
+        long endTime = startTime + duration * 1000;
+        long errorTime = 0;
+        long recoveryTime;
+        long errorToRecoveryTime;
+        Date errorDate = null;
+        long lastOutputTime = System.currentTimeMillis();
+        int outputPassTime = 0;
+
+        int insert_index = 0;
+        int gen_test_query = 0;
+        String query_test;
+        String gen_test_values;
+        ByteArrayInputStream stream = null;
+
+        // Check gen test query
+        if (query == null || query.equals("") || (table != null && !table.equals(""))) {
+            gen_test_query = 1;
+        }
+
+        if (table == null || table.equals("")) {
+            table = dbConfig.getBucket();
+            if (table == null || table.equals("")) {
+                table = "executions-loop-bucket";
+            }
+        }
+
+        System.out.println("Execution loop start: " + query);
+        while (System.currentTimeMillis() < endTime) {
+            insert_index = insert_index + 1;
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastOutputTime >= interval * 1000) {
+                outputPassTime = outputPassTime + interval;
+                lastOutputTime = currentTime;
+                System.out.println("[ " + outputPassTime + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                        + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                        + " disconnect: " + disconnectCounts);
+            }
+
+            try {
+                if (executionError) {
+                    Thread.sleep(1000);
+                    connection = this.connect();
+                }
+                minioConn = (MinioConnection) connection;
+                if (gen_test_query == 1) {
+                    // Check if bucket exists, if not create it
+                    boolean bucketExists = minioConn.getMinioClient().bucketExists(BucketExistsArgs.builder().bucket(table).build());
+                    if (!bucketExists) {
+                        System.out.println("Bucket " + table + " does not exist. Creating bucket...");
+                        minioConn.getMinioClient().makeBucket(MakeBucketArgs.builder().bucket(table).build());
+                        System.out.println("Bucket " + table + " created successfully.");
+                    } else {
+                        System.out.println("Bucket " + table + " already exists.");
+                        if (table.equals("executions-loop-bucket")) {
+
+                            // delete bucket object
+                            System.out.println("Deleted bucket object");
+                            MinioClient minioClient = minioConn.getMinioClient();
+                            Iterable<Result<Item>> objectResults = minioClient.listObjects(ListObjectsArgs.builder()
+                                    .bucket(table)
+                                    .recursive(true)
+                                    .build());
+
+                            for (Result<Item> objectResult : objectResults) {
+                                Item item = objectResult.get();
+                                minioClient.removeObject(RemoveObjectArgs.builder()
+                                        .bucket(table)
+                                        .object(item.objectName())
+                                        .build());
+                                System.out.println("Bucket " + table + " object " + item.objectName() + "  deleted successfully.");
+                            }
+
+                            // delete bucket
+                            System.out.println("Delete bucket " + table);
+                            minioConn.getMinioClient().removeBucket(RemoveBucketArgs.builder().bucket(table).build());
+                            System.out.println("Bucket " + table + " deleted successfully.");
+
+                            System.out.println("Create bucket " + table);
+                            minioConn.getMinioClient().makeBucket(MakeBucketArgs.builder().bucket(table).build());
+                            System.out.println("Bucket " + table + " created successfully.");
+                        }
+                    }
+                    gen_test_query = 2;
+                }
+
+                if ((gen_test_query == 2 && (query == null || query.equals("")) || gen_test_query == 3)) {
+                    gen_test_values =  "executions_loop_" + insert_index;
+                    // Set test query
+                    query = gen_test_values;
+                    if (gen_test_query == 2) {
+                        System.out.println("Execution loop start: " + query);
+                    }
+                    gen_test_query = 3;
+                }
+
+                stream = new ByteArrayInputStream(query.getBytes(StandardCharsets.UTF_8));
+                minioConn.getMinioClient().putObject(PutObjectArgs.builder()
+                        .bucket(table)
+                        .object("executions_loop")
+                        .stream(stream, query.length(), -1)
+                        .contentType("text/plain")
+                        .build());
+                successfulExecutions++;
+                if (executionError) {
+                    recoveryTime = System.currentTimeMillis();
+                    java.sql.Date recoveryDate = new java.sql.Date(recoveryTime);
+                    System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                    System.out.println("[" + sdf.format(recoveryDate) + "] Connection successfully recovered!");
+                    errorToRecoveryTime = recoveryTime - errorTime;
+                    System.out.println("The connection was restored in " + errorToRecoveryTime + " milliseconds.");
+                    executionError = false;
+                }
+            } catch (Exception e) {
+                System.out.println("Execution loop failed: " + e.getMessage());
+                failedExecutions++;
+                insert_index = insert_index - 1;
+                if (!executionError) {
+                    disconnectCounts++;
+                    errorTime = System.currentTimeMillis();
+                    errorDate = new Date(errorTime);
+                    System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                    executionError = true;
+                }
+            } finally {
+                if (stream != null) {
+                    try {
+                        stream.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+        }
+
+        System.out.println("[ " + duration + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                + " disconnect: " + disconnectCounts);
+
+
+        releaseConnections();
+
+        result.append("Execution loop completed during ").append(duration).append(" seconds");
+
+        return String.format("Total Executions: %d\n" +
+                        "Successful Executions: %d\n" +
+                        "Failed Executions: %d\n" +
+                        "Disconnection Counts: %d",
+                successfulExecutions + failedExecutions,
+                successfulExecutions,
+                failedExecutions,
+                disconnectCounts);
     }
 
     private static class MinioConnection implements DatabaseConnection {
@@ -245,10 +441,15 @@ public class MinioTester implements DatabaseTester {
         public MinioClient getMinioClient() {
             return minioClient;
         }
-
         @Override
         public void close() throws IOException {
-            // MinioClient does not have a close method, but we can leave it open
+            try {
+                if (minioClient instanceof AutoCloseable) {
+                    ((AutoCloseable) minioClient).close();
+                }
+            } catch (Exception e) {
+                throw new IOException("Failed to close MinIO client", e);
+            }
         }
     }
 
@@ -291,19 +492,40 @@ public class MinioTester implements DatabaseTester {
     }
 
     public static void main(String[] args) throws IOException {
+//        DBConfig dbConfig = new DBConfig.Builder()
+//                .dbType("minio")
+//                .testType("connectionstress")
+//                .host("127.0.0.1")
+//                .port(9000)
+//                .user("root")
+//                .password("8IkOu64ALX19202y")
+//                .connectionCount(10)
+//                .duration(1)
+//                .build();
+//
+//        MinioTester tester = new MinioTester(dbConfig);
+//        DatabaseConnection connection = tester.connect();
+//        String result = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
+//        System.out.println(result);
+//        connection.close();
+
+
+        System.setProperty("io.minio.net.Client.SHUTDOWN_TIMEOUT_MILLIS", "100");
         DBConfig dbConfig = new DBConfig.Builder()
-                .dbType("minio")
-                .testType("connectionstress")
-                .host("127.0.0.1")
+                .host("localhost")
                 .port(9000)
                 .user("root")
-                .password("7V23k04Rd6x21tAG")
-                .connectionCount(100)
-                .duration(1)
+                .password("8IkOu64ALX19202y")
+                .dbType("minio")
+                .duration(10)
+                .interval(1)
+                .testType("executionloop")
                 .build();
-
         MinioTester tester = new MinioTester(dbConfig);
-        String testResults = tester.executeTest();
-        System.out.println(testResults);
+        DatabaseConnection connection = tester.connect();
+        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
+                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
+        System.out.println(result);
+        connection.close();
     }
 }
