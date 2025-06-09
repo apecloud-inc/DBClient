@@ -154,10 +154,10 @@ public class MySQLTester implements DatabaseTester {
         long lastOutputTime = System.currentTimeMillis();
         int outputPassTime = 0;
 
-        int insert_index = 0;
-        int gen_test_query = 0;
-        String query_test;
-        String gen_test_values;
+        int insertIndex = 0;
+        int genTestQuery = 0;
+        String genTest;
+        String genTestValue;
 
         byte[] blobData = new byte[10];
         byte[] binaryData = new byte[10];
@@ -166,7 +166,7 @@ public class MySQLTester implements DatabaseTester {
 
         // check gen test query
         if (query == null || query.equals("") || (database != null && !database.equals("")) || (table != null && !table.equals(""))) {
-            gen_test_query = 1;
+            genTestQuery = 1;
         }
 
         if (database == null || database.equals("")) {
@@ -179,7 +179,7 @@ public class MySQLTester implements DatabaseTester {
 
         System.out.println("Execution loop start:" + query);
         while (System.currentTimeMillis() < endTime) {
-            insert_index = insert_index + 1;
+            insertIndex = insertIndex + 1;
             long currentTime = System.currentTimeMillis();
             if (currentTime - lastOutputTime >= interval * 1000) {
                 outputPassTime = outputPassTime + interval;
@@ -195,24 +195,24 @@ public class MySQLTester implements DatabaseTester {
                     connection = this.connect();
                 }
 
-                if (gen_test_query == 1) {
+                if (genTestQuery == 1) {
                     // create test databases
                     System.out.println("create databases " + database);
-                    query_test = "CREATE DATABASE IF NOT EXISTS " + database + ";";
-                    System.out.println(query_test);
-                    execute(connection, query_test);
+                    genTest = "CREATE DATABASE IF NOT EXISTS " + database + ";";
+                    System.out.println(genTest);
+                    execute(connection, genTest);
 
                     if (table.equals("executions_loop_table")) {
                         // drop test table
                         System.out.println("drop table " + table);
-                        query_test = "DROP TABLE IF EXISTS " + database + "." + table + ";";
-                        System.out.println(query_test);
-                        execute(connection, query_test);
+                        genTest = "DROP TABLE IF EXISTS " + database + "." + table + ";";
+                        System.out.println(genTest);
+                        execute(connection, genTest);
                     }
 
                     // create test table with more field types
                     System.out.println("create table " + table);
-                    query_test = "CREATE TABLE IF NOT EXISTS " + database + "." + table + " ("
+                    genTest = "CREATE TABLE IF NOT EXISTS " + database + "." + table + " ("
                             + "id INT PRIMARY KEY AUTO_INCREMENT, "
                             + "value VARCHAR(255), "
                             + "tinyint_col TINYINT, "
@@ -236,17 +236,17 @@ public class MySQLTester implements DatabaseTester {
                             + "enum_col ENUM('Option1', 'Option2', 'Option3'), "
                             + "set_col SET('Value1', 'Value2', 'Value3') "
                             + ");";
-                    System.out.println(query_test);
-                    execute(connection, query_test);
+                    System.out.println(genTest);
+                    execute(connection, genTest);
 
-                    gen_test_query = 2;
+                    genTestQuery = 2;
                 }
 
-                if ((gen_test_query == 2 && (query == null || query.equals("")) || gen_test_query == 3)) {
+                if ((genTestQuery == 2 && (query == null || query.equals("")) || genTestQuery == 3)) {
                     Random random = new Random();
 
                     // Generate random values
-                    gen_test_values = "executions_loop_test_" + insert_index;
+                    genTestValue = "executions_loop_test_" + insertIndex;
 
                     random.nextBytes(blobData);
                     random.nextBytes(binaryData);
@@ -259,7 +259,7 @@ public class MySQLTester implements DatabaseTester {
                             + "date_col, time_col, datetime_col, timestamp_col, year_col, char_col, text_col, "
                             + "blob_col, binary_col, varbinary_col, enum_col, set_col) "
                             + "VALUES ("
-                            + "'" + gen_test_values + "', "
+                            + "'" + genTestValue + "', "
                             + random.nextInt(128) + ", " // TINYINT
                             + random.nextInt(32768) + ", " // SMALLINT
                             + random.nextInt(8388608) + ", " // MEDIUMINT
@@ -281,10 +281,10 @@ public class MySQLTester implements DatabaseTester {
                             + "'Option" + (random.nextInt(3) + 1) + "', " // ENUM
                             + "'Value" + (random.nextInt(3) + 1) + "' " // SET
                             + ");";
-                    if (gen_test_query == 2) {
+                    if (genTestQuery == 2) {
                         System.out.println("Execution loop start:" + query);
                     }
-                    gen_test_query = 3;
+                    genTestQuery = 3;
                 }
 
                 executeResult = execute(connection, query);
@@ -302,13 +302,13 @@ public class MySQLTester implements DatabaseTester {
                     }
                 } else {
                     failedExecutions++;
-                    insert_index = insert_index - 1;
+                    insertIndex = insertIndex - 1;
                     executionError = true;
                 }
             } catch (IOException e) {
                 System.out.println(e);
                 failedExecutions++;
-                insert_index = insert_index - 1;
+                insertIndex = insertIndex - 1;
                 if (!executionError) {
                     disconnectCounts++;
                     errorTime = System.currentTimeMillis();

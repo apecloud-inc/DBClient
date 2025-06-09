@@ -182,19 +182,19 @@ public class OceanbaseTester implements DatabaseTester {
         long lastOutputTime = System.currentTimeMillis();
         int outputPassTime = 0;
 
-        int insert_index = 0;
-        int gen_test_query = 0;
-        String query_test;
-        String gen_test_values;
+        int insertIndex = 0;
+        int genTestQuery = 0;
+        String genTest;
+        String genTestValue;
         QueryResult queryResult;
-        String table_count = "0";
-        int max_id;
+        String tableCount = "0";
+        int maxId;
 
         switch (accessMode.toLowerCase()) {
             case "mysql":
                 // check gen test query
                 if (query == null || query.equals("") || (database != null && !database.equals("")) || (table != null && !table.equals(""))) {
-                    gen_test_query = 1;
+                    genTestQuery = 1;
                 }
 
                 if (database == null || database.equals("")) {
@@ -216,7 +216,7 @@ public class OceanbaseTester implements DatabaseTester {
 
                 // check gen test query
                 if (query == null || query.equals("") || (table != null && !table.equals(""))) {
-                    gen_test_query = 1;
+                    genTestQuery = 1;
                 }
 
                 if (table == null || table.equals("")) {
@@ -229,7 +229,7 @@ public class OceanbaseTester implements DatabaseTester {
 
         System.out.println("Execution loop start:" + query);
         while (System.currentTimeMillis() < endTime) {
-            insert_index = insert_index + 1;
+            insertIndex = insertIndex + 1;
             long currentTime = System.currentTimeMillis();
             if (currentTime - lastOutputTime >= interval * 1000) {
                 outputPassTime = outputPassTime + interval;
@@ -246,92 +246,92 @@ public class OceanbaseTester implements DatabaseTester {
                 }
                 switch (accessMode.toLowerCase()) {
                     case "mysql":
-                        if (gen_test_query == 1) {
+                        if (genTestQuery == 1) {
                             // create test databases
                             System.out.println("create databases " + database);
-                            query_test = "CREATE DATABASE IF NOT EXISTS " + database + ";";
-                            System.out.println(query_test);
-                            execute(connection, query_test);
+                            genTest = "CREATE DATABASE IF NOT EXISTS " + database + ";";
+                            System.out.println(genTest);
+                            execute(connection, genTest);
 
                             if (table.equals("executions_loop_table")) {
                                 // drop test table
                                 System.out.println("drop table " + table);
-                                query_test = "DROP TABLE IF EXISTS " + database + "." + table + ";";
-                                System.out.println(query_test);
-                                execute(connection, query_test);
+                                genTest = "DROP TABLE IF EXISTS " + database + "." + table + ";";
+                                System.out.println(genTest);
+                                execute(connection, genTest);
                             }
 
                             // create test table
                             System.out.println("create table " + table);
-                            query_test = "CREATE TABLE IF NOT EXISTS " + database + "." + table + " (id INT PRIMARY KEY AUTO_INCREMENT, value VARCHAR(255));";
-                            System.out.println(query_test);
-                            execute(connection, query_test);
+                            genTest = "CREATE TABLE IF NOT EXISTS " + database + "." + table + " (id INT PRIMARY KEY AUTO_INCREMENT, value VARCHAR(255));";
+                            System.out.println(genTest);
+                            execute(connection, genTest);
 
-                            gen_test_query = 2;
+                            genTestQuery = 2;
                         }
 
-                        if ((gen_test_query == 2 && (query == null || query.equals("")) || gen_test_query == 3 )) {
-                            gen_test_values = "executions_loop_test_" + insert_index;
+                        if ((genTestQuery == 2 && (query == null || query.equals("")) || genTestQuery == 3 )) {
+                            genTestValue = "executions_loop_test_" + insertIndex;
                             // set test query
-                            query = "INSERT INTO " + database + "." + table + " (value) VALUES ('" + gen_test_values + "');";
-                            if (gen_test_query == 2) {
+                            query = "INSERT INTO " + database + "." + table + " (value) VALUES ('" + genTestValue + "');";
+                            if (genTestQuery == 2) {
                                 System.out.println("Execution loop start:" + query);
                             }
-                            gen_test_query = 3;
+                            genTestQuery = 3;
                         }
 
                         break;
                     case "oracle":
-                        if (gen_test_query == 1) {
-                            query_test = "SELECT COUNT(*) FROM DBA_TABLES WHERE OWNER = '" + database.toUpperCase() + "' AND TABLE_NAME ='" + table.toUpperCase() + "'";
-                            queryResult = execute(connection, query_test);
+                        if (genTestQuery == 1) {
+                            genTest = "SELECT COUNT(*) FROM DBA_TABLES WHERE OWNER = '" + database.toUpperCase() + "' AND TABLE_NAME ='" + table.toUpperCase() + "'";
+                            queryResult = execute(connection, genTest);
                             if (queryResult.hasResultSet()) {
                                 ResultSet rs = queryResult.getResultSet();
                                 while (rs.next()) {
                                     String count = rs.getString(1);
-                                    System.out.println("table_count: " + count);
-                                    table_count = count;
+                                    System.out.println("tableCount: " + count);
+                                    tableCount = count;
                                 }
                             }
 
-                            if (table.equals("EXECUTIONS_LOOP_TABLE") && !table_count.equals("0")) {
+                            if (table.equals("EXECUTIONS_LOOP_TABLE") && !tableCount.equals("0")) {
                                 // drop test table
                                 System.out.println("drop table " + table);
-                                query_test = "DROP TABLE " + database + "." + table;
-                                System.out.println(query_test);
-                                execute(connection, query_test);
-                                table_count = "0";
-                            }else if (!table_count.equals("0")){
-                                query_test = "SELECT MAX(ID) FROM " + database + "." + table;
-                                queryResult = execute(connection, query_test);
+                                genTest = "DROP TABLE " + database + "." + table;
+                                System.out.println(genTest);
+                                execute(connection, genTest);
+                                tableCount = "0";
+                            }else if (!tableCount.equals("0")){
+                                genTest = "SELECT MAX(ID) FROM " + database + "." + table;
+                                queryResult = execute(connection, genTest);
                                 if (queryResult.hasResultSet()) {
                                     ResultSet rs = queryResult.getResultSet();
                                     while (rs.next()) {
-                                        String max_id_str = rs.getString(1);
-                                        System.out.println("max_id: " + max_id_str);
-                                        max_id = Integer.parseInt(max_id_str);
-                                        insert_index += max_id;
+                                        String maxIdStr = rs.getString(1);
+                                        System.out.println("maxId: " + maxIdStr);
+                                        maxId = Integer.parseInt(maxIdStr);
+                                        insertIndex += maxId;
                                     }
                                 }
                             }
 
-                            if (table_count.equals("0")) {
+                            if (tableCount.equals("0")) {
                                 // create test table
                                 System.out.println("create table " + table);
-                                query_test = "CREATE TABLE " + database + "." + table + "(ID NUMBER PRIMARY KEY, VALUE VARCHAR2(255))";
-                                execute(connection, query_test);
+                                genTest = "CREATE TABLE " + database + "." + table + "(ID NUMBER PRIMARY KEY, VALUE VARCHAR2(255))";
+                                execute(connection, genTest);
                             }
-                            gen_test_query = 2;
+                            genTestQuery = 2;
                         }
 
-                        if ((gen_test_query == 2 && (query == null || query.equals("")) || gen_test_query == 3 )) {
-                            gen_test_values = "executions_loop_test_" + insert_index;
+                        if ((genTestQuery == 2 && (query == null || query.equals("")) || genTestQuery == 3 )) {
+                            genTestValue = "executions_loop_test_" + insertIndex;
                             // set test query
-                            query = "INSERT INTO " + database + "." + table + " (ID, VALUE) VALUES (" + insert_index + ", '" + gen_test_values + "')";
-                            if (gen_test_query == 2) {
+                            query = "INSERT INTO " + database + "." + table + " (ID, VALUE) VALUES (" + insertIndex + ", '" + genTestValue + "')";
+                            if (genTestQuery == 2) {
                                 System.out.println("Execution loop start:" + query);
                             }
-                            gen_test_query = 3;
+                            genTestQuery = 3;
                         }
 
                         break;
@@ -354,12 +354,12 @@ public class OceanbaseTester implements DatabaseTester {
                     }
                 } else {
                     failedExecutions++;
-                    insert_index = insert_index - 1;
+                    insertIndex = insertIndex - 1;
                     executionError = true;
                 }
             } catch (IOException e) {
                 failedExecutions++;
-                insert_index = insert_index - 1;
+                insertIndex = insertIndex - 1;
                 if (!executionError) {
                     disconnectCounts++;
                     errorTime = System.currentTimeMillis();

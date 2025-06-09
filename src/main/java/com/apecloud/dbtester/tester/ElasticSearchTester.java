@@ -320,14 +320,14 @@ public class ElasticSearchTester implements DatabaseTester {
         long lastOutputTime = System.currentTimeMillis();
         int outputPassTime = 0;
 
-        int insert_index = 0;
-        int gen_test_query = 0;
-        String gen_test_value;
+        int insertIndex = 0;
+        int genTestQuery = 0;
+        String genTestValue;
         ElasticSearchQueryResult queryResult;
 
         // Check gen test query
         if (query == null || query.equals("") || (table != null && !table.equals(""))) {
-            gen_test_query = 1;
+            genTestQuery = 1;
         }
 
         if (table == null || table.equals("")) {
@@ -336,7 +336,7 @@ public class ElasticSearchTester implements DatabaseTester {
 
         System.out.println("Execution loop start: " + query);
         while (System.currentTimeMillis() < endTime) {
-            insert_index++;
+            insertIndex++;
             long currentTime = System.currentTimeMillis();
 
             if (currentTime - lastOutputTime >= interval * 1000) {
@@ -353,7 +353,7 @@ public class ElasticSearchTester implements DatabaseTester {
                     connection = this.connect();
                 }
 
-                if (gen_test_query == 1) {
+                if (genTestQuery == 1) {
                     // Check if index exists, if not create it
                     queryResult = (ElasticSearchQueryResult) execute(connection, "check_index:" + table);
                     if (!queryResult.getMessage().contains("true")) {
@@ -374,23 +374,23 @@ public class ElasticSearchTester implements DatabaseTester {
                         }
                     }
 
-                    gen_test_query = 2;
+                    genTestQuery = 2;
                 }
 
-                if ((gen_test_query == 2 && (query == null || query.equals("")) || gen_test_query == 3)) {
+                if ((genTestQuery == 2 && (query == null || query.equals("")) || genTestQuery == 3)) {
                     // Set test query
-                    gen_test_value = "executions_loop_" + insert_index;
+                    genTestValue = "executions_loop_" + insertIndex;
                     String document = String.format(
                             "{\"id\": \"%d\", \"name\": \"%s\", \"value\": \"%s\"}",
                             System.currentTimeMillis(),
-                            gen_test_value,
-                            insert_index
+                            genTestValue,
+                            insertIndex
                     );
                     query = String.format("insert:%s:%s", table, document);
-                    if (gen_test_query == 2) {
+                    if (genTestQuery == 2) {
                         System.out.println("Execution loop start: " + query);
                     }
-                    gen_test_query = 3;
+                    genTestQuery = 3;
                 }
 
                 executeResult = execute(connection, query);
@@ -408,13 +408,13 @@ public class ElasticSearchTester implements DatabaseTester {
                     }
                 } else {
                     failedExecutions++;
-                    insert_index = insert_index - 1;
+                    insertIndex = insertIndex - 1;
                     executionError = true;
                 }
             } catch (Exception e) {
                 System.out.println("Execution loop failed: " + e.getMessage());
                 failedExecutions++;
-                insert_index--;
+                insertIndex--;
 
                 if (!executionError) {
                     disconnectCounts++;

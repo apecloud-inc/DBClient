@@ -255,13 +255,13 @@ public class MongoDBTester implements DatabaseTester {
         long lastOutputTime = System.currentTimeMillis();
         int outputPassTime = 0;
 
-        int insert_index = 0;
-        int gen_test_query = 0;
-        String gen_test_values;
+        int insertIndex = 0;
+        int genTestQuery = 0;
+        String genTestValue;
 
         // check gen test query
         if (query == null || query.equals("") || (table != null && !table.equals(""))) {
-            gen_test_query = 1;
+            genTestQuery = 1;
         }
 
         if (table == null || table.equals("")) {
@@ -270,7 +270,7 @@ public class MongoDBTester implements DatabaseTester {
 
         System.out.println("Execution loop start:" + query);
         while (System.currentTimeMillis() < endTime) {
-            insert_index = insert_index + 1;
+            insertIndex = insertIndex + 1;
             long currentTime = System.currentTimeMillis();
             if (currentTime - lastOutputTime >= interval * 1000) {
                 outputPassTime = outputPassTime + interval;
@@ -286,23 +286,23 @@ public class MongoDBTester implements DatabaseTester {
                     connection = this.connect();
                 }
                 mongoConnection = (MongoDBConnection) connection;
-                if (gen_test_query == 1) {
+                if (genTestQuery == 1) {
                     if (table.equals("executions_loop_table")) {
                         // drop test table
                         System.out.println("drop table " + table);
                         mongoConnection.getDatabase().getCollection(table).drop();
                     }
-                    gen_test_query = 2;
+                    genTestQuery = 2;
                 }
 
-                if ((gen_test_query == 2 && (query == null || query.equals("")) || gen_test_query == 3)) {
-                    gen_test_values = "executions_loop_test_" + insert_index;
+                if ((genTestQuery == 2 && (query == null || query.equals("")) || genTestQuery == 3)) {
+                    genTestValue = "executions_loop_test_" + insertIndex;
                     // set test query
-                    query = "{ value: '" + gen_test_values + "' }";
-                    if (gen_test_query == 2) {
+                    query = "{ value: '" + genTestValue + "' }";
+                    if (genTestQuery == 2) {
                         System.out.println("Execution loop start:" + query);
                     }
-                    gen_test_query = 3;
+                    genTestQuery = 3;
                 }
 
                 // Execute the query (insert operation in MongoDB)
@@ -321,13 +321,13 @@ public class MongoDBTester implements DatabaseTester {
                     }
                 } else {
                     failedExecutions++;
-                    insert_index = insert_index - 1;
+                    insertIndex = insertIndex - 1;
                     executionError = true;
                 }
             } catch (Exception e) {
                 System.out.println("Execution loop failed: " + e.getMessage());
                 failedExecutions++;
-                insert_index = insert_index - 1;
+                insertIndex = insertIndex - 1;
                 if (!executionError) {
                     disconnectCounts++;
                     errorTime = System.currentTimeMillis();

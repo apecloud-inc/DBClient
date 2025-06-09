@@ -304,18 +304,18 @@ public class KafkaTester implements DatabaseTester {
         long lastOutputTime = System.currentTimeMillis();
         int outputPassTime = 0;
 
-        int insert_index = 0;
-        int gen_test_query = 0;
-        String query_test;
+        int insertIndex = 0;
+        int genTestQuery = 0;
+        String genTest;
         String gen_test_key;
-        String gen_test_values;
+        String genTestValue;
         QueryResult queryResult;
         KafkaQueryResult kafkaQueryResult;
-        int table_count = 0;
+        int tableCount = 0;
 
         // check gen test query
         if (query == null || query.equals("") || (topic != null && !topic.equals(""))) {
-            gen_test_query = 1;
+            genTestQuery = 1;
         }
 
         if (topic != null && !topic.equals("")) {
@@ -326,7 +326,7 @@ public class KafkaTester implements DatabaseTester {
 
         System.out.println("Execution loop start:" + query);
         while (System.currentTimeMillis() < endTime) {
-            insert_index = insert_index + 1;
+            insertIndex = insertIndex + 1;
             long currentTime = System.currentTimeMillis();
             if (currentTime - lastOutputTime >= interval * 1000) {
                 outputPassTime = outputPassTime + interval;
@@ -342,40 +342,40 @@ public class KafkaTester implements DatabaseTester {
                     connection = this.connect();
                 }
 
-                if (gen_test_query == 1) {
+                if (genTestQuery == 1) {
                     // check topics exists
-                    query_test = "{\"operation\":\"list_topics\"}";
-                    queryResult = execute(connection, query_test);
+                    genTest = "{\"operation\":\"list_topics\"}";
+                    queryResult = execute(connection, genTest);
                     kafkaQueryResult = (KafkaQueryResult) queryResult;
                     if (queryResult.hasResultSet()) {
                         List<String> topicsList = kafkaQueryResult.getResults();
                         for (String topicTmp:topicsList) {
                             if (topicTmp == table || topicTmp.equals(table) ) {
-                                table_count = 1;
+                                tableCount = 1;
                                 break;
                             }
                         }
                     }
 
-                    if (table_count == 0) {
+                    if (tableCount == 0) {
                         // create test topic
                         System.out.println("create topic " + table);
-                        query_test = "{\"operation\":\"create_topic\",\"topic\":\"" + table + "\"}";
-                        execute(connection, query_test);
+                        genTest = "{\"operation\":\"create_topic\",\"topic\":\"" + table + "\"}";
+                        execute(connection, genTest);
                     }
 
-                    gen_test_query = 2;
+                    genTestQuery = 2;
                 }
-                if ((gen_test_query == 2 && (query == null || query.equals("")) || gen_test_query == 3 )) {
-                    gen_test_key = "executions_loop_key_" + insert_index;
-                    gen_test_values = "executions_loop_value_" + insert_index;
+                if ((genTestQuery == 2 && (query == null || query.equals("")) || genTestQuery == 3 )) {
+                    gen_test_key = "executions_loop_key_" + insertIndex;
+                    genTestValue = "executions_loop_value_" + insertIndex;
                     // set test query
                     query = "{\"operation\":\"produce\",\"topic\":\"" + table + "\",\"key\":\""
-                            + gen_test_key + "\",\"value\":\"" + gen_test_values + "\"}";
-                    if (gen_test_query == 2) {
+                            + gen_test_key + "\",\"value\":\"" + genTestValue + "\"}";
+                    if (genTestQuery == 2) {
                         System.out.println("Execution loop start:" + query);
                     }
-                    gen_test_query = 3;
+                    genTestQuery = 3;
                 }
 
                 executeResult = execute(connection, query);
@@ -393,12 +393,12 @@ public class KafkaTester implements DatabaseTester {
                     }
                 } else {
                     failedExecutions++;
-                    insert_index = insert_index - 1;
+                    insertIndex = insertIndex - 1;
                     executionError = true;
                 }
             } catch (IOException e) {
                 failedExecutions++;
-                insert_index = insert_index - 1;
+                insertIndex = insertIndex - 1;
                 if (!executionError) {
                     disconnectCounts++;
                     errorTime = System.currentTimeMillis();
@@ -528,14 +528,14 @@ public class KafkaTester implements DatabaseTester {
         System.out.println(result);
         connection.close();
 
-//        String query_test = "{\"operation\":\"delete_topic\",\"topic\":\"test\"}";
-//        tester.execute(connection, query_test);
+//        String genTest = "{\"operation\":\"delete_topic\",\"topic\":\"test\"}";
+//        tester.execute(connection, genTest);
 //
-//        query_test = "{\"operation\":\"create_topic\",\"topic\":\"test\"}";
-//        tester.execute(connection, query_test);
+//        genTest = "{\"operation\":\"create_topic\",\"topic\":\"test\"}";
+//        tester.execute(connection, genTest);
 //
-//        query_test = "{\"operation\":\"list_topics\"}";
-//        QueryResult queryResult = tester.execute(connection, query_test);
+//        genTest = "{\"operation\":\"list_topics\"}";
+//        QueryResult queryResult = tester.execute(connection, genTest);
 //        KafkaQueryResult kafkaQueryResult = (KafkaQueryResult)queryResult;
 //        if (queryResult.hasResultSet()) {
 //            List<String> rs = kafkaQueryResult.getResults();
