@@ -155,10 +155,10 @@ public class SQLServerTester implements DatabaseTester {
         long lastOutputTime = System.currentTimeMillis();
         int outputPassTime = 0;
 
-        int insert_index = 0;
-        int gen_test_query = 0;
-        String query_test;
-        String gen_test_values;
+        int insertIndex = 0;
+        int genTestQuery = 0;
+        String genTest;
+        String genTestValue;
 
         byte[] blobData = new byte[10];
         byte[] binaryData = new byte[10];
@@ -167,7 +167,7 @@ public class SQLServerTester implements DatabaseTester {
 
         // check gen test query
         if (query == null || query.equals("") || (database != null && !database.equals("")) || (table != null && !table.equals(""))) {
-            gen_test_query = 1;
+            genTestQuery = 1;
         }
 
         if (database == null || database.isEmpty()) {
@@ -180,7 +180,7 @@ public class SQLServerTester implements DatabaseTester {
         System.out.println("Execution loop start: " + query);
 
         while (System.currentTimeMillis() < endTime) {
-            insert_index = insert_index + 1;
+            insertIndex = insertIndex + 1;
             long currentTime = System.currentTimeMillis();
 
             if (currentTime - lastOutputTime >= interval * 1000) {
@@ -197,24 +197,24 @@ public class SQLServerTester implements DatabaseTester {
                     connection = this.connect(); // 重新连接
                 }
 
-                if (gen_test_query == 1) {
+                if (genTestQuery == 1) {
                     // create test databases
                     System.out.println("create databases " + database);
-                    query_test = "IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = '" + database + "') CREATE DATABASE " + database;
-                    System.out.println(query_test);
-                    execute(connection, query_test);
+                    genTest = "IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = '" + database + "') CREATE DATABASE " + database;
+                    System.out.println(genTest);
+                    execute(connection, genTest);
 
                     if (table.equals("executions_loop_table")) {
                         // drop test table
                         System.out.println("drop table " + table);
-                        query_test = "IF OBJECT_ID('" + database + ".." + table + "', 'U') IS NOT NULL DROP TABLE " + database + ".." + table;
-                        System.out.println(query_test);
-                        execute(connection, query_test);
+                        genTest = "IF OBJECT_ID('" + database + ".." + table + "', 'U') IS NOT NULL DROP TABLE " + database + ".." + table;
+                        System.out.println(genTest);
+                        execute(connection, genTest);
                     }
 
                     // create test table with more field types
                     System.out.println("create table " + table);
-                    query_test = "IF OBJECT_ID('" + database + ".." + table + "', 'U') IS NULL CREATE TABLE " + database + ".." + table + " ("
+                    genTest = "IF OBJECT_ID('" + database + ".." + table + "', 'U') IS NULL CREATE TABLE " + database + ".." + table + " ("
                             + "id INT IDENTITY(1,1) PRIMARY KEY, "
                             + "value VARCHAR(255), "
                             + "tinyint_col TINYINT, "
@@ -237,16 +237,16 @@ public class SQLServerTester implements DatabaseTester {
                             + "enum_col VARCHAR(10), "
                             + "set_col VARCHAR(50) "
                             + ")";
-                    execute(connection, query_test);
+                    execute(connection, genTest);
 
-                    gen_test_query = 2;
+                    genTestQuery = 2;
                 }
 
-                if ((gen_test_query == 2 && (query == null || query.isEmpty())) || gen_test_query == 3) {
+                if ((genTestQuery == 2 && (query == null || query.isEmpty())) || genTestQuery == 3) {
                     Random random = new Random();
 
                     // 生成随机值
-                    gen_test_values = "executions_loop_test_" + insert_index;
+                    genTestValue = "executions_loop_test_" + insertIndex;
                     random.nextBytes(blobData);
                     random.nextBytes(binaryData);
                     random.nextBytes(varbinaryData);
@@ -257,7 +257,7 @@ public class SQLServerTester implements DatabaseTester {
                             "int_col, bigint_col, float_col, double_col, decimal_col, date_col, time_col, " +
                             "datetime_col, timestamp_col, year_col, char_col, text_col, blob_col, binary_col, " +
                             "varbinary_col, enum_col, set_col) VALUES ("
-                            + "'" + gen_test_values + "', "
+                            + "'" + genTestValue + "', "
                             + random.nextInt(256) + ", "  // TINYINT (0-255)
                             + random.nextInt(32768) + ", " // SMALLINT
                             + random.nextInt() + ", "
@@ -279,11 +279,11 @@ public class SQLServerTester implements DatabaseTester {
                             + "'Value" + (random.nextInt(3) + 1) + "'"
                             + ")";
 
-                    if (gen_test_query == 2) {
+                    if (genTestQuery == 2) {
                         System.out.println("Execution loop start: " + query);
                     }
 
-                    gen_test_query = 3;
+                    genTestQuery = 3;
                 }
 
                 executeResult = execute(connection, query);
@@ -301,13 +301,13 @@ public class SQLServerTester implements DatabaseTester {
                     }
                 } else {
                     failedExecutions++;
-                    insert_index = insert_index - 1;
+                    insertIndex = insertIndex - 1;
                     executionError = true;
                 }
             } catch (IOException | InterruptedException e) {
                 System.out.println(e.getMessage());
                 failedExecutions++;
-                insert_index = insert_index - 1;
+                insertIndex = insertIndex - 1;
                 if (!executionError) {
                     disconnectCounts++;
                     errorTime = System.currentTimeMillis();

@@ -142,7 +142,7 @@ public class PostgreSQLTester implements DatabaseTester {
         StringBuilder result = new StringBuilder();
         QueryResult executeResult;
         int executeUpdateCount;
-        StringBuilder result_db = new StringBuilder();
+        StringBuilder resultDb = new StringBuilder();
         int successfulExecutions = 0;
         int failedExecutions = 0;
         int disconnectCounts = 0;
@@ -157,10 +157,10 @@ public class PostgreSQLTester implements DatabaseTester {
         long lastOutputTime = System.currentTimeMillis();
         int outputPassTime = 0;
 
-        int insert_index = 0;
-        int gen_test_query = 0;
-        String query_test;
-        String gen_test_values;
+        int insertIndex = 0;
+        int genTestQuery = 0;
+        String genTest;
+        String genTestValue;
 
         byte[] blobData = new byte[10];
         byte[] binaryData = new byte[10];
@@ -168,7 +168,7 @@ public class PostgreSQLTester implements DatabaseTester {
 
         // check gen test query
         if (query == null || query.equals("") || (database != null && !database.equals("")) || (table != null && !table.equals(""))) {
-            gen_test_query = 1;
+            genTestQuery = 1;
         }
 
         if (database == null || database.equals("")) {
@@ -181,7 +181,7 @@ public class PostgreSQLTester implements DatabaseTester {
 
         System.out.println("Execution loop start:" + query);
         while (System.currentTimeMillis() < endTime) {
-            insert_index = insert_index + 1;
+            insertIndex = insertIndex + 1;
             long currentTime = System.currentTimeMillis();
             if (currentTime - lastOutputTime >= interval * 1000) {
                 outputPassTime = outputPassTime + interval;
@@ -197,10 +197,10 @@ public class PostgreSQLTester implements DatabaseTester {
                     connection = this.connect();
                 }
 
-                if (gen_test_query == 1) {
+                if (genTestQuery == 1) {
                     // check if database exists
-                    query_test = "SELECT datname FROM pg_database WHERE datname = '" + database + "';";
-                    QueryResult queryResult = execute(connection, query_test);
+                    genTest = "SELECT datname FROM pg_database WHERE datname = '" + database + "';";
+                    QueryResult queryResult = execute(connection, genTest);
                     if (queryResult.hasResultSet()) {
                         ResultSet rs = queryResult.getResultSet();
                         if (rs.getMetaData() != null) {
@@ -208,18 +208,18 @@ public class PostgreSQLTester implements DatabaseTester {
                             int columnCount = metaData.getColumnCount();
                             while (rs.next()) {
                                 for (int i = 1; i <= columnCount; i++) {
-                                    result_db.append(rs.getString(i));
+                                    resultDb.append(rs.getString(i));
                                 }
                             }
                         }
                     }
 
-                    if (result_db.toString().equals("")) {
+                    if (resultDb.toString().equals("")) {
                         // create test databases
                         System.out.println("create databases " + database);
-                        query_test = "CREATE DATABASE " + database + ";";
-                        System.out.println(query_test);
-                        execute(connection, query_test);
+                        genTest = "CREATE DATABASE " + database + ";";
+                        System.out.println(genTest);
+                        execute(connection, genTest);
                     }
 
                     if (!databaseConnection.equals(database)) {
@@ -231,14 +231,14 @@ public class PostgreSQLTester implements DatabaseTester {
                     if (table.equals("executions_loop_table")) {
                         // drop test table
                         System.out.println("drop table " + table);
-                        query_test = "DROP TABLE IF EXISTS " + table + ";";
-                        System.out.println(query_test);
-                        execute(connection, query_test);
+                        genTest = "DROP TABLE IF EXISTS " + table + ";";
+                        System.out.println(genTest);
+                        execute(connection, genTest);
                     }
 
                     // create test table with more field types
                     System.out.println("create table " + table);
-                    query_test = "CREATE TABLE IF NOT EXISTS " + table + " ("
+                    genTest = "CREATE TABLE IF NOT EXISTS " + table + " ("
                             + "id SERIAL PRIMARY KEY, "
                             + "value TEXT, "
                             + "tinyint_col SMALLINT, " // PostgreSQL does not have TINYINT, using SMALLINT instead
@@ -293,17 +293,17 @@ public class PostgreSQLTester implements DatabaseTester {
                             + "regconfig_col REGCONFIG, "
                             + "regdictionary_col REGDICTIONARY "
                             + ");";
-                    System.out.println(query_test);
-                    execute(connection, query_test);
+                    System.out.println(genTest);
+                    execute(connection, genTest);
 
-                    gen_test_query = 2;
+                    genTestQuery = 2;
                 }
 
-                if ((gen_test_query == 2 && (query == null || query.equals("")) || gen_test_query == 3)) {
+                if ((genTestQuery == 2 && (query == null || query.equals("")) || genTestQuery == 3)) {
                     Random random = new Random();
 
                     // Generate random values
-                    gen_test_values = "executions_loop_test_" + insert_index;
+                    genTestValue = "executions_loop_test_" + insertIndex;
 
                     random.nextBytes(blobData);
                     random.nextBytes(binaryData);
@@ -322,7 +322,7 @@ public class PostgreSQLTester implements DatabaseTester {
                             + "regoperator_col, regclass_col, regtype_col, regrole_col, "
                             + "regnamespace_col, regconfig_col, regdictionary_col) "
                             + "VALUES ("
-                            + "'" + gen_test_values + "', "
+                            + "'" + genTestValue + "', "
                             + random.nextInt(128) + ", " // TINYINT (using SMALLINT)
                             + random.nextInt(32768) + ", " // SMALLINT
                             + random.nextInt() + ", " // INTEGER
@@ -375,10 +375,10 @@ public class PostgreSQLTester implements DatabaseTester {
                             + "'simple', " // REGCONFIG
                             + "'english_stem' " // REGDICTIONARY
                             + ");";
-                    if (gen_test_query == 2) {
+                    if (genTestQuery == 2) {
                         System.out.println("Execution loop start:" + query);
                     }
-                    gen_test_query = 3;
+                    genTestQuery = 3;
                 }
 
                 executeResult = execute(connection, query);
@@ -396,13 +396,13 @@ public class PostgreSQLTester implements DatabaseTester {
                     }
                 } else {
                     failedExecutions++;
-                    insert_index = insert_index - 1;
+                    insertIndex = insertIndex - 1;
                     executionError = true;
                 }
             } catch (IOException e) {
                 System.out.println(e);
                 failedExecutions++;
-                insert_index = insert_index - 1;
+                insertIndex = insertIndex - 1;
                 if (!executionError) {
                     disconnectCounts++;
                     errorTime = System.currentTimeMillis();

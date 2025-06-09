@@ -155,14 +155,14 @@ public class ClickHouseTester implements DatabaseTester {
         long lastOutputTime = System.currentTimeMillis();
         int outputPassTime = 0;
 
-        int insert_index = 0;
-        int gen_test_query = 0;
-        String query_test;
-        String gen_test_values;
+        int insertIndex = 0;
+        int genTestQuery = 0;
+        String genTest;
+        String genTestValue;
 
         // check gen test query
         if (query == null || query.equals("") || (database != null && !database.equals("")) || (table != null && !table.equals(""))) {
-            gen_test_query = 1;
+            genTestQuery = 1;
         }
 
         if (database == null || database.equals("")) {
@@ -175,7 +175,7 @@ public class ClickHouseTester implements DatabaseTester {
 
         System.out.println("Execution loop start:" + query);
         while (System.currentTimeMillis() < endTime) {
-            insert_index = insert_index + 1;
+            insertIndex = insertIndex + 1;
             long currentTime = System.currentTimeMillis();
             if (currentTime - lastOutputTime >= interval * 1000) {
                 outputPassTime = outputPassTime + interval;
@@ -191,39 +191,39 @@ public class ClickHouseTester implements DatabaseTester {
                     connection = this.connect();
                 }
 
-                if (gen_test_query == 1) {
+                if (genTestQuery == 1) {
                     // create test database
                     System.out.println("create database " + database);
-                    query_test = "CREATE DATABASE IF NOT EXISTS " + database + " ON CLUSTER " + databaseCluster + ";";
-                    System.out.println(query_test);
-                    execute(connection, query_test);
+                    genTest = "CREATE DATABASE IF NOT EXISTS " + database + " ON CLUSTER " + databaseCluster + ";";
+                    System.out.println(genTest);
+                    execute(connection, genTest);
 
                     if (table.equals("executions_loop_table")) {
                         // drop test table
                         System.out.println("drop table " + table);
-                        query_test = "DROP TABLE IF EXISTS " + database + "." + table + " ON CLUSTER " + databaseCluster + ";";
-                        System.out.println(query_test);
-                        execute(connection, query_test);
+                        genTest = "DROP TABLE IF EXISTS " + database + "." + table + " ON CLUSTER " + databaseCluster + ";";
+                        System.out.println(genTest);
+                        execute(connection, genTest);
                     }
 
                     // create test table
                     System.out.println("create table " + table);
-                    query_test = "CREATE TABLE IF NOT EXISTS " + database + "." + table + " ON CLUSTER " + databaseCluster
+                    genTest = "CREATE TABLE IF NOT EXISTS " + database + "." + table + " ON CLUSTER " + databaseCluster
                             + " (id UInt32, value String) ENGINE = ReplicatedMergeTree() ORDER BY id;";
-                    System.out.println(query_test);
-                    execute(connection, query_test);
+                    System.out.println(genTest);
+                    execute(connection, genTest);
 
-                    gen_test_query = 2;
+                    genTestQuery = 2;
                 }
 
-                if ((gen_test_query == 2 && (query == null || query.equals("")) || gen_test_query == 3)) {
-                    gen_test_values = "executions_loop_test_" + insert_index;
+                if ((genTestQuery == 2 && (query == null || query.equals("")) || genTestQuery == 3)) {
+                    genTestValue = "executions_loop_test_" + insertIndex;
                     // set test query
-                    query = "INSERT INTO " + database + "." + table + " (id, value) VALUES (" + insert_index + ", '" + gen_test_values + "');";
-                    if (gen_test_query == 2) {
+                    query = "INSERT INTO " + database + "." + table + " (id, value) VALUES (" + insertIndex + ", '" + genTestValue + "');";
+                    if (genTestQuery == 2) {
                         System.out.println("Execution loop start:" + query);
                     }
-                    gen_test_query = 3;
+                    genTestQuery = 3;
                 }
 
                 executeResult = execute(connection, query);
@@ -241,12 +241,12 @@ public class ClickHouseTester implements DatabaseTester {
                     }
                 } else {
                     failedExecutions++;
-                    insert_index = insert_index - 1;
+                    insertIndex = insertIndex - 1;
                     executionError = true;
                 }
             } catch (IOException e) {
                 failedExecutions++;
-                insert_index = insert_index - 1;
+                insertIndex = insertIndex - 1;
                 if (!executionError) {
                     disconnectCounts++;
                     errorTime = System.currentTimeMillis();
