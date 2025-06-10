@@ -428,8 +428,9 @@ public class QdrantTesterHttp implements DatabaseTester {
                     .url(url)
                     .build();
 
-            Response response = this.client.newCall(request).execute();
-            return response.isSuccessful();
+            try (Response response = this.client.newCall(request).execute()) {
+                return response.isSuccessful();
+            }
         }
 
         /**
@@ -448,8 +449,9 @@ public class QdrantTesterHttp implements DatabaseTester {
                     .put(RequestBody.create(jsonBody, MediaType.get("application/json")))
                     .build();
 
-            Response response = this.client.newCall(request).execute();
-            return response.isSuccessful();
+            try (Response response = this.client.newCall(request).execute()) {
+                return response.isSuccessful();
+            }
         }
 
         /**
@@ -463,8 +465,9 @@ public class QdrantTesterHttp implements DatabaseTester {
                     .delete()
                     .build();
 
-            Response response = this.client.newCall(request).execute();
-            return response.isSuccessful();
+            try (Response response = this.client.newCall(request).execute()) {
+                return response.isSuccessful();
+            }
         }
 
         /**
@@ -478,8 +481,9 @@ public class QdrantTesterHttp implements DatabaseTester {
                     .get()
                     .build();
 
-            Response response = client.newCall(request).execute();
-            return response.isSuccessful();
+            try (Response response = client.newCall(request).execute()) {
+                return response.isSuccessful();
+            }
         }
 
         /**
@@ -509,8 +513,9 @@ public class QdrantTesterHttp implements DatabaseTester {
                     .put(RequestBody.create(jsonBody, MediaType.get("application/json")))
                     .build();
 
-            Response response = this.client.newCall(request).execute();
-            return response.isSuccessful();
+            try (Response response = this.client.newCall(request).execute()) {
+                return response.isSuccessful();
+            }
         }
 
         public QdrantSearchResponse searchPoints(String collectionName, List<Double> vector, int limit) throws IOException {
@@ -520,16 +525,16 @@ public class QdrantTesterHttp implements DatabaseTester {
                     "{\"vector\":%s,\"top\":%d}",
                     vector.toString(), limit);
 
-
             Request request = new Request.Builder()
                     .url(url)
                     .post(RequestBody.create(jsonBody, MediaType.get("application/json")))
                     .build();
 
-            Response response = client.newCall(request).execute();
-            if (!response.isSuccessful()) throw new IOException("Search failed: " + response.code());
+            try (Response response = client.newCall(request).execute()) {
+                if (!response.isSuccessful()) throw new IOException("Search failed: " + response.code());
 
-            return objectMapper.readValue(response.body().string(), QdrantSearchResponse.class);
+                return objectMapper.readValue(response.body().string(), QdrantSearchResponse.class);
+            }
         }
     }
 
@@ -628,37 +633,37 @@ public class QdrantTesterHttp implements DatabaseTester {
 
 
     public static void main(String[] args) throws IOException, InterruptedException {
-//      DBConfig dbConfig = new DBConfig.Builder()
-//                .host("localhost")
-//                .testType("query")
-//                .dbType("qdrant").query("create_collection:test_collection:128")
-//                .port(6333)
-//                .build();
-//
-//        DatabaseTester tester = TesterFactory.createTester(dbConfig);
-//
-//        DatabaseConnection connection = tester.connect();
-//        QueryResult result = tester.execute(connection, "delete_collection:test_collection");
-//        System.out.println(result);
-//
-//        result = tester.execute(connection, "create_collection:test_collection:4");
-//        System.out.println(result);
-//
-//        result = tester.execute(connection, "check_collection:test_collection");
-//        System.out.println(result);
-//
-//        result = tester.execute(connection, "upsert:executions_loop_collection:1,1,1,1,1,{\"name\":\"executions_loop_1\"}");
-//        System.out.println(result);
-//
-//        result = tester.execute(connection, "search:executions_loop_collection:1,1,1,1,limit=10");
-//        QdrantQueryResult qdrantResult = (QdrantQueryResult) result;
-//        if (qdrantResult.getDocuments() != null) {
-//            List<String> rs = qdrantResult.getDocuments();
-//            for (String r : rs) {
-//                System.out.println(r);
-//            }
-//        }
-//        System.out.println(result);
+      DBConfig dbConfig = new DBConfig.Builder()
+                .host("localhost")
+                .testType("query")
+                .dbType("qdrant").query("create_collection:test_collection:128")
+                .port(6333)
+                .build();
+
+        DatabaseTester tester = TesterFactory.createTester(dbConfig);
+
+        DatabaseConnection connection = tester.connect();
+        QueryResult result = tester.execute(connection, "delete_collection:test_collection");
+        System.out.println(result);
+
+        result = tester.execute(connection, "create_collection:test_collection:4");
+        System.out.println(result);
+
+        result = tester.execute(connection, "check_collection:test_collection");
+        System.out.println(result);
+
+        result = tester.execute(connection, "upsert:executions_loop_collection:1,1,1,1,1,{\"name\":\"executions_loop_1\"}");
+        System.out.println(result);
+
+        result = tester.execute(connection, "search:executions_loop_collection:1,1,1,1,limit=10");
+        QdrantQueryResult qdrantResult = (QdrantQueryResult) result;
+        if (qdrantResult.getDocuments() != null) {
+            List<String> rs = qdrantResult.getDocuments();
+            for (String r : rs) {
+                System.out.println(r);
+            }
+        }
+        System.out.println(result);
 
 //        DBConfig dbConfig = new DBConfig.Builder()
 //                .host("localhost")
@@ -675,20 +680,20 @@ public class QdrantTesterHttp implements DatabaseTester {
 //        System.out.println(result);
 //        connection.close();
 
-        DBConfig dbConfig = new DBConfig.Builder()
-                .host("localhost")
-                .port(6333)
-                .dbType("qdrant")
-                .duration(10)
-                .interval(1)
-                .testType("executionloop")
-                .build();
-        QdrantTesterHttp tester = new QdrantTesterHttp(dbConfig);
-        DatabaseConnection connection = tester.connect();
-        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
-                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
-        System.out.println(result);
-        connection.close();
+//        DBConfig dbConfig = new DBConfig.Builder()
+//                .host("localhost")
+//                .port(6333)
+//                .dbType("qdrant")
+//                .duration(10)
+//                .interval(1)
+//                .testType("executionloop")
+//                .build();
+//        QdrantTesterHttp tester = new QdrantTesterHttp(dbConfig);
+//        DatabaseConnection connection = tester.connect();
+//        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
+//                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
+//        System.out.println(result);
+//        connection.close();
     }
 
 }
