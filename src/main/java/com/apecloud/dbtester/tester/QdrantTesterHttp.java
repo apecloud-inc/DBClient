@@ -1,16 +1,9 @@
 package com.apecloud.dbtester.tester;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
+import okhttp3.*;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.Reader;
-import java.math.BigDecimal;
-import java.net.URL;
 import java.sql.*;
 import java.text.SimpleDateFormat;
 import java.sql.Date;
@@ -20,13 +13,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public class QdrantTesterHttp implements DatabaseTester {
-    private List<DatabaseConnection> connections = new ArrayList<>();
+    private final List<DatabaseConnection> connections = new ArrayList<>();
     private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     private final DBConfig dbConfig;
-
-    public QdrantTesterHttp() {
-        this.dbConfig = null;
-    }
 
     public QdrantTesterHttp(DBConfig dbConfig) {
         this.dbConfig = dbConfig;
@@ -43,30 +32,115 @@ public class QdrantTesterHttp implements DatabaseTester {
     }
 
     @Override
-    public QueryResult execute(DatabaseConnection connection, String query) throws IOException {
+    public QueryResult execute(DatabaseConnection connection, String operation) throws IOException {
         QdrantConnection qdrantConnection = (QdrantConnection) connection;
+        String[] parts = operation.split(":", 3);
+        String operationType = parts[0].toLowerCase();
+        String collectionName = parts.length > 1 ? parts[1] : "test_collection";
+        String params = parts.length > 2 ? parts[2] : "";
+
         try {
-            Request request = new Request.Builder()
-                    .url(qdrantConnection.buildQueryUrl())
-                    .build();
+            switch (operationType) {
+                case "check_health":
+                    boolean health = qdrantConnection.checkHealth();
+                    return new QdrantQueryResult("Health: " + health);
+                case "create_collection":
+                    int vectorSize = Integer.parseInt(params);
+                    boolean created = qdrantConnection.createCollection(collectionName, vectorSize);
+                    return new QdrantQueryResult("Collection Created: " + created);
+                case "delete_collection":
+                    boolean deleted = qdrantConnection.deleteCollection(collectionName);
+                    return new QdrantQueryResult("Collection Deleted: " + deleted);
+                case "check_collection":
+                    boolean exists = qdrantConnection.checkCollectionExists(collectionName);
+                    return new QdrantQueryResult("Collection Exists: " + exists);
+                case "upsert":
+                    // upsert:test_collection:1,1.2,3.4,{"name":"item"}
+                    String[] pointParts = params.split(",", 2); // Split only once
+                    if (pointParts.length == 0) {
+                        throw new IOException("Invalid upsert format: missing point ID");
+                    }
 
-            Response response = qdrantConnection.client.newCall(request).execute();
+                    int pointId;
+                    try {
+                        pointId = Integer.parseInt(pointParts[0].trim()); // 提取点ID
+                    } catch (NumberFormatException e) {
+                        throw new IOException("Invalid point ID: " + pointParts[0], e);
+                    }
 
-            if (response.isSuccessful()) {
-                ResultSet result = null;
-                if ( response != null && response.body() != null) {
-                    String resultBody = response.body().string();
-                    result = convertJsonToResultSet(resultBody);
-                }
-                return new QdrantQueryResult(result);
-            } else {
-                throw new IOException("Failed to execute query: " + response.code());
+                    List<Double> vector = new ArrayList<>();
+                    Map<String, Object> payload = new HashMap<>();
+
+                    if (pointParts.length > 1) {
+                        String rest = pointParts[1];
+                        int jsonStart = rest.indexOf('{');
+                        if (jsonStart == -1) {
+                            // 无 payload，仅解析向量
+                            String[] vectorStr = rest.trim().replaceAll("[{}]", "").split(",");
+                            for (String s : vectorStr) {
+                                try {
+                                    vector.add(Double.parseDouble(s.trim()));
+                                } catch (NumberFormatException e) {
+                                    throw new IOException("Invalid vector value: " + s, e);
+                                }
+                            }
+                        } else {
+                            // 存在 JSON payload
+                            String vectorPart = rest.substring(0, jsonStart).trim();
+                            String payloadJson = rest.substring(jsonStart).trim();
+
+                            // 解析向量部分
+                            if (!vectorPart.isEmpty()) {
+                                String[] vectorStr = vectorPart.replaceAll("[{}]", "").split(",");
+                                for (String s : vectorStr) {
+                                    try {
+                                        vector.add(Double.parseDouble(s.trim()));
+                                    } catch (NumberFormatException e) {
+                                        throw new IOException("Invalid vector value: " + s, e);
+                                    }
+                                }
+                            }
+
+                            // 解析 payload
+                            try {
+                                payload = qdrantConnection.parseJsonToMap(payloadJson);
+                            } catch (IOException e) {
+                                throw new IOException("Failed to parse payload JSON: " + payloadJson, e);
+                            }
+                        }
+                    }
+
+                    boolean inserted = qdrantConnection.addPoint(collectionName, pointId, vector, payload);
+                    return new QdrantQueryResult("Point Inserted: " + inserted);
+                case "search":
+                    // search:test_collection:1.2,3.4,limit=10
+                    String[] searchParts = params.split(",", 1);
+                    List<Double> queryVector = new ArrayList<>();
+                    String limitParam = searchParts.length > 1 ? searchParts[1] : "limit=10";
+
+                    String[] vectorStr = searchParts[0].trim().split(",");
+                    for (String s : vectorStr) {
+                        if (s.contains("limit=")) {
+                            continue;
+                        }
+                        queryVector.add(Double.parseDouble(s.trim()));
+                    }
+
+                    int limit = 10;
+                    if (limitParam.contains("limit=")) {
+                        limit = Integer.parseInt(limitParam.split("=")[1]);
+                    }
+
+                    QdrantSearchResponse response = qdrantConnection.searchPoints(collectionName, queryVector, limit);
+                    return QdrantQueryResult.forSearch(response);
+
+                default:
+                    throw new IOException("Unsupported operation: " + operationType);
             }
         } catch (Exception e) {
-            throw new IOException("Failed to execute query: " + e, e);
+            throw new IOException("Error executing operation: " + operation, e);
         }
     }
-
 
     @Override
     public String bench(DatabaseConnection connection, String query, int iterations, int concurrency) {
@@ -86,7 +160,8 @@ public class QdrantTesterHttp implements DatabaseTester {
 
         executor.shutdown();
         try {
-            executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+            boolean terminated = executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+            System.out.println("Terminated: " + terminated);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -106,17 +181,13 @@ public class QdrantTesterHttp implements DatabaseTester {
     @Override
     public String connectionStress(int connections, int duration) {
         StringBuilder result = new StringBuilder();
-        long startTime = System.currentTimeMillis();
         int successfulConnections = 0;
 
         for (int i = 0; i < connections; i++) {
             try {
                 DatabaseConnection connection = connect();
                 this.connections.add(connection);
-
-                // 执行健康检查请求以验证连接有效性
-                execute(connection, "");
-
+                execute(connection, "check_health");
                 successfulConnections++;
             } catch (IOException e) {
                 e.printStackTrace();
@@ -124,7 +195,7 @@ public class QdrantTesterHttp implements DatabaseTester {
         }
 
         try {
-            Thread.sleep(duration * 1000);
+            Thread.sleep(duration * 1000L);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -196,7 +267,136 @@ public class QdrantTesterHttp implements DatabaseTester {
 
     @Override
     public String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table) {
-        return null;
+        StringBuilder result = new StringBuilder();
+        QdrantQueryResult qdrantQueryResult;
+        QueryResult executeResult;
+        int successfulExecutions = 0;
+        int failedExecutions = 0;
+        int disconnectCounts = 0;
+        boolean executionError = false;
+
+        long startTime = System.currentTimeMillis();
+        long endTime = startTime + duration * 1000L;
+        long errorTime = 0;
+        long recoveryTime;
+        long errorToRecoveryTime;
+        Date errorDate = null;
+        long lastOutputTime = System.currentTimeMillis();
+        int outputPassTime = 0;
+
+        int insertIndex = 0;
+        int genTestQuery = 0;
+        String genTestValue;
+
+        // Check gen test query
+        if (query == null || query.equals("") || (table != null && !table.equals(""))) {
+            genTestQuery = 1;
+        }
+
+        if (table == null || table.equals("")) {
+            table = "executions_loop_collection";
+        }
+
+        System.out.println("Execution loop start: " + query);
+        while (System.currentTimeMillis() < endTime) {
+            insertIndex++;
+            long currentTime = System.currentTimeMillis();
+
+            if (currentTime - lastOutputTime >= interval * 1000L) {
+                outputPassTime += interval;
+                lastOutputTime = currentTime;
+                System.out.println("[ " + outputPassTime + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                        + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                        + " disconnect: " + disconnectCounts);
+            }
+
+            try {
+                if (executionError) {
+                    Thread.sleep(1000);
+                    connection = this.connect();
+                }
+                
+                if (genTestQuery == 1) {
+                    // Check if collection exists, if not create it
+                    qdrantQueryResult = (QdrantQueryResult) execute(connection, "check_collection:" + table);
+                    if (!qdrantQueryResult.getMessage().contains("true")) {
+                        System.out.println("Collection " + table + " does not exist. Creating collection...");
+                        execute(connection, "create_collection:" + table + ":4");
+                        System.out.println("Collection " + table + " created successfully.");
+                    } else {
+                        System.out.println("Collection " + table + " already exists.");
+                        if (table.equals("executions_loop_collection")) {
+                            // Delete collection
+                            System.out.println("Delete collection " + table);
+                            execute(connection, "delete_collection:" + table);
+                            System.out.println("Collection " + table + " deleted successfully.");
+
+                            System.out.println("Create collection " + table);
+                            execute(connection, "create_collection:" + table + ":4");
+                            System.out.println("Collection " + table + " created successfully.");
+                        }
+                    }
+                    genTestQuery = 2;
+                }
+
+                if ((genTestQuery == 2 && (query == null || query.equals("")) || genTestQuery == 3)) {
+                    // Set test query
+                    genTestValue = "executions_loop_" + insertIndex;
+                    query = String.format("upsert:" + table + ":1,1,1,1,1,{\"name\":\"%s\"}", genTestValue);
+                    if (genTestQuery == 2) {
+                        System.out.println("Execution loop start: " + query);
+                    }
+                    genTestQuery = 3;
+                }
+
+                executeResult = execute(connection, query);
+                if (!executeResult.toString().equals("Failed to insert point")) {
+                    successfulExecutions++;
+                    if (executionError) {
+                        recoveryTime = System.currentTimeMillis();
+                        java.util.Date recoveryDate = new java.util.Date(recoveryTime);
+                        System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                        System.out.println("[" + sdf.format(recoveryDate) + "] Connection successfully recovered!");
+                        errorToRecoveryTime = recoveryTime - errorTime;
+                        System.out.println("The connection was restored in " + errorToRecoveryTime + " milliseconds.");
+                        executionError = false;
+                    }
+                } else {
+                    failedExecutions++;
+                    insertIndex = insertIndex - 1;
+                    executionError = true;
+                }
+            } catch (Exception e) {
+                System.out.println("Execution loop failed: " + e.getMessage());
+                failedExecutions++;
+                insertIndex--;
+
+                if (!executionError) {
+                    disconnectCounts++;
+                    errorTime = System.currentTimeMillis();
+                    errorDate = new Date(errorTime);
+                    System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                    executionError = true;
+                }
+            }
+        }
+
+        System.out.println("[ " + duration + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                + " disconnect: " + disconnectCounts);
+
+        releaseConnections();
+
+        result.append("Execution loop completed during ").append(duration).append(" seconds");
+
+        return String.format("Total Executions: %d\n" +
+                        "Successful Executions: %d\n" +
+                        "Failed Executions: %d\n" +
+                        "Disconnection Counts: %d",
+                successfulExecutions + failedExecutions,
+                successfulExecutions,
+                failedExecutions,
+                disconnectCounts);
     }
 
     private static class QdrantConnection implements DatabaseConnection {
@@ -213,100 +413,136 @@ public class QdrantTesterHttp implements DatabaseTester {
             // No need to close OkHttpClient explicitly
         }
 
-        public String buildHealthCheckUrl() {
-            return "http://" + dbConfig.getHost() + ":" + dbConfig.getPort() + "/health";
+        private static final ObjectMapper objectMapper = new ObjectMapper();
+
+        private Map parseJsonToMap(String json) throws IOException {
+            return objectMapper.readValue(json, Map.class);
         }
 
-        public String buildQueryUrl() {
-            String queryUrl = "http://" + dbConfig.getHost() + ":" + dbConfig.getPort() ;
-            String testType = dbConfig.getTestType();
-            String testQuery = dbConfig.getQuery();
-            if (testType.toLowerCase().equals("query") && testQuery != null && !testQuery.isEmpty()) {
-                queryUrl = queryUrl + "/" + dbConfig.getQuery();
-            }
-            return queryUrl;
+        /**
+         * Check health
+         */
+        public boolean checkHealth() throws IOException {
+            String url = "http://" + dbConfig.getHost() + ":" + dbConfig.getPort() + "/health";
+            Request request = new Request.Builder()
+                    .url(url)
+                    .build();
+
+            Response response = this.client.newCall(request).execute();
+            return response.isSuccessful();
+        }
+
+        /**
+         * Create Qdrant Collection
+         */
+        public boolean createCollection(String collectionName, int vectorSize) throws IOException {
+            String url = "http://" + dbConfig.getHost() + ":" + dbConfig.getPort() + "/collections/" + collectionName;
+
+            String jsonBody = String.format(
+                    "{\"vectors\":"
+                            + "{\"size\": %d," + "\"distance\": \"Dot\""
+                            + "}}", vectorSize);
+
+            Request request = new Request.Builder()
+                    .url(url)
+                    .put(RequestBody.create(jsonBody, MediaType.get("application/json")))
+                    .build();
+
+            Response response = this.client.newCall(request).execute();
+            return response.isSuccessful();
+        }
+
+        /**
+         * Delete Qdrant Collection
+         */
+        public boolean deleteCollection(String collectionName) throws IOException {
+            String url = "http://" + dbConfig.getHost() + ":" + dbConfig.getPort() + "/collections/" + collectionName;
+
+            Request request = new Request.Builder()
+                    .url(url)
+                    .delete()
+                    .build();
+
+            Response response = this.client.newCall(request).execute();
+            return response.isSuccessful();
+        }
+
+        /**
+         * Check Collection Exists
+         */
+        public boolean checkCollectionExists(String collectionName) throws IOException {
+            String url = "http://" + dbConfig.getHost() + ":" + dbConfig.getPort() + "/collections/" + collectionName;
+
+            Request request = new Request.Builder()
+                    .url(url)
+                    .get()
+                    .build();
+
+            Response response = client.newCall(request).execute();
+            return response.isSuccessful();
+        }
+
+        /**
+         * Add Point To Collection
+         */
+        public boolean addPoint(String collectionName, int id, List<Double> vector, Map<String, Object> payload) throws IOException {
+            String url = "http://" + dbConfig.getHost() + ":" + dbConfig.getPort() + "/collections/" + collectionName + "/points";
+
+            ObjectMapper mapper = new ObjectMapper();
+            String payloadJson = payload != null ? mapper.writeValueAsString(payload) : "{}";
+
+            String vectorJson = vector.toString(); // [1.2, 3.4, ...]
+
+            String jsonBody = String.format(
+                    "{"
+                            + "\"points\": ["
+                            + "{"
+                            + "\"id\": %d,"
+                            + "\"vector\": %s,"
+                            + "\"payload\": %s"
+                            + "}"
+                            + "]"
+                            + "}", id, vectorJson, payloadJson);
+
+            Request request = new Request.Builder()
+                    .url(url)
+                    .put(RequestBody.create(jsonBody, MediaType.get("application/json")))
+                    .build();
+
+            Response response = this.client.newCall(request).execute();
+            return response.isSuccessful();
+        }
+
+        public QdrantSearchResponse searchPoints(String collectionName, List<Double> vector, int limit) throws IOException {
+            String url = "http://" + dbConfig.getHost() + ":" + dbConfig.getPort() + "/collections/" + collectionName + "/points/search";
+
+            String jsonBody = String.format(
+                    "{\"vector\":%s,\"top\":%d}",
+                    vector.toString(), limit);
+
+
+            Request request = new Request.Builder()
+                    .url(url)
+                    .post(RequestBody.create(jsonBody, MediaType.get("application/json")))
+                    .build();
+
+            Response response = client.newCall(request).execute();
+            if (!response.isSuccessful()) throw new IOException("Search failed: " + response.code());
+
+            return objectMapper.readValue(response.body().string(), QdrantSearchResponse.class);
         }
     }
 
-    private static class QdrantQueryResult implements QueryResult {
-        private final ResultSet response;
-
-        QdrantQueryResult(ResultSet response) {
-            this.response = response;
-        }
-
-        @Override
-        public ResultSet getResultSet() {
-            return response;
-        }
-
-        @Override
-        public int getUpdateCount() {
-            return 0;
-        }
-
-        @Override
-        public boolean hasResultSet() {
-            return response != null;
-        }
-    }
-
-    public static ResultSet convertJsonToResultSet(String json) throws Exception {
-        ObjectMapper objectMapper = new ObjectMapper();
-        QdrantResult response = objectMapper.readValue(json, QdrantResult.class);
-
-        List<Map<String, Object>> rows = new ArrayList<>();
-
-        // Convert the HealthCheckResponse to a list of maps
-        Map<String, Object> row = new HashMap<>();
-        if (response != null) {
-            if (response.getStatus() != null) {
-                row.put("status", response.getStatus());
-            }
-
-            if (response.getTime() != 0) {
-                row.put("time", response.getTime());
-            }
-
-            if (response.getResult() != null) {
-                row.put("result", response.getResult().toString());
-            }
-
-            if (response.getTitle() != null) {
-                row.put("title", response.getTitle());
-            }
-
-            if (response.getVersion() != null) {
-                row.put("version", response.getVersion());
-            }
-        }
-        rows.add(row);
-
-        return new MockResultSet(rows);
-    }
-
-    public static class QdrantResult {
-        @JsonProperty("result")
-        private Map<String, Object> result;
-
-        @JsonProperty("status")
+    public static class QdrantSearchResponse {
+        private List<Map<String, Object>> result;
         private String status;
+        private String time;
 
-        @JsonProperty("time")
-        private double time;
-
-        @JsonProperty("title")
-        private String title;
-
-        @JsonProperty("version")
-        private String version;
-
-        // Getters and Setters
-        public Map<String, Object> getResult() {
+        public List<Map<String, Object>> getResult() {
             return result;
         }
 
-        public void setResult(Map<String, Object> result) {
+        public void setResult(List<Map<String, Object>> result) {
             this.result = result;
         }
 
@@ -318,1042 +554,141 @@ public class QdrantTesterHttp implements DatabaseTester {
             this.status = status;
         }
 
-        public double getTime() {
+        public String getTime() {
             return time;
         }
 
-        public void setTime(double time) {
+        public void setTime(String time) {
             this.time = time;
         }
-
-        public String getTitle() {
-            return title;
-        }
-
-        public void setTitle(String title) {
-            this.title = title;
-        }
-
-        public String getVersion() {
-            return version;
-        }
-
-        public void setVersion(String version) {
-            this.version = version;
-        }
     }
 
-    public static class MockResultSet implements ResultSet {
-        private List<Map<String, Object>> rows;
-        private int currentIndex = -1;
+    public static class QdrantQueryResult implements QueryResult {
+        private final ResultSet response;
+        private final String message;
+        private final boolean success;
+        private final List<String> documents;
 
-        public MockResultSet(List<Map<String, Object>> rows) {
-            this.rows = rows;
+        public QdrantQueryResult(String message) {
+            this.message = message;
+            this.success = !message.startsWith("Failed");
+            this.response = null;
+            this.documents = Collections.emptyList();
         }
 
-        @Override
-        public boolean next() throws SQLException {
-            currentIndex++;
-            return currentIndex < rows.size();
+        public QdrantQueryResult(boolean success, String message, List<String> documents) {
+            this.message = message;
+            this.success = success;
+            this.documents = documents;
+            this.response = null;
         }
 
-        @Override
-        public void close() throws SQLException {
-
-        }
-
-        @Override
-        public <T> T getObject(String columnLabel, Class<T> type) throws SQLException {
-            Map<String, Object> row = rows.get(currentIndex);
-            Object value = row.get(columnLabel);
-            if (value == null) {
-                return null;
+        public static QdrantQueryResult forSearch(QdrantSearchResponse response) {
+            boolean status = response.getStatus().equals("ok");
+            List<Map<String, Object>> results = response.getResult();
+            List<String> docs = new ArrayList<>();
+            for (Map<String, Object> result : results) {
+                docs.add(result.toString());
             }
-            return type.cast(value);
+            return new QdrantQueryResult(status, "Search Completed", docs);
         }
 
         @Override
-        public boolean wasNull() throws SQLException {
-            return false;
+        public ResultSet getResultSet() {
+            return response;
         }
 
         @Override
-        public String getString(int i) throws SQLException {
-            return null;
+        public int getUpdateCount() {
+            return -1;
         }
 
         @Override
-        public boolean getBoolean(int i) throws SQLException {
-            return false;
+        public boolean hasResultSet() {
+            return true;
         }
 
-        @Override
-        public byte getByte(int i) throws SQLException {
-            return 0;
-        }
-
-        @Override
-        public short getShort(int i) throws SQLException {
-            return 0;
-        }
-
-        @Override
-        public int getInt(int i) throws SQLException {
-            return 0;
-        }
-
-        @Override
-        public long getLong(int i) throws SQLException {
-            return 0;
-        }
-
-        @Override
-        public float getFloat(int i) throws SQLException {
-            return 0;
-        }
-
-        @Override
-        public double getDouble(int i) throws SQLException {
-            return 0;
-        }
-
-        @Override
-        public BigDecimal getBigDecimal(int i, int i1) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public byte[] getBytes(int i) throws SQLException {
-            return new byte[0];
-        }
-
-        @Override
-        public Date getDate(int i) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public Time getTime(int i) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public Timestamp getTimestamp(int i) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public InputStream getAsciiStream(int i) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public InputStream getUnicodeStream(int i) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public InputStream getBinaryStream(int i) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public String getString(String columnLabel) throws SQLException {
-            return (String) getObject(columnLabel, String.class);
-        }
-
-        @Override
-        public int getInt(String columnLabel) throws SQLException {
-            return (int) getObject(columnLabel, Integer.class);
-        }
-
-        @Override
-        public long getLong(String s) throws SQLException {
-            return 0;
-        }
-
-        @Override
-        public float getFloat(String s) throws SQLException {
-            return 0;
-        }
-
-        @Override
-        public double getDouble(String columnLabel) throws SQLException {
-            return (double) getObject(columnLabel, Double.class);
-        }
-
-        @Override
-        public BigDecimal getBigDecimal(String s, int i) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public byte[] getBytes(String s) throws SQLException {
-            return new byte[0];
-        }
-
-        @Override
-        public Date getDate(String s) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public Time getTime(String s) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public Timestamp getTimestamp(String s) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public InputStream getAsciiStream(String s) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public InputStream getUnicodeStream(String s) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public InputStream getBinaryStream(String s) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public SQLWarning getWarnings() throws SQLException {
-            return null;
-        }
-
-        @Override
-        public void clearWarnings() throws SQLException {
-
-        }
-
-        @Override
-        public String getCursorName() throws SQLException {
-            return null;
-        }
-
-        @Override
-        public boolean getBoolean(String columnLabel) throws SQLException {
-            return (boolean) getObject(columnLabel, Boolean.class);
-        }
-
-        @Override
-        public byte getByte(String s) throws SQLException {
-            return 0;
-        }
-
-        @Override
-        public short getShort(String s) throws SQLException {
-            return 0;
-        }
-
-        @Override
-        public ResultSetMetaData getMetaData() throws SQLException {
-            // Implement as needed
-            return null;
-        }
-
-        @Override
-        public Object getObject(int i) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public Object getObject(String s) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public int findColumn(String s) throws SQLException {
-            return 0;
-        }
-
-        @Override
-        public Reader getCharacterStream(int i) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public Reader getCharacterStream(String s) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public BigDecimal getBigDecimal(int i) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public BigDecimal getBigDecimal(String s) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public boolean isBeforeFirst() throws SQLException {
-            return false;
-        }
-
-        @Override
-        public boolean isAfterLast() throws SQLException {
-            return false;
-        }
-
-        @Override
-        public boolean isFirst() throws SQLException {
-            return false;
-        }
-
-        @Override
-        public boolean isLast() throws SQLException {
-            return false;
-        }
-
-        @Override
-        public void beforeFirst() throws SQLException {
-
-        }
-
-        @Override
-        public void afterLast() throws SQLException {
-
-        }
-
-        @Override
-        public boolean first() throws SQLException {
-            return false;
-        }
-
-        @Override
-        public boolean last() throws SQLException {
-            return false;
-        }
-
-        @Override
-        public int getRow() throws SQLException {
-            return 0;
-        }
-
-        @Override
-        public boolean absolute(int i) throws SQLException {
-            return false;
-        }
-
-        @Override
-        public boolean relative(int i) throws SQLException {
-            return false;
-        }
-
-        @Override
-        public boolean previous() throws SQLException {
-            return false;
-        }
-
-        @Override
-        public void setFetchDirection(int i) throws SQLException {
-
-        }
-
-        @Override
-        public int getFetchDirection() throws SQLException {
-            return 0;
-        }
-
-        @Override
-        public void setFetchSize(int i) throws SQLException {
-
-        }
-
-        @Override
-        public int getFetchSize() throws SQLException {
-            return 0;
-        }
-
-        @Override
-        public int getType() throws SQLException {
-            return 0;
-        }
-
-        @Override
-        public int getConcurrency() throws SQLException {
-            return 0;
-        }
-
-        @Override
-        public boolean rowUpdated() throws SQLException {
-            return false;
-        }
-
-        @Override
-        public boolean rowInserted() throws SQLException {
-            return false;
-        }
-
-        @Override
-        public boolean rowDeleted() throws SQLException {
-            return false;
-        }
-
-        @Override
-        public void updateNull(int i) throws SQLException {
-
-        }
-
-        @Override
-        public void updateBoolean(int i, boolean b) throws SQLException {
-
-        }
-
-        @Override
-        public void updateByte(int i, byte b) throws SQLException {
-
-        }
-
-        @Override
-        public void updateShort(int i, short i1) throws SQLException {
-
-        }
-
-        @Override
-        public void updateInt(int i, int i1) throws SQLException {
-
-        }
-
-        @Override
-        public void updateLong(int i, long l) throws SQLException {
-
-        }
-
-        @Override
-        public void updateFloat(int i, float v) throws SQLException {
-
-        }
-
-        @Override
-        public void updateDouble(int i, double v) throws SQLException {
-
-        }
-
-        @Override
-        public void updateBigDecimal(int i, BigDecimal bigDecimal) throws SQLException {
-
-        }
-
-        @Override
-        public void updateString(int i, String s) throws SQLException {
-
-        }
-
-        @Override
-        public void updateBytes(int i, byte[] bytes) throws SQLException {
-
-        }
-
-        @Override
-        public void updateDate(int i, Date date) throws SQLException {
-
-        }
-
-        @Override
-        public void updateTime(int i, Time time) throws SQLException {
-
-        }
-
-        @Override
-        public void updateTimestamp(int i, Timestamp timestamp) throws SQLException {
-
-        }
-
-        @Override
-        public void updateAsciiStream(int i, InputStream inputStream, int i1) throws SQLException {
-
-        }
-
-        @Override
-        public void updateBinaryStream(int i, InputStream inputStream, int i1) throws SQLException {
-
-        }
-
-        @Override
-        public void updateCharacterStream(int i, Reader reader, int i1) throws SQLException {
-
-        }
-
-        @Override
-        public void updateObject(int i, Object o, int i1) throws SQLException {
-
-        }
-
-        @Override
-        public void updateObject(int i, Object o) throws SQLException {
-
-        }
-
-        @Override
-        public void updateNull(String s) throws SQLException {
-
-        }
-
-        @Override
-        public void updateBoolean(String s, boolean b) throws SQLException {
-
-        }
-
-        @Override
-        public void updateByte(String s, byte b) throws SQLException {
-
-        }
-
-        @Override
-        public void updateShort(String s, short i) throws SQLException {
-
-        }
-
-        @Override
-        public void updateInt(String s, int i) throws SQLException {
-
-        }
-
-        @Override
-        public void updateLong(String s, long l) throws SQLException {
-
-        }
-
-        @Override
-        public void updateFloat(String s, float v) throws SQLException {
-
-        }
-
-        @Override
-        public void updateDouble(String s, double v) throws SQLException {
-
-        }
-
-        @Override
-        public void updateBigDecimal(String s, BigDecimal bigDecimal) throws SQLException {
-
-        }
-
-        @Override
-        public void updateString(String s, String s1) throws SQLException {
-
-        }
-
-        @Override
-        public void updateBytes(String s, byte[] bytes) throws SQLException {
-
-        }
-
-        @Override
-        public void updateDate(String s, Date date) throws SQLException {
-
-        }
-
-        @Override
-        public void updateTime(String s, Time time) throws SQLException {
-
-        }
-
-        @Override
-        public void updateTimestamp(String s, Timestamp timestamp) throws SQLException {
-
-        }
-
-        @Override
-        public void updateAsciiStream(String s, InputStream inputStream, int i) throws SQLException {
-
-        }
-
-        @Override
-        public void updateBinaryStream(String s, InputStream inputStream, int i) throws SQLException {
-
-        }
-
-        @Override
-        public void updateCharacterStream(String s, Reader reader, int i) throws SQLException {
-
-        }
-
-        @Override
-        public void updateObject(String s, Object o, int i) throws SQLException {
-
-        }
-
-        @Override
-        public void updateObject(String s, Object o) throws SQLException {
-
-        }
-
-        @Override
-        public void insertRow() throws SQLException {
-
-        }
-
-        @Override
-        public void updateRow() throws SQLException {
-
-        }
-
-        @Override
-        public void deleteRow() throws SQLException {
-
-        }
-
-        @Override
-        public void refreshRow() throws SQLException {
-
-        }
-
-        @Override
-        public void cancelRowUpdates() throws SQLException {
-
-        }
-
-        @Override
-        public void moveToInsertRow() throws SQLException {
-
-        }
-
-        @Override
-        public void moveToCurrentRow() throws SQLException {
-
-        }
-
-        @Override
-        public Statement getStatement() throws SQLException {
-            return null;
-        }
-
-        @Override
-        public Object getObject(int i, Map<String, Class<?>> map) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public Ref getRef(int i) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public Blob getBlob(int i) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public Clob getClob(int i) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public Array getArray(int i) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public Object getObject(String s, Map<String, Class<?>> map) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public Ref getRef(String s) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public Blob getBlob(String s) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public Clob getClob(String s) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public Array getArray(String s) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public Date getDate(int i, Calendar calendar) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public Date getDate(String s, Calendar calendar) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public Time getTime(int i, Calendar calendar) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public Time getTime(String s, Calendar calendar) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public Timestamp getTimestamp(int i, Calendar calendar) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public Timestamp getTimestamp(String s, Calendar calendar) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public URL getURL(int i) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public URL getURL(String s) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public void updateRef(int i, Ref ref) throws SQLException {
-
-        }
-
-        @Override
-        public void updateRef(String s, Ref ref) throws SQLException {
-
-        }
-
-        @Override
-        public void updateBlob(int i, Blob blob) throws SQLException {
-
-        }
-
-        @Override
-        public void updateBlob(String s, Blob blob) throws SQLException {
-
-        }
-
-        @Override
-        public void updateClob(int i, Clob clob) throws SQLException {
-
-        }
-
-        @Override
-        public void updateClob(String s, Clob clob) throws SQLException {
-
-        }
-
-        @Override
-        public void updateArray(int i, Array array) throws SQLException {
-
-        }
-
-        @Override
-        public void updateArray(String s, Array array) throws SQLException {
-
-        }
-
-        @Override
-        public RowId getRowId(int i) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public RowId getRowId(String s) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public void updateRowId(int i, RowId rowId) throws SQLException {
-
-        }
-
-        @Override
-        public void updateRowId(String s, RowId rowId) throws SQLException {
-
-        }
-
-        @Override
-        public int getHoldability() throws SQLException {
-            return 0;
-        }
-
-        @Override
-        public boolean isClosed() throws SQLException {
-            return false;
-        }
-
-        @Override
-        public void updateNString(int i, String s) throws SQLException {
-
-        }
-
-        @Override
-        public void updateNString(String s, String s1) throws SQLException {
-
-        }
-
-        @Override
-        public void updateNClob(int i, NClob nClob) throws SQLException {
-
-        }
-
-        @Override
-        public void updateNClob(String s, NClob nClob) throws SQLException {
-
-        }
-
-        @Override
-        public NClob getNClob(int i) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public NClob getNClob(String s) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public SQLXML getSQLXML(int i) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public SQLXML getSQLXML(String s) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public void updateSQLXML(int i, SQLXML sqlxml) throws SQLException {
-
-        }
-
-        @Override
-        public void updateSQLXML(String s, SQLXML sqlxml) throws SQLException {
-
-        }
-
-        @Override
-        public String getNString(int i) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public String getNString(String s) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public Reader getNCharacterStream(int i) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public Reader getNCharacterStream(String s) throws SQLException {
-            return null;
-        }
-
-        @Override
-        public void updateNCharacterStream(int i, Reader reader, long l) throws SQLException {
-
-        }
-
-        @Override
-        public void updateNCharacterStream(String s, Reader reader, long l) throws SQLException {
-
-        }
-
-        @Override
-        public void updateAsciiStream(int i, InputStream inputStream, long l) throws SQLException {
-
-        }
-
-        @Override
-        public void updateBinaryStream(int i, InputStream inputStream, long l) throws SQLException {
-
-        }
-
-        @Override
-        public void updateCharacterStream(int i, Reader reader, long l) throws SQLException {
-
-        }
-
-        @Override
-        public void updateAsciiStream(String s, InputStream inputStream, long l) throws SQLException {
-
-        }
-
-        @Override
-        public void updateBinaryStream(String s, InputStream inputStream, long l) throws SQLException {
-
-        }
-
-        @Override
-        public void updateCharacterStream(String s, Reader reader, long l) throws SQLException {
-
-        }
-
-        @Override
-        public void updateBlob(int i, InputStream inputStream, long l) throws SQLException {
-
-        }
-
-        @Override
-        public void updateBlob(String s, InputStream inputStream, long l) throws SQLException {
-
-        }
-
-        @Override
-        public void updateClob(int i, Reader reader, long l) throws SQLException {
-
-        }
-
-        @Override
-        public void updateClob(String s, Reader reader, long l) throws SQLException {
-
-        }
-
-        @Override
-        public void updateNClob(int i, Reader reader, long l) throws SQLException {
-
-        }
-
-        @Override
-        public void updateNClob(String s, Reader reader, long l) throws SQLException {
-
-        }
-
-        @Override
-        public void updateNCharacterStream(int i, Reader reader) throws SQLException {
-
-        }
-
-        @Override
-        public void updateNCharacterStream(String s, Reader reader) throws SQLException {
-
-        }
-
-        @Override
-        public void updateAsciiStream(int i, InputStream inputStream) throws SQLException {
-
-        }
-
-        @Override
-        public void updateBinaryStream(int i, InputStream inputStream) throws SQLException {
-
-        }
-
-        @Override
-        public void updateCharacterStream(int i, Reader reader) throws SQLException {
-
-        }
-
-        @Override
-        public void updateAsciiStream(String s, InputStream inputStream) throws SQLException {
-
-        }
-
-        @Override
-        public void updateBinaryStream(String s, InputStream inputStream) throws SQLException {
-
-        }
-
-        @Override
-        public void updateCharacterStream(String s, Reader reader) throws SQLException {
-
-        }
-
-        @Override
-        public void updateBlob(int i, InputStream inputStream) throws SQLException {
-
-        }
-
-        @Override
-        public void updateBlob(String s, InputStream inputStream) throws SQLException {
-
-        }
-
-        @Override
-        public void updateClob(int i, Reader reader) throws SQLException {
-
-        }
-
-        @Override
-        public void updateClob(String s, Reader reader) throws SQLException {
-
-        }
-
-        @Override
-        public void updateNClob(int i, Reader reader) throws SQLException {
-
-        }
-
-        @Override
-        public void updateNClob(String s, Reader reader) throws SQLException {
-
+        public boolean isSuccessful() {
+            return success;
         }
 
-        @Override
-        public <T> T getObject(int i, Class<T> aClass) throws SQLException {
-            return null;
+        public String getMessage() {
+            return message;
         }
 
-        @Override
-        public <T> T unwrap(Class<T> aClass) throws SQLException {
-            return null;
+        public List<String> getDocuments() {
+            return documents;
         }
 
-        @Override
-        public boolean isWrapperFor(Class<?> aClass) throws SQLException {
-            return false;
+        public String toString() {
+            return message;
         }
-
-        // Implement other methods as needed
     }
 
 
-    public static void main(String[] args) {
+
+    public static void main(String[] args) throws IOException, InterruptedException {
+//      DBConfig dbConfig = new DBConfig.Builder()
+//                .host("localhost")
+//                .testType("query")
+//                .dbType("qdrant").query("create_collection:test_collection:128")
+//                .port(6333)
+//                .build();
+//
+//        DatabaseTester tester = TesterFactory.createTester(dbConfig);
+//
+//        DatabaseConnection connection = tester.connect();
+//        QueryResult result = tester.execute(connection, "delete_collection:test_collection");
+//        System.out.println(result);
+//
+//        result = tester.execute(connection, "create_collection:test_collection:4");
+//        System.out.println(result);
+//
+//        result = tester.execute(connection, "check_collection:test_collection");
+//        System.out.println(result);
+//
+//        result = tester.execute(connection, "upsert:executions_loop_collection:1,1,1,1,1,{\"name\":\"executions_loop_1\"}");
+//        System.out.println(result);
+//
+//        result = tester.execute(connection, "search:executions_loop_collection:1,1,1,1,limit=10");
+//        QdrantQueryResult qdrantResult = (QdrantQueryResult) result;
+//        if (qdrantResult.getDocuments() != null) {
+//            List<String> rs = qdrantResult.getDocuments();
+//            for (String r : rs) {
+//                System.out.println(r);
+//            }
+//        }
+//        System.out.println(result);
+
+//        DBConfig dbConfig = new DBConfig.Builder()
+//                .host("localhost")
+//                .testType("connectionstress")
+//                .port(6333)
+//                .duration(10)
+//                .connectionCount(10)
+//                .dbType("qdrant")
+//                .build();
+//
+//        QdrantTesterHttp tester = new QdrantTesterHttp(dbConfig);
+//        DatabaseConnection connection = tester.connect();
+//        String result = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
+//        System.out.println(result);
+//        connection.close();
+
         DBConfig dbConfig = new DBConfig.Builder()
                 .host("localhost")
-                .testType("connectionstress")
                 .port(6333)
+                .dbType("qdrant")
                 .duration(10)
-                .connectionCount(10)
-                .dbType("qdrant")
+                .interval(1)
+                .testType("executionloop")
                 .build();
-         dbConfig = new DBConfig.Builder()
-                .host("localhost")
-                .testType("query")
-                .dbType("qdrant")
-                .query("collections/collection_mytest")
-                .port(6333)
-                .build();
-        DatabaseTester tester = TesterFactory.createTester(dbConfig);
-
-        try {
-            DatabaseConnection connection = tester.connect();
-            QueryResult result = tester.execute(connection, dbConfig.getQuery());
-            if (result.hasResultSet()) {
-                ResultSet rs = result.getResultSet();
-
-                while (rs.next()) {
-                    if (rs.getString("result") != null) {
-                        System.out.println(rs.getString("result"));
-                    }
-                }
-            }
-
-            System.out.println(result);
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        QdrantTesterHttp tester = new QdrantTesterHttp(dbConfig);
+        DatabaseConnection connection = tester.connect();
+        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
+                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
+        System.out.println(result);
+        connection.close();
     }
 
 }
