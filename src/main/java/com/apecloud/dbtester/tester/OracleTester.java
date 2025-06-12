@@ -405,7 +405,6 @@ public class OracleTester implements DatabaseTester {
                 .interval(1)
 //            .query("INSERT INTO test_table (value) VALUES ('1');")
                 .testType("executionloop")
-            .table("test_table")
                 .build();
         OracleTester tester = new OracleTester(dbConfig);
         DatabaseConnection connection = tester.connect();
