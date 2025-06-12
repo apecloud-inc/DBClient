@@ -235,9 +235,20 @@ public class OracleTester implements DatabaseTester {
                     }
 
                     if (tableCount.equals("0")) {
-                        // create test table
+                        // create test table with more compatible Oracle field types
                         System.out.println("create table " + table);
-                        genTest = "CREATE TABLE " + database + "." + table + "(ID NUMBER PRIMARY KEY, VALUE VARCHAR2(255))";
+                        genTest = "CREATE TABLE " + database + "." + table + " ("
+                                + "ID NUMBER PRIMARY KEY, "
+                                + "VALUE VARCHAR2(255), "
+                                + "FIXED_VALUE CHAR(50), "
+                                + "NUMERIC_VALUE NUMBER(15,2), "
+                                + "DATE_VALUE DATE, "
+                                + "TIMESTAMP_VALUE TIMESTAMP, "
+                                + "CLOB_VALUE CLOB, "
+                                + "BLOB_VALUE BLOB, "
+                                + "RAW_VALUE RAW(100), "
+                                + "LONG_VALUE LONG"
+                                + ")";
                         execute(connection, genTest);
                     }
                     genTestQuery = 2;
@@ -245,8 +256,24 @@ public class OracleTester implements DatabaseTester {
 
                 if ((genTestQuery == 2 && (query == null || query.equals("")) || genTestQuery == 3 )) {
                     genTestValue = "executions_loop_test_" + insertIndex;
-                    // set test query
-                    query = "INSERT INTO " + database + "." + table + " (ID, VALUE) VALUES (" + insertIndex + ", '" + genTestValue + "')";
+                    String clobValue = "Large text data for CLOB field inserted at index: " + insertIndex;
+                    byte[] blobData = ("Binary Data - " + insertIndex).getBytes();
+                    String rawValue = "DEADBEEF"; // RAW 值示例
+
+                    query = "INSERT INTO " + database + "." + table + " ("
+                            + "ID, VALUE, FIXED_VALUE, NUMERIC_VALUE, DATE_VALUE, TIMESTAMP_VALUE, "
+                            + "CLOB_VALUE, BLOB_VALUE, RAW_VALUE, LONG_VALUE"
+                            + ") VALUES ("
+                            + insertIndex + ", "
+                            + "'" + genTestValue + "', "
+                            + "'Fixed Val " + insertIndex + "', "
+                            + insertIndex * 100.25 + ", "
+                            + "SYSDATE, SYSTIMESTAMP, "
+                            + "'" + clobValue + "', "
+                            + "UTL_RAW.CAST_TO_RAW('" + new String(blobData) + "'), "
+                            + "HEXTORAW('" + rawValue + "'), "
+                            + "'Long value data for index " + insertIndex + "'"
+                            + ")";
                     if (genTestQuery == 2) {
                         System.out.println("Execution loop start:" + query);
                     }
@@ -350,12 +377,29 @@ public class OracleTester implements DatabaseTester {
     }
 
     public static void main(String[] args) throws IOException {
-        // 使用 DBConfig 方式
+//        DBConfig dbConfig = new DBConfig.Builder()
+//                .host("localhost")
+//                .port(1521)
+//                .user("sys")
+//                .password("5#jV7I51Tj79")
+//                .dbType("oracle")
+//                .duration(10)
+//                .connectionCount(100)
+////            .query("INSERT INTO test_table (value) VALUES ('1');")
+//                .testType("executionloop")
+//                .table("test_table")
+//                .build();
+//        OracleTester tester = new OracleTester(dbConfig);
+//        DatabaseConnection connection = tester.connect();
+//        String result = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
+//        System.out.println(result);
+//        connection.close();
+
         DBConfig dbConfig = new DBConfig.Builder()
                 .host("localhost")
                 .port(1521)
-                .user("c##testuser")
-                .password("testpassword")
+                .user("sys")
+                .password("5#jV7I51Tj79")
                 .dbType("oracle")
                 .duration(10)
                 .interval(1)
