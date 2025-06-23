@@ -592,5 +592,5 @@ public class ZookeeperTester implements DatabaseTester {
 //        String result = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
 //        System.out.println(result);
 //        connection.close();
-//    }
+    }
 }
