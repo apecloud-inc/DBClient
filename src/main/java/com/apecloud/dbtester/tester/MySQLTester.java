@@ -1,5 +1,7 @@
 package com.apecloud.dbtester.tester;
 
+import com.apecloud.dbtester.commons.*;
+
 import java.io.IOException;
 import java.sql.*;
 import java.text.SimpleDateFormat;
@@ -408,7 +410,7 @@ public class MySQLTester implements DatabaseTester {
             .host("localhost")
             .port(3306)
             .user("root")
-            .password("l8Ose3g5TJ5489L0")
+            .password("J7v756R3x847Kjlv")
             .dbType("mysql")
             .duration(10)
             .interval(1)

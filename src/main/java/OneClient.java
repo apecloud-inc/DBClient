@@ -1,5 +1,8 @@
+import com.apecloud.dbtester.commons.DBConfig;
+import com.apecloud.dbtester.commons.DatabaseTester;
+import com.apecloud.dbtester.commons.TestExecutor;
+import com.apecloud.dbtester.commons.TesterFactory;
 import org.apache.commons.cli.*;
-import com.apecloud.dbtester.tester.*;
 
 public class OneClient {
     public static void main(String[] args) throws Exception {
