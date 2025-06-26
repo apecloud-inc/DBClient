@@ -1,6 +1,5 @@
 package com.apecloud.dbtester.tester;
 
-import com.taosdata.jdbc.TSDBDriver;
 import java.sql.Connection;
 import java.sql.Statement;
 import java.sql.ResultSet;

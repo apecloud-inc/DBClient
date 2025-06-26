@@ -9,19 +9,6 @@ If your applications are running under same k8s with KubeBlocks, just access the
 When your applications access the databases from another k8s or baremetal environments, NodePort and LoadBalancer are always recommended network solutions.
 So here we give some examples for NodePort and LoadBalancer.
 
-## How to run examples
-### MySQL
-gradle runMySQL
-
-### PostgreSQL
-gradle runPostgreSQL
-
-### MongoDB Replicaset
-gradle runMongoDB
-
-### Sentinel Redis
-gradle runSentinelRedis
-
 ## How to run advanced database tests
 ### Build OneClient
 

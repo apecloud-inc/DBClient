@@ -106,9 +106,9 @@ public class DatabaseConnectionFactory {
             case "dameng":
                 url = "jdbc:dm://" + host + ":" + port;
                 break;
-            case "greptime":
-                url = "jdbc:mysql://" + host + ":" + port + "/public?serverTimezone=UTC";
-                break;
+//            case "greptime":
+//                url = "jdbc:mysql://" + host + ":" + port + "/public?serverTimezone=UTC";
+//                break;
             case "mariadb":
                 url = "jdbc:mariadb://" + host + ":" + port + "/";
                 break;
@@ -121,13 +121,13 @@ public class DatabaseConnectionFactory {
             case "oracle":
                 url = "jdbc:oracle:thin:@" + host + ":" + port + ":ORCLCDB";
                 break;
-            case "taos":
-            case "tdengine":
-                url = "jdbc:TAOS-RS://" + host + ":" + port;
-                break;
-            case "yashan":
-                url = "jdbc:yasdb://" + host + ":" + port + "/" + database;
-                break;
+//            case "taos":
+//            case "tdengine":
+//                url = "jdbc:TAOS-RS://" + host + ":" + port;
+//                break;
+//            case "yashan":
+//                url = "jdbc:yasdb://" + host + ":" + port + "/" + database;
+//                break;
             // 可以添加其他数据库 JDBC URL 格式
             default:
                 throw new IllegalArgumentException("Unsupported database type: " + dbType);
