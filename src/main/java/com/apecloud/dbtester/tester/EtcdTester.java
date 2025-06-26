@@ -1,5 +1,9 @@
 package com.apecloud.dbtester.tester;
 
+import com.apecloud.dbtester.commons.DBConfig;
+import com.apecloud.dbtester.commons.DatabaseConnection;
+import com.apecloud.dbtester.commons.DatabaseTester;
+import com.apecloud.dbtester.commons.QueryResult;
 import io.etcd.jetcd.ByteSequence;
 import io.etcd.jetcd.Client;
 import io.etcd.jetcd.KV;
@@ -17,7 +21,6 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.CompletableFuture;
 
 public class EtcdTester implements DatabaseTester {
     private List<DatabaseConnection> connections = new ArrayList<>();

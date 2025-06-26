@@ -1,4 +1,4 @@
-package com.apecloud.dbtester.tester;
+package com.apecloud.dbtester.commons;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

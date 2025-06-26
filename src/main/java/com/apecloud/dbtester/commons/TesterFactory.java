@@ -1,4 +1,8 @@
-package com.apecloud.dbtester.tester;
+package com.apecloud.dbtester.commons;
+
+import com.apecloud.dbtester.commons.DBConfig;
+import com.apecloud.dbtester.commons.DatabaseTester;
+import com.apecloud.dbtester.tester.*;
 
 public class TesterFactory {
     public static DatabaseTester createTester(DBConfig config) {
@@ -66,7 +70,7 @@ public class TesterFactory {
             case "opengauss":
                 return new OpenGaussTester(config);
             case "qdrant":
-                return new QdrantTesterHttp(config);
+                return new QdrantTester(config);
             case "redis":
             case "sentinelredis":
                 return new RedisTester(config);

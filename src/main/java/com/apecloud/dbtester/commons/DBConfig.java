@@ -1,4 +1,4 @@
-package com.apecloud.dbtester.tester;
+package com.apecloud.dbtester.commons;
 
 public class DBConfig {
     // 支持的数据库访问模式枚举
