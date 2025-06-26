@@ -102,7 +102,7 @@ dependencies {
     implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.13.0'
 
     // This is for Pulsar connector
-    implementation group: 'org.apache.pulsar', name: 'pulsar-client', version: '2.10.0'
+    // implementation group: 'org.apache.pulsar', name: 'pulsar-client', version: '2.10.0'
 
     // This is for Elasticsearch connector
     implementation 'co.elastic.clients:elasticsearch-java:8.8.2'
@@ -111,34 +111,34 @@ dependencies {
     implementation 'ru.yandex.clickhouse:clickhouse-jdbc:0.3.2'
 
     // This is for Weaviate connector
-    implementation 'io.weaviate:client:4.7.0'
+    // implementation 'io.weaviate:client:4.7.0'
 
     // This is for GreptimeDB connector
-    implementation 'io.greptime:ingester-all:0.7.3'
+    // implementation 'io.greptime:ingester-all:0.7.3'
 
     // This is for Nebula connector
-    implementation 'com.vesoft:client:3.8.0'
-    implementation 'com.alibaba:fastjson:2.0.51'
+    // implementation 'com.vesoft:client:3.8.0'
+    // implementation 'com.alibaba:fastjson:2.0.51'
 
     // This is for Milvus connector
-    implementation 'io.milvus:milvus-sdk-java:2.4.1'
+    implementation 'io.milvus:milvus-sdk-java:2.5.9'
 
     // This is for Oracle connector
     implementation 'com.oracle.database.jdbc:ojdbc8:19.3.0.0'
 
-    // This is for Flink connector
-    implementation 'org.apache.flink:flink-java:1.19.1'
-    implementation 'org.apache.flink:flink-streaming-java:1.19.1'
+    // This is for Flink connector and org.apache.commons.cli.*
+    // implementation 'org.apache.flink:flink-java:1.19.1'
+    // implementation 'org.apache.flink:flink-streaming-java:1.19.1'
     implementation 'org.apache.flink:flink-clients:1.19.1'
 
     // This is for MariaDB connector
     implementation 'org.mariadb.jdbc:mariadb-java-client:3.3.3'
 
     // This is for YashanDB connector
-    implementation 'com.yashandb:yashandb-jdbc:1.6.1'
+    // implementation 'com.yashandb:yashandb-jdbc:1.6.1'
 
     // This is for DMDB connector
-    implementation 'com.dameng:Dm7JdbcDriver18:7.6.0.165'
+    // implementation 'com.dameng:Dm7JdbcDriver18:7.6.0.165'
 
     // This is for InfluxDB connector
     implementation 'com.influxdb:influxdb-client-java:3.2.0'
@@ -153,7 +153,7 @@ dependencies {
     implementation 'io.minio:minio:8.5.11'
 
     // This is for etcd connector
-    implementation 'com.coreos:jetcd-core:0.0.1'
+    // implementation 'com.coreos:jetcd-core:0.0.1'
 
     // This is for Halo connector
     // implementation 'com.halo.client:halo-jdbc:0.5.0'
@@ -162,16 +162,16 @@ dependencies {
     implementation 'org.opengauss:opengauss-jdbc:6.0.0-RC1-og'
 
     // This is for TDengine connector
-    implementation 'com.taosdata.jdbc:taos-jdbcdriver:3.3.0'
+    // implementation 'com.taosdata.jdbc:taos-jdbcdriver:3.3.0'
 
     // This is for Solr connector
-    implementation 'org.apache.solr:solr-solrj:8.11.1'
+    // implementation 'org.apache.solr:solr-solrj:8.11.1'
 
     // This is for OpenSearch connector
     implementation 'org.opensearch.client:opensearch-rest-high-level-client:1.2.4'
     implementation 'org.apache.httpcomponents.client5:httpclient5:5.2.1'
 
-    // This is for TiDB connector
+    // This is for TiDB/Etcd connector
     implementation 'com.pingcap.tikv:tikv-client-java:3.0.0'
 
     // This is for MogDB connector
@@ -184,69 +184,6 @@ dependencies {
     implementation group: 'com.microsoft.sqlserver', name: 'mssql-jdbc', version: '12.8.1.jre11'
 }
 
-
-task(runMySQL, dependsOn: 'classes', type: JavaExec) {
-   main = 'MySQLExample'
-   classpath = sourceSets.main.runtimeClasspath
-   args 'ApeCloud'
-   systemProperty 'mysql.message', 'Hello '
-}
-
-task(runPostgreSQL, dependsOn: 'classes', type: JavaExec) {
-   main = 'PostgreSQLExample'
-   classpath = sourceSets.main.runtimeClasspath
-   args 'ApeCloud'
-   systemProperty 'postgresql.message', 'Hello '
-}
-
-task(runMongoDB, dependsOn: 'classes', type: JavaExec) {
-   main = 'MongoDBExample'
-   classpath = sourceSets.main.runtimeClasspath
-   args 'ApeCloud'
-   systemProperty 'mongodb.message', 'Hello '
-}
-
-task(runSentinelRedis, dependsOn: 'classes', type: JavaExec) {
-   main = 'SentinelRedisExample'
-   classpath = sourceSets.main.runtimeClasspath
-   args 'ApeCloud'
-   systemProperty 'sentinelredis.message', 'Hello '
-}
-
-task(runKafka, dependsOn: 'classes', type: JavaExec) {
-    main = 'KafkaProducerExample'
-    classpath = sourceSets.main.runtimeClasspath
-    args 'ApeCloud'
-    systemProperty 'kafka.message', 'Hello '
-}
-
-task(runPolarDBX, dependsOn: 'classes', type: JavaExec) {
-    main = 'PolarDBXExample'
-    classpath = sourceSets.main.runtimeClasspath
-    args 'ApeCloud'
-    systemProperty 'polardbx.message', 'Hello '
-}
-
-task(runPulsar, dependsOn: 'classes', type: JavaExec) {
-    main = 'PulsarProducerExample'
-    classpath = sourceSets.main.runtimeClasspath
-    args 'ApeCloud'
-    systemProperty 'pulsar.message', 'Hello '
-}
-
-task(runQdrant, dependsOn: 'classes', type: JavaExec) {
-    main = 'QdrantHttpExample'
-    classpath = sourceSets.main.runtimeClasspath
-    args 'ApeCloud'
-    systemProperty 'qdrant.message', 'Hello '
-}
-
-task(runElasticSearch, dependsOn: 'classes', type: JavaExec) {
-    main = 'ElasticSearchExample'
-    classpath = sourceSets.main.runtimeClasspath
-    args 'ApeCloud'
-    systemProperty 'elasticsearch.message', 'Hello '
-}
 
 task(runOneClient, dependsOn: 'classes', type: JavaExec) {
     main = 'OneClient'
