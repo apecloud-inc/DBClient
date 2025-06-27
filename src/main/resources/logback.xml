@@ -1,0 +1,17 @@
+
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="STDOUT"/>
+    </root>
+
+    <!-- 禁用 gRPC 和 Milvus 的 DEBUG 日志 -->
+    <logger name="io.grpc.netty" level="INFO"/>
+    <logger name="io.milvus" level="INFO"/>
+
+</configuration>

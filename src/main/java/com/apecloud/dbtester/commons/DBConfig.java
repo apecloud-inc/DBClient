@@ -45,6 +45,7 @@ public class DBConfig {
     private final String topic;           // Database topic
     private final String bucket;           // Database bucket
     private final String cluster;           // Database cluster
+    private final int size;
 
     private DBConfig(Builder builder) {
         this.host = builder.host;
@@ -69,6 +70,7 @@ public class DBConfig {
         this.topic = builder.topic;
         this.bucket = builder.bucket;
         this.cluster = builder.cluster;
+        this.size = builder.size;
     }
 
     public String getTable() {
@@ -159,6 +161,10 @@ public class DBConfig {
         return cluster;
     }
 
+    public int getSize() {
+        return size;
+    }
+
     // Builder class
     public static class Builder {
         private String host = "localhost";
@@ -183,6 +189,7 @@ public class DBConfig {
         private String topic;
         private String bucket;
         private String cluster;
+        private int size = 0;
 
 
         public Builder table(String table) {
@@ -295,6 +302,11 @@ public class DBConfig {
             return this;
         }
 
+        public Builder size(int size) {
+            this.size = size;
+            return this;
+        }
+
         public DBConfig build() {
             validate();
             return new DBConfig(this);
@@ -402,6 +414,7 @@ public class DBConfig {
                 case "kingbase":
                 case "minio":
                 case "mogdb":
+                case "milvus":
                     break;
                 default:
                     throw new IllegalStateException("Unsupported database type: " + dbType);
@@ -433,6 +446,7 @@ public class DBConfig {
                 ", topic=" + topic +
                 ", bucket=" + bucket +
                 ", cluster=" + cluster +
+                ", size=" + size +
                 '}';
     }
 }
