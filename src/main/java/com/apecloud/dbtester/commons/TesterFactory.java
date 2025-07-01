@@ -88,6 +88,8 @@ public class TesterFactory {
                 return new StarRocksTester(config);
             case "milvus":
                 return new MilvusTester(config);
+            case "nebula":
+                return new NebulaTester(config);
             default:
                 throw new IllegalArgumentException("Unsupported database type: " + config.getDbType());
         }
