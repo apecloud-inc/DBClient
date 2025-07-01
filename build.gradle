@@ -57,6 +57,15 @@ repositories {
 }
 
 dependencies {
+    // This is for GaussDB Java connector
+    implementation files('libs/opengaussjdbc.jar')
+
+    // This is for Gbase8c Java connector
+    implementation files('libs/GBase8cV5_JDBC_3.0.0/gbase8c-jdbc-3.0.0B02.jar')
+
+    // This is for Oceanbase connector
+    implementation files('libs/oceanbase-client-2.4.8.jar')
+
     // This dependency is found on compile classpath of this component and consumers.
     implementation 'com.google.guava:guava:23.0'
 
@@ -67,42 +76,32 @@ dependencies {
     implementation 'org.json:json:20231013'
 
     // Use SLF4J
-    implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.30'
-    implementation group: 'ch.qos.logback', name: 'logback-classic', version: '1.4.12'
+    implementation 'ch.qos.logback:logback-classic:1.4.12'
 
     // This is for MySQL Java connector
-    implementation group: 'mysql', name: 'mysql-connector-java', version: '8.0.28'
+    implementation 'mysql:mysql-connector-java:8.0.28'
 
     // This is for PostgreSQL Java connector
-    implementation group: 'org.postgresql', name: 'postgresql', version: '42.0.0'
-
-    // This is for GaussDB Java connector
-    implementation files('libs/opengaussjdbc.jar')
-
-    // This is for Gbase8c Java connector
-    implementation files('libs/GBase8cV5_JDBC_3.0.0/gbase8c-jdbc-3.0.0B02.jar')
-
-    // This is for Oceanbase connector
-    implementation files('libs/oceanbase-client-2.4.8.jar')
+    implementation 'org.postgresql:postgresql:42.0.0'
 
     // This is for MongoDB Java connector
-    implementation group: 'org.mongodb', name: 'mongodb-driver-sync', version: '4.6.1'
-    implementation group: 'org.mongodb', name: 'mongodb-driver-reactivestreams', version: '4.6.1'
+    implementation 'org.mongodb:mongodb-driver-sync:4.6.1'
+    implementation 'org.mongodb:mongodb-driver-reactivestreams:4.6.1'
 
     // This is for Redis Sentinel connector
-    implementation group: 'redis.clients', name: 'jedis', version: '3.7.0'
+    implementation 'redis.clients:jedis:3.7.0'
 
     // This is for Kafka connector
-    implementation group: 'org.apache.kafka', name: 'kafka-clients', version: '2.8.0'
-    //  group: 'org.apache.kafka', name: 'kafka-clients', version: '2.8.0'
+    implementation 'org.apache.kafka:kafka-clients:2.8.0'
+    //  'org.apache.kafka:kafka-clients:2.8.0'
 
     // This is for Qdrant connect
     implementation 'io.qdrant:client:1.12.0'  // 确保使用最新版本
-    implementation group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.13'
-    implementation group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: '2.13.0'
+    implementation 'org.apache.httpcomponents:httpclient:4.5.13'
+    implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.0'
 
     // This is for Pulsar connector
-    // implementation group: 'org.apache.pulsar', name: 'pulsar-client', version: '2.10.0'
+    // implementation 'org.apache.pulsar:pulsar-client:2.10.0'
 
     // This is for Elasticsearch connector
     implementation 'co.elastic.clients:elasticsearch-java:8.8.2'
@@ -117,9 +116,8 @@ dependencies {
     // implementation 'io.greptime:ingester-all:0.7.3'
 
     // This is for Nebula connector
-    // implementation 'com.vesoft:client:3.8.0'
-    // implementation 'com.alibaba:fastjson:2.0.51'
-
+    implementation 'com.vesoft:client:3.8.4'
+    implementation 'com.alibaba:fastjson:2.0.57'
     // This is for Milvus connector
     implementation 'io.milvus:milvus-sdk-java:2.5.9'
     implementation 'io.perfmark:perfmark-api:0.26.0'
@@ -182,7 +180,7 @@ dependencies {
     implementation 'cn.com.kingbase:kingbase8:8.6.0'
 
     // This is for SqlServer connector
-    implementation group: 'com.microsoft.sqlserver', name: 'mssql-jdbc', version: '12.8.1.jre11'
+    implementation 'com.microsoft.sqlserver:mssql-jdbc:12.8.1.jre11'
 }
 
 
