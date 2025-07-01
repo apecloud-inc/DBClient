@@ -181,11 +181,11 @@ public class NebulaTester implements DatabaseTester {
         // check gen test query
         if (query == null || query.equals("") || (table != null && !table.equals(""))) {
             genTestQuery = 1;
+            endTime = startTime + (duration + 8) * 1000;
         }
 
         if (table == null || table.equals("")) {
             table = "executions_loop_table";
-            endTime = startTime + (duration + 8) * 1000;
         }
 
         System.out.println("Execution loop start:" + query);
