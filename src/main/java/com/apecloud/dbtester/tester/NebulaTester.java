@@ -185,6 +185,7 @@ public class NebulaTester implements DatabaseTester {
 
         if (table == null || table.equals("")) {
             table = "executions_loop_table";
+            endTime = startTime + (duration + 8) * 1000;
         }
 
         System.out.println("Execution loop start:" + query);
@@ -226,6 +227,7 @@ public class NebulaTester implements DatabaseTester {
                     } else {
                         System.out.println("Create tag " + table + " successful.");
                     }
+                    Thread.sleep(8000);
 
                     String describeQuery = "DESCRIBE TAG " + table + ";";
                     ResultSet describeResult = sessionPool.execute(describeQuery);
@@ -266,6 +268,7 @@ public class NebulaTester implements DatabaseTester {
                         executionError = false;
                     }
                 } else {
+                    System.out.println("error code: " + executeResult.getErrorCode());
                     failedExecutions++;
                     insertIndex--;
                     executionError = true;
@@ -359,58 +362,58 @@ public class NebulaTester implements DatabaseTester {
                 .user("root")
                 .password("5&K2193@Ezg70p9!")
                 .dbType("nebula")
-                .duration(60)
+                .duration(20)
                 .interval(1)
                 .testType("executionloop")
                 .database("default")
                 .build();
 
-        dbConfig = new DBConfig.Builder()
-                .host("localhost")
-                .port(9669)
-                .user("root")
-                .password("5&K2193@Ezg70p9!")
-                .dbType("nebula")
-                .duration(1)
-                .connectionCount(300)
-                .testType("connectionstress")
-                .database("default")
-                .build();
-
-        DBConfig dbConfig2 = new DBConfig.Builder()
-                .host("localhost")
-                .port(9669)
-                .user("root")
-                .password("5&K2193@Ezg70p9!")
-                .dbType("nebula")
-                .testType("query")
-                .database("default")
-                .query("SHOW SESSIONS;")
-                .build();
+//        dbConfig = new DBConfig.Builder()
+//                .host("localhost")
+//                .port(9669)
+//                .user("root")
+//                .password("5&K2193@Ezg70p9!")
+//                .dbType("nebula")
+//                .duration(1)
+//                .connectionCount(300)
+//                .testType("connectionstress")
+//                .database("default")
+//                .build();
+//
+//        DBConfig dbConfig2 = new DBConfig.Builder()
+//                .host("localhost")
+//                .port(9669)
+//                .user("root")
+//                .password("5&K2193@Ezg70p9!")
+//                .dbType("nebula")
+//                .testType("query")
+//                .database("default")
+//                .query("SHOW SESSIONS;")
+//                .build();
 
         NebulaTester tester = new NebulaTester(dbConfig);
-        NebulaTester tester2 = new NebulaTester(dbConfig2);
-        DatabaseConnection connection = tester2.connect();
+//        NebulaTester tester2 = new NebulaTester(dbConfig2);
+        DatabaseConnection connection = tester.connect();
 
-        String resultStr = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
-        System.out.println(resultStr);
-
-//        String result2 = tester.executionLoop(connection, dbConfig.getQuery(), dbConfig.getDuration(),
-//                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
-//        System.out.println(result2);
-//        connection.close();
+        String result2 = tester.executionLoop(connection, dbConfig.getQuery(), dbConfig.getDuration(),
+                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
+        System.out.println(result2);
+        connection.close();
+//
+//        String resultStr = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
+//        System.out.println(resultStr);
 
         // kill session
-        NebulaDatabaseConnection nebulaConnection = (NebulaDatabaseConnection) connection;
-        ResultSet result = nebulaConnection.sessionPool.execute(dbConfig2.getQuery());
-        List<Row> rowList = result.getRows();
-        System.out.println("Total rows: " + rowList.size());
-        for (Row row : rowList) {
-            String killSessionQuery = "KILL SESSION " + row.getValues().get(0).getFieldValue();
-            System.out.println(killSessionQuery);
-            nebulaConnection.sessionPool.execute(killSessionQuery);
-        }
-        nebulaConnection.sessionPool.close();
+//        NebulaDatabaseConnection nebulaConnection = (NebulaDatabaseConnection) connection;
+//        ResultSet result = nebulaConnection.sessionPool.execute(dbConfig2.getQuery());
+//        List<Row> rowList = result.getRows();
+//        System.out.println("Total rows: " + rowList.size());
+//        for (Row row : rowList) {
+//            String killSessionQuery = "KILL SESSION " + row.getValues().get(0).getFieldValue();
+//            System.out.println(killSessionQuery);
+//            nebulaConnection.sessionPool.execute(killSessionQuery);
+//        }
+//        nebulaConnection.sessionPool.close();
 
     }
 }
