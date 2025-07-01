@@ -319,7 +319,6 @@ public class NebulaTester implements DatabaseTester {
         @Override
         public void close() throws IOException {
             try {
-                System.out.println("Closing Nebula connection...");
                 sessionPool.close();
             } catch (Exception e) {
                 throw new IOException("Failed to close Nebula connection", e);
