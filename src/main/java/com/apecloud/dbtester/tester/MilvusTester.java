@@ -16,8 +16,6 @@ import com.google.gson.JsonObject;
 import io.milvus.v2.client.ConnectConfig;
 import io.milvus.v2.common.IndexParam;
 import io.milvus.v2.service.vector.request.data.FloatVec;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import io.milvus.v2.client.MilvusClientV2;
 import io.milvus.v2.service.collection.request.CreateCollectionReq;
@@ -28,7 +26,6 @@ import io.milvus.v2.service.vector.request.SearchReq;
 import io.milvus.v2.service.vector.response.SearchResp;
 
 public class MilvusTester implements DatabaseTester {
-    private static final Logger logger = LoggerFactory.getLogger(MilvusTester.class);
     private final List<DatabaseConnection> connections = new ArrayList<>();
     private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     private final DBConfig dbConfig;
@@ -468,7 +465,7 @@ public class MilvusTester implements DatabaseTester {
             }
         }
 
-        public boolean createCollection(String collectionName, int vectorSize) {
+        public boolean createCollection(String collectionName, int vectorSize) throws IOException {
             try {
                 // 构建创建集合请求
                 CreateCollectionReq createReq = CreateCollectionReq.builder()
@@ -479,12 +476,11 @@ public class MilvusTester implements DatabaseTester {
                 client.createCollection(createReq);
                 return true;
             } catch (Exception e) {
-                logger.error("Failed to create collection: {}", collectionName, e);
-                return false;
+                throw new IOException("Failed to create collection: ", e);
             }
         }
 
-        public boolean deleteCollection(String collectionName) {
+        public boolean deleteCollection(String collectionName)  throws IOException {
             try {
                 DropCollectionReq dropReq = DropCollectionReq.builder()
                         .collectionName(collectionName)
@@ -493,12 +489,11 @@ public class MilvusTester implements DatabaseTester {
                 client.dropCollection(dropReq);
                 return true;
             } catch (Exception e) {
-                logger.error("Failed to delete collection: {}", collectionName, e);
-                return false;
+                throw new IOException("Failed to delete collection: ", e);
             }
         }
 
-        public boolean checkCollectionExists(String collectionName) {
+        public boolean checkCollectionExists(String collectionName) throws IOException {
             try {
                 HasCollectionReq hasReq = HasCollectionReq.builder()
                         .collectionName(collectionName)
@@ -506,12 +501,11 @@ public class MilvusTester implements DatabaseTester {
 
                 return client.hasCollection(hasReq);
             } catch (Exception e) {
-                logger.error("Failed to check collection existence: {}", collectionName, e);
-                return false;
+                throw new IOException("Failed to check collection existence: ", e);
             }
         }
 
-        public boolean insertData(String collectionName, int id, List<Double> vector, Map<String, Object> payload) {
+        public boolean insertData(String collectionName, int id, List<Double> vector, Map<String, Object> payload) throws IOException {
             try {
                 // 转换Double向量为Float
                 List<Float> floatVector = new ArrayList<>();
@@ -536,12 +530,11 @@ public class MilvusTester implements DatabaseTester {
                 client.insert(insertReq);
                 return true;
             } catch (Exception e) {
-                logger.error("Failed to insert data into collection: {}", collectionName, e);
-                return false;
+                throw new IOException("Failed to insert data into collection: ", e);
             }
         }
 
-        public MilvusSearchResponse queryPoints(String collectionName, List<Double> queryVector, int limit) {
+        public MilvusSearchResponse queryPoints(String collectionName, List<Double> queryVector, int limit) throws IOException {
             try {
                 // 转换查询向量
                 List<Float> floatVector = new ArrayList<>();
@@ -575,8 +568,7 @@ public class MilvusTester implements DatabaseTester {
                 result.setStatus("ok");
                 return result;
             } catch (Exception e) {
-                logger.error("Failed to query points from collection: {}", collectionName, e);
-                return new MilvusSearchResponse();
+                throw new IOException("Failed to query points from collection: ", e);
             }
         }
     }
