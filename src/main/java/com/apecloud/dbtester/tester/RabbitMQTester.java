@@ -93,7 +93,8 @@ public class RabbitMQTester implements DatabaseTester {
     }
 
     private QueryResult handleDeclareQueue(Channel channel, String queueName) throws IOException {
-        channel.queueDeclare(queueName, false, false, false, null);
+        boolean durable = true;
+        channel.queueDeclare(queueName, durable, false, false, null);
         return new RabbitMQQueryResult("Queue " + queueName + " declared successfully");
     }
 
@@ -104,12 +105,14 @@ public class RabbitMQTester implements DatabaseTester {
 
     private QueryResult handlePublish(Channel channel, String queueName, Map<String, Object> payload) throws IOException {
         String message = (String) payload.get("message");
-        channel.basicPublish("", queueName, null, message.getBytes());
+        AMQP.BasicProperties props = new AMQP.BasicProperties.Builder()
+                .deliveryMode(2) // 2 表示消息持久化
+                .build();
+        channel.basicPublish("", queueName, props, message.getBytes());
         return new RabbitMQQueryResult("Message sent to queue: " + queueName);
     }
 
     private QueryResult handleConsume(Channel channel, String queueName, Map<String, Object> queryMap) throws IOException {
-        int timeout = (int) queryMap.getOrDefault("timeout", 5000);
         boolean noAck = (boolean) queryMap.getOrDefault("no_ack", true);
 
         List<String> results = new ArrayList<>();
@@ -126,13 +129,13 @@ public class RabbitMQTester implements DatabaseTester {
     }
 
     private boolean checkQueueExist(Channel channel, String queueName) throws IOException {
-        try {
-            channel.queueDeclarePassive(queueName);
+            AMQP.Queue.DeclareOk declareOk = channel.queueDeclarePassive(queueName);
+            String queue = declareOk.getQueue();
+            if (queue == null || queue.isEmpty()) {
+                System.out.println("Queue does not exist: " + queueName);
+                return false;
+            }
             return true;
-        } catch (IOException e) {
-            System.out.println("check queue exists error:" + e.getMessage());
-            return false;
-        }
     }
 
     private int getMessageCount(Channel channel, String queueName) throws IOException {
@@ -334,29 +337,39 @@ public class RabbitMQTester implements DatabaseTester {
                 }
 
                 if (genTestQuery == 1) {
-                    // check queue exists
-                    genTest = "{\"operation\":\"check_queue\",\"queue\":\"" + table + "\"}";
-                    queryResult = execute(connection, genTest);
-                    rmqQueryResult = (RabbitMQQueryResult) queryResult;
-                    if (!rmqQueryResult.getMessage().contains("true")) {
-                        // create test queue
-                        System.out.println("Queue " + table + " does not exist. Creating queue...");
-                        genTest = "{\"operation\":\"declare_queue\",\"queue\":\"" + table + "\"}";
-                        execute(connection, genTest);
-                        System.out.println("Queue " + table + " created successfully.");
-                    } else {
-                        System.out.println("Queue " + table + " already exists.");
-                        if ("executions_loop_queue".equals(table)) {
-                            genTest = "{\"operation\":\"delete_queue\",\"queue\":\"" + table + "\"}";
-                            execute(connection, genTest);
-                            System.out.println("Queue " + table + " deleted successfully.");
+                   try {
+                       // check queue exists
+                       genTest = "{\"operation\":\"check_queue\",\"queue\":\"" + table + "\"}";
+                       queryResult = execute(connection, genTest);
+                        rmqQueryResult = (RabbitMQQueryResult) queryResult;
+                        if (!rmqQueryResult.getMessage().contains("true")) {
+                            // create test queue
+                            System.out.println("Queue " + table + " does not exist. Creating queue...");
                             genTest = "{\"operation\":\"declare_queue\",\"queue\":\"" + table + "\"}";
                             execute(connection, genTest);
                             System.out.println("Queue " + table + " created successfully.");
+                        } else {
+                            System.out.println("Queue " + table + " already exists.");
+                            if ("executions_loop_queue".equals(table)) {
+                                genTest = "{\"operation\":\"delete_queue\",\"queue\":\"" + table + "\"}";
+                                execute(connection, genTest);
+                                System.out.println("Queue " + table + " deleted successfully.");
+                                genTest = "{\"operation\":\"declare_queue\",\"queue\":\"" + table + "\"}";
+                                execute(connection, genTest);
+                                System.out.println("Queue " + table + " created successfully.");
+                            }
                         }
+                    } catch (IOException e) {
+                        // 如果 channel 已关闭，重新连接
+                        System.err.println("Channel closed, reconnecting...");
+                        connection = this.connect();
+                        genTest = "{\"operation\":\"declare_queue\",\"queue\":\"" + table + "\"}";
+                        execute(connection, genTest);
+                        System.out.println("Queue " + table + " created after reconnection.");
                     }
                     genTestQuery = 2;
                 }
+
                 if ((genTestQuery == 2 && (query == null || query.equals("")) || genTestQuery == 3 )) {
                     genTestValue = "executions_loop_message_" + insertIndex;
                     // set test query
@@ -488,16 +501,16 @@ public class RabbitMQTester implements DatabaseTester {
                 .user("root")
                 .password("YZ9F255pO8SjM522")
                 .dbType("rabbitmq")
-                .duration(2)
+                .duration(3)
                 .interval(1)
                 .connectionCount(100)
                 .testType("connectionstress")
                 .build();
         RabbitMQTester tester = new RabbitMQTester(dbConfig);
-        String result = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
-//        DatabaseConnection connection = tester.connect();
-//        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
-//                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
+//        String result = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
+        DatabaseConnection connection = tester.connect();
+        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
+                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
         System.out.println(result);
 
 //        String queue = "executions_loop_queue";
@@ -525,6 +538,6 @@ public class RabbitMQTester implements DatabaseTester {
 //        rmqQueryResult = (RabbitMQQueryResult)queryResult;
 //        System.out.println(rmqQueryResult.getMessage());
 
-//        connection.close();
+        connection.close();
     }
 }
