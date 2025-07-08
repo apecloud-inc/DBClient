@@ -91,6 +91,8 @@ public class TesterFactory {
                 return new MilvusTester(config);
             case "nebula":
                 return new NebulaTester(config);
+            case "rabbitmq":
+                return new RabbitMQTester(config);
             default:
                 throw new IllegalArgumentException("Unsupported database type: " + config.getDbType());
         }

@@ -181,6 +181,9 @@ dependencies {
 
     // This is for SqlServer connector
     implementation 'com.microsoft.sqlserver:mssql-jdbc:12.8.1.jre11'
+
+    // This is for rabbitmq connector
+    implementation 'com.rabbitmq:amqp-client:5.23.0'
 }
 
 

@@ -6,28 +6,26 @@ import com.apecloud.dbtester.commons.DatabaseTester;
 import com.apecloud.dbtester.commons.QueryResult;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.kafka.clients.admin.*;
-import org.apache.kafka.clients.consumer.*;
-import org.apache.kafka.clients.producer.*;
-import org.apache.kafka.common.serialization.StringDeserializer;
-import org.apache.kafka.common.serialization.StringSerializer;
 
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.*;
+import java.sql.ResultSet;
 
-public class KafkaTester implements DatabaseTester {
+import com.rabbitmq.client.*;
+
+
+public class RabbitMQTester implements DatabaseTester {
     private List<DatabaseConnection> connections = new ArrayList<>();
     private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     private final DBConfig dbConfig;
 
-    public KafkaTester() {
+    public RabbitMQTester() {
         this.dbConfig = null;
     }
 
-    public KafkaTester(DBConfig dbConfig) {
+    public RabbitMQTester(DBConfig dbConfig) {
         this.dbConfig = dbConfig;
     }
 
@@ -38,70 +36,54 @@ public class KafkaTester implements DatabaseTester {
         }
 
         try {
-            Properties props = new Properties();
-            props.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, dbConfig.getHost() + ":" + dbConfig.getPort());
-            props.put(AdminClientConfig.SECURITY_PROTOCOL_CONFIG, "PLAINTEXT");
-            
+            ConnectionFactory factory = new ConnectionFactory();
+            factory.setHost(dbConfig.getHost());
+            factory.setPort(dbConfig.getPort());
             if (dbConfig.getUser() != null && !dbConfig.getUser().isEmpty()) {
-                props.put("sasl.mechanism", "PLAIN");
-                props.put("sasl.jaas.config", 
-                    String.format("org.apache.kafka.common.security.plain.PlainLoginModule required username=\"%s\" password=\"%s\";",
-                        dbConfig.getUser(), dbConfig.getPassword()));
+                factory.setUsername(dbConfig.getUser());
+                factory.setPassword(dbConfig.getPassword());
             }
+            Connection connection = factory.newConnection();
+            Channel channel = connection.createChannel();
 
-            AdminClient adminClient = AdminClient.create(props);
-            KafkaProducer<String, String> producer = createProducer(props);
-            KafkaConsumer<String, String> consumer = createConsumer(props);
-
-            return new KafkaConnection(adminClient, producer, consumer);
+            return new RabbitMQConnection(connection, channel);
         } catch (Exception e) {
-            throw new IOException("Failed to connect to Kafka", e);
+            throw new IOException("Failed to connect to RabbitMQ", e);
         }
-    }
-
-    private KafkaProducer<String, String> createProducer(Properties baseProps) {
-        Properties props = new Properties();
-        props.putAll(baseProps);
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        return new KafkaProducer<>(props);
-    }
-
-    private KafkaConsumer<String, String> createConsumer(Properties baseProps) {
-        Properties props = new Properties();
-        props.putAll(baseProps);
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "kafka-tester-group");
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-        return new KafkaConsumer<>(props);
     }
 
     @Override
     public QueryResult execute(DatabaseConnection connection, String query) throws IOException {
-        KafkaConnection kafkaConn = (KafkaConnection) connection;
+        RabbitMQConnection mqConn = (RabbitMQConnection) connection;
+        Channel channel = mqConn.getChannel();
+
         try {
             Map<String, Object> queryMap = parseJsonQuery(query);
             String operation = (String) queryMap.get("operation");
-            String topic = (String) queryMap.get("topic");
+            String queue = (String) queryMap.get("queue");
+
             switch (operation.toLowerCase()) {
-                case "produce":
-                    return handleProduce(kafkaConn, topic, queryMap);
+                case "declare_queue":
+                    return handleDeclareQueue(channel, queue);
+                case "delete_queue":
+                    return handleDeleteQueue(channel, queue);
+                case "publish":
+                    return handlePublish(channel, queue, queryMap);
                 case "consume":
-                    return handleConsume(kafkaConn, topic, queryMap);
-                case "create_topic":
-                    return handleCreateTopic(kafkaConn, topic, queryMap);
-                case "delete_topic":
-                    return handleDeleteTopic(kafkaConn, topic);
-                case "list_topics":
-                    return handleListTopics(kafkaConn);
-                case "describe_topic":
-                    return handleDescribeTopic(kafkaConn, topic);
+                    return handleConsume(channel, queue, queryMap);
+                case "check_queue":
+                    String checkQueue = (String) queryMap.get("queue");
+                    boolean exists = checkQueueExist(channel, checkQueue);
+                    return new RabbitMQQueryResult("exists: " + exists);
+                case "get_message_count":
+                    String queueName = (String) queryMap.get("queue");
+                    int messageCount = getMessageCount(channel, queueName);
+                    return new RabbitMQQueryResult("Queue '" + queueName + "' has " + messageCount + " messages.");
                 default:
                     throw new IOException("Unsupported operation: " + operation);
             }
         } catch (Exception e) {
-            throw new IOException("Failed to execute Kafka operation", e);
+            throw new IOException("Failed to execute RabbitMQ operation", e);
         }
     }
 
@@ -110,57 +92,64 @@ public class KafkaTester implements DatabaseTester {
         return objectMapper.readValue(query, new TypeReference<HashMap<String, Object>>() {});
     }
 
-    private QueryResult handleProduce(KafkaConnection conn, String topic, Map<String, Object> queryMap) throws Exception {
-        String key = (String) queryMap.get("key");
-        String value = (String) queryMap.get("value");
-        
-        ProducerRecord<String, String> record = new ProducerRecord<>(topic, key, value);
-        Future<RecordMetadata> future = conn.getProducer().send(record);
-        RecordMetadata metadata = future.get(10, TimeUnit.SECONDS);
-        
-        return new KafkaQueryResult(String.format("Message sent to topic=%s, partition=%d, offset=%d",
-                metadata.topic(), metadata.partition(), metadata.offset()));
+    private QueryResult handleDeclareQueue(Channel channel, String queueName) throws IOException {
+        channel.queueDeclare(queueName, false, false, false, null);
+        return new RabbitMQQueryResult("Queue " + queueName + " declared successfully");
     }
 
-    private QueryResult handleConsume(KafkaConnection conn, String topic, Map<String, Object> queryMap) {
+    private QueryResult handleDeleteQueue(Channel channel, String queueName) throws IOException {
+        channel.queueDelete(queueName);
+        return new RabbitMQQueryResult("Queue " + queueName + " deleted successfully");
+    }
+
+    private QueryResult handlePublish(Channel channel, String queueName, Map<String, Object> payload) throws IOException {
+        String message = (String) payload.get("message");
+        channel.basicPublish("", queueName, null, message.getBytes());
+        return new RabbitMQQueryResult("Message sent to queue: " + queueName);
+    }
+
+    private QueryResult handleConsume(Channel channel, String queueName, Map<String, Object> queryMap) throws IOException {
         int timeout = (int) queryMap.getOrDefault("timeout", 5000);
-        conn.getConsumer().subscribe(Collections.singletonList(topic));
-        
-        ConsumerRecords<String, String> records = conn.getConsumer().poll(Duration.ofMillis(timeout));
+        boolean noAck = (boolean) queryMap.getOrDefault("no_ack", true);
+
         List<String> results = new ArrayList<>();
-        
-        for (ConsumerRecord<String, String> record : records) {
-            results.add(String.format("Received: key=%s, value=%s, topic=%s, partition=%d, offset=%d",
-                    record.key(), record.value(), record.topic(), record.partition(), record.offset()));
+        GetResponse response = channel.basicGet(queueName, noAck);
+        if (response != null) {
+            String message = new String(response.getBody(), "UTF-8");
+            results.add("Received: " + message);
+            if (!noAck) {
+                channel.basicAck(response.getEnvelope().getDeliveryTag(), false);
+            }
         }
-        
-        return new KafkaQueryResult(results);
+
+        return new RabbitMQQueryResult(results);
     }
 
-    private QueryResult handleCreateTopic(KafkaConnection conn, String topic, Map<String, Object> queryMap) throws Exception {
-        int partitions = (int) queryMap.getOrDefault("partitions", 1);
-        short replicationFactor = ((Number) queryMap.getOrDefault("replication_factor", 1)).shortValue();
-        
-        NewTopic newTopic = new NewTopic(topic, partitions, replicationFactor);
-        conn.getAdminClient().createTopics(Collections.singleton(newTopic)).all().get();
-        
-        return new KafkaQueryResult("Topic " + topic + " created successfully");
+    private boolean checkQueueExist(Channel channel, String queueName) throws IOException {
+        try {
+            channel.queueDeclarePassive(queueName);
+            return true;
+        } catch (IOException e) {
+            System.out.println("check queue exists error:" + e.getMessage());
+            return false;
+        }
     }
 
-    private QueryResult handleDeleteTopic(KafkaConnection conn, String topic) throws Exception {
-        conn.getAdminClient().deleteTopics(Collections.singleton(topic)).all().get();
-        return new KafkaQueryResult("Topic " + topic + " deleted successfully");
-    }
-
-    private QueryResult handleListTopics(KafkaConnection conn) throws Exception {
-        Set<String> topics = conn.getAdminClient().listTopics().names().get();
-        return new KafkaQueryResult(new ArrayList<>(topics));
-    }
-
-    private QueryResult handleDescribeTopic(KafkaConnection conn, String topic) throws Exception {
-        DescribeTopicsResult result = conn.getAdminClient().describeTopics(Collections.singleton(topic));
-        TopicDescription description = result.values().get(topic).get();
-        return new KafkaQueryResult("Topic Description: " + description.toString());
+    private int getMessageCount(Channel channel, String queueName) throws IOException {
+        try {
+            // 被动声明队列以获取其状态信息
+            AMQP.Queue.DeclareOk declareOk = channel.queueDeclarePassive(queueName);
+            return declareOk.getMessageCount(); // 获取当前队列中未被确认的消息数
+        } catch (IOException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof ShutdownSignalException) {
+                ShutdownSignalException sse = (ShutdownSignalException) cause;
+                if (sse.getMessage().contains("404")) {
+                    throw new IOException("Queue does not exist: " + queueName);
+                }
+            }
+            throw e;
+        }
     }
 
     @Override
@@ -249,29 +238,29 @@ public class KafkaTester implements DatabaseTester {
         DatabaseConnection connection = null;
         StringBuilder results = new StringBuilder();
         String testType = dbConfig.getTestType();
-        
+
         try {
             connection = connect();
-            String testQuery = "{\"operation\":\"produce\",\"topic\":\"test\",\"key\":\"testKey\",\"value\":\"testValue\"}";
-            
+            String testQuery = "{\"operation\":\"declare_queue\",\"queue\":\"test\"}";
+
             switch (testType) {
                 case "query":
                     execute(connection, testQuery);
                     results.append("Basic query test: SUCCESS\n");
                     break;
-                    
+
                 case "connectionstress":
                     results.append("Connection stress test:\n")
                            .append(connectionStress(10, 5))
                            .append("\n");
                     break;
-                    
+
                 case "benchmark":
                     results.append("Benchmark test:\n")
                            .append(bench(connection, testQuery, 1000, 10))
                            .append("\n");
                     break;
-                    
+
                 default:
                     results.append("Unknown test type\n");
             }
@@ -283,7 +272,7 @@ public class KafkaTester implements DatabaseTester {
             }
             releaseConnections();
         }
-        
+
         return results.toString();
     }
 
@@ -292,7 +281,7 @@ public class KafkaTester implements DatabaseTester {
         StringBuilder result = new StringBuilder();
         QueryResult executeResult;
         int executeUpdateCount;
-        String topic = dbConfig.getTopic();
+        String queue = dbConfig.getTopic();
 
         int successfulExecutions = 0;
         int failedExecutions = 0;
@@ -311,21 +300,19 @@ public class KafkaTester implements DatabaseTester {
         int insertIndex = 0;
         int genTestQuery = 0;
         String genTest;
-        String genTestKey;
         String genTestValue;
         QueryResult queryResult;
-        KafkaQueryResult kafkaQueryResult;
-        int tableCount = 0;
+        RabbitMQQueryResult rmqQueryResult;
 
         // check gen test query
-        if (query == null || query.equals("") || (topic != null && !topic.equals(""))) {
+        if (query == null || query.equals("") || (queue != null && !queue.equals(""))) {
             genTestQuery = 1;
         }
 
-        if (topic != null && !topic.equals("")) {
-            table = topic;
+        if (queue != null && !queue.equals("")) {
+            table = queue;
         } else {
-            table = "executions_loop_topic";
+            table = "executions_loop_queue";
         }
 
         System.out.println("Execution loop start:" + query);
@@ -347,35 +334,33 @@ public class KafkaTester implements DatabaseTester {
                 }
 
                 if (genTestQuery == 1) {
-                    // check topics exists
-                    genTest = "{\"operation\":\"list_topics\"}";
+                    // check queue exists
+                    genTest = "{\"operation\":\"check_queue\",\"queue\":\"" + table + "\"}";
                     queryResult = execute(connection, genTest);
-                    kafkaQueryResult = (KafkaQueryResult) queryResult;
-                    if (queryResult.hasResultSet()) {
-                        List<String> topicsList = kafkaQueryResult.getResults();
-                        for (String topicTmp:topicsList) {
-                            if (topicTmp == table || topicTmp.equals(table) ) {
-                                tableCount = 1;
-                                break;
-                            }
+                    rmqQueryResult = (RabbitMQQueryResult) queryResult;
+                    if (!rmqQueryResult.getMessage().contains("true")) {
+                        // create test queue
+                        System.out.println("Queue " + table + " does not exist. Creating queue...");
+                        genTest = "{\"operation\":\"declare_queue\",\"queue\":\"" + table + "\"}";
+                        execute(connection, genTest);
+                        System.out.println("Queue " + table + " created successfully.");
+                    } else {
+                        System.out.println("Queue " + table + " already exists.");
+                        if ("executions_loop_queue".equals(table)) {
+                            genTest = "{\"operation\":\"delete_queue\",\"queue\":\"" + table + "\"}";
+                            execute(connection, genTest);
+                            System.out.println("Queue " + table + " deleted successfully.");
+                            genTest = "{\"operation\":\"declare_queue\",\"queue\":\"" + table + "\"}";
+                            execute(connection, genTest);
+                            System.out.println("Queue " + table + " created successfully.");
                         }
                     }
-
-                    if (tableCount == 0) {
-                        // create test topic
-                        System.out.println("create topic " + table);
-                        genTest = "{\"operation\":\"create_topic\",\"topic\":\"" + table + "\"}";
-                        execute(connection, genTest);
-                    }
-
                     genTestQuery = 2;
                 }
                 if ((genTestQuery == 2 && (query == null || query.equals("")) || genTestQuery == 3 )) {
-                    genTestKey = "executions_loop_key_" + insertIndex;
-                    genTestValue = "executions_loop_value_" + insertIndex;
+                    genTestValue = "executions_loop_message_" + insertIndex;
                     // set test query
-                    query = "{\"operation\":\"produce\",\"topic\":\"" + table + "\",\"key\":\""
-                            + genTestKey + "\",\"value\":\"" + genTestValue + "\"}";
+                    query = "{\"operation\":\"publish\",\"queue\":\"" + table + "\",\"message\":\"" + genTestValue + "\"}";
                     if (genTestQuery == 2) {
                         System.out.println("Execution loop start:" + query);
                     }
@@ -433,53 +418,46 @@ public class KafkaTester implements DatabaseTester {
                 disconnectCounts);
     }
 
-    private static class KafkaConnection implements DatabaseConnection {
-        private final AdminClient adminClient;
-        private final KafkaProducer<String, String> producer;
-        private final KafkaConsumer<String, String> consumer;
+    private static class RabbitMQConnection implements DatabaseConnection {
+        private final Connection connection;
+        private final Channel channel;
 
-        KafkaConnection(AdminClient adminClient, KafkaProducer<String, String> producer, KafkaConsumer<String, String> consumer) {
-            this.adminClient = adminClient;
-            this.producer = producer;
-            this.consumer = consumer;
+        public RabbitMQConnection(Connection connection, Channel channel) {
+            this.connection = connection;
+            this.channel = channel;
         }
 
-        public AdminClient getAdminClient() {
-            return adminClient;
-        }
-
-        public KafkaProducer<String, String> getProducer() {
-            return producer;
-        }
-
-        public KafkaConsumer<String, String> getConsumer() {
-            return consumer;
+        public Channel getChannel() {
+            return channel;
         }
 
         @Override
         public void close() throws IOException {
-            producer.close();
-            consumer.close();
-            adminClient.close();
+            try {
+                channel.close();
+            } catch (TimeoutException e) {
+                e.printStackTrace();
+            }
+            connection.close();
         }
     }
 
-    private static class KafkaQueryResult implements QueryResult {
+    private static class RabbitMQQueryResult implements QueryResult {
         private final String message;
         private final List<String> results;
 
-        KafkaQueryResult(String message) {
+        public RabbitMQQueryResult(String message) {
             this.message = message;
             this.results = null;
         }
 
-        KafkaQueryResult(List<String> results) {
+        public RabbitMQQueryResult(List<String> results) {
             this.message = null;
             this.results = results;
         }
 
         @Override
-        public java.sql.ResultSet getResultSet() {
+        public ResultSet getResultSet() {
             return null;
         }
 
@@ -503,50 +481,50 @@ public class KafkaTester implements DatabaseTester {
     }
 
     public static void main(String[] args) throws IOException {
-//        DBConfig dbConfig = new DBConfig.Builder()
-//                .host("localhost")
-//                .port(9092)
-//                .build();
-//
-//        KafkaTester tester = new KafkaTester(dbConfig);
-//        String testResults = tester.executeTest();
-//        System.out.println(testResults);
-
         // 使用 DBConfig 方式
         DBConfig dbConfig = new DBConfig.Builder()
                 .host("localhost")
-                .port(9092)
-                .user("admin")
-                .password("test")
-                .dbType("kafka")
+                .port(5672)
+                .user("root")
+                .password("YZ9F255pO8SjM522")
+                .dbType("rabbitmq")
                 .duration(2)
                 .interval(1)
-//            .query("{\"operation\":\"list_topics\"}")
-                .testType("executionloop")
-//                .topic("test_table")
+                .connectionCount(100)
+                .testType("connectionstress")
                 .build();
-        KafkaTester tester = new KafkaTester(dbConfig);
-        DatabaseConnection connection = tester.connect();
-        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
-                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
+        RabbitMQTester tester = new RabbitMQTester(dbConfig);
+        String result = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
+//        DatabaseConnection connection = tester.connect();
+//        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
+//                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
         System.out.println(result);
-        connection.close();
 
-//        String genTest = "{\"operation\":\"delete_topic\",\"topic\":\"test\"}";
+//        String queue = "executions_loop_queue";
+//        String genTest = "{\"operation\":\"declare_queue\",\"queue\":\"" + queue + "\"}";
 //        tester.execute(connection, genTest);
+//        System.out.println("Queue " + queue + " created successfully.");
 //
-//        genTest = "{\"operation\":\"create_topic\",\"topic\":\"test\"}";
+//        genTest = "{\"operation\":\"publish\",\"queue\":\"" + queue + "\",\"message\":\"Hello RabbitMQ!\"}";
 //        tester.execute(connection, genTest);
+//        System.out.println("Message published successfully.");
 //
-//        genTest = "{\"operation\":\"list_topics\"}";
+//        genTest = "{\"operation\":\"consume\",\"queue\":\"" + queue + "\"}";
 //        QueryResult queryResult = tester.execute(connection, genTest);
-//        KafkaQueryResult kafkaQueryResult = (KafkaQueryResult)queryResult;
+//        RabbitMQQueryResult rmqQueryResult = (RabbitMQQueryResult)queryResult;
 //        if (queryResult.hasResultSet()) {
-//            List<String> rs = kafkaQueryResult.getResults();
+//            List<String> rs = rmqQueryResult.getResults();
 //            System.out.println(rs);
 //            for (String r:rs) {
 //                System.out.println(r);
 //            }
 //        }
+
+//        genTest = "{\"operation\":\"get_message_count\",\"queue\":\"" + queue + "\"}";
+//        queryResult = tester.execute(connection, genTest);
+//        rmqQueryResult = (RabbitMQQueryResult)queryResult;
+//        System.out.println(rmqQueryResult.getMessage());
+
+//        connection.close();
     }
 }
