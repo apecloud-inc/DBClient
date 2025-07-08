@@ -416,6 +416,7 @@ public class DBConfig {
                 case "mogdb":
                 case "milvus":
                 case "nebula":
+                case "tidb":
                     break;
                 default:
                     throw new IllegalStateException("Unsupported database type: " + dbType);

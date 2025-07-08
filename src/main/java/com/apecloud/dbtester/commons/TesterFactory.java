@@ -12,6 +12,7 @@ public class TesterFactory {
             case "polardbx":
             case "greptime":
             case "greptimedb":
+            case "tidb":
                 return new MySQLTester(config);
             case "pg":
             case "postgres":
