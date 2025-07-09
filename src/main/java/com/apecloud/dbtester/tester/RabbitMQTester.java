@@ -304,8 +304,6 @@ public class RabbitMQTester implements DatabaseTester {
         int genTestQuery = 0;
         String genTest;
         String genTestValue;
-        QueryResult queryResult;
-        RabbitMQQueryResult rmqQueryResult;
 
         // check gen test query
         if (query == null || query.equals("") || (queue != null && !queue.equals(""))) {
@@ -335,37 +333,18 @@ public class RabbitMQTester implements DatabaseTester {
                     Thread.sleep(1000);
                     connection = this.connect();
                 }
-
                 if (genTestQuery == 1) {
-                   try {
-                       // check queue exists
-                       genTest = "{\"operation\":\"check_queue\",\"queue\":\"" + table + "\"}";
-                       queryResult = execute(connection, genTest);
-                        rmqQueryResult = (RabbitMQQueryResult) queryResult;
-                        if (!rmqQueryResult.getMessage().contains("true")) {
-                            // create test queue
-                            System.out.println("Queue " + table + " does not exist. Creating queue...");
-                            genTest = "{\"operation\":\"declare_queue\",\"queue\":\"" + table + "\"}";
-                            execute(connection, genTest);
-                            System.out.println("Queue " + table + " created successfully.");
-                        } else {
-                            System.out.println("Queue " + table + " already exists.");
-                            if ("executions_loop_queue".equals(table)) {
-                                genTest = "{\"operation\":\"delete_queue\",\"queue\":\"" + table + "\"}";
-                                execute(connection, genTest);
-                                System.out.println("Queue " + table + " deleted successfully.");
-                                genTest = "{\"operation\":\"declare_queue\",\"queue\":\"" + table + "\"}";
-                                execute(connection, genTest);
-                                System.out.println("Queue " + table + " created successfully.");
-                            }
-                        }
-                    } catch (IOException e) {
-                        // 如果 channel 已关闭，重新连接
-                        System.err.println("Channel closed, reconnecting...");
-                        connection = this.connect();
+                    genTest = "{\"operation\":\"declare_queue\",\"queue\":\"" + table + "\"}";
+                    execute(connection, genTest);
+                    System.out.println("Queue " + table + " created successfully.");
+
+                    if ("executions_loop_queue".equals(table)) {
+                        genTest = "{\"operation\":\"delete_queue\",\"queue\":\"" + table + "\"}";
+                        execute(connection, genTest);
+                        System.out.println("Queue " + table + " deleted successfully.");
                         genTest = "{\"operation\":\"declare_queue\",\"queue\":\"" + table + "\"}";
                         execute(connection, genTest);
-                        System.out.println("Queue " + table + " created after reconnection.");
+                        System.out.println("Queue " + table + " recreated successfully.");
                     }
                     genTestQuery = 2;
                 }
