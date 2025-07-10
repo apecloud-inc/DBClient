@@ -136,6 +136,12 @@ public class OneClient {
                     break;
                 case "query":
                     System.out.printf("Query: %s%n", config.getQuery());
+                    switch (config.getDbType().toLowerCase()) {
+                        case "rocketmq":
+                            System.out.printf("Cluster: %s%n", config.getCluster());
+                            break;
+                        default:
+                    }
                     break;
                 case "executionloop":
                     System.out.printf("Query: %s%n", config.getQuery());
@@ -155,6 +161,7 @@ public class OneClient {
                             break;
                         case "ck":
                         case "clickhouse":
+                        case "rocketmq":
                             System.out.printf("Cluster: %s%n", config.getCluster());
                             break;
                         default:

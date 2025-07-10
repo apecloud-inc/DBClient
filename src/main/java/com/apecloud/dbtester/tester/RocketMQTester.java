@@ -13,6 +13,8 @@ import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.client.producer.DefaultMQProducer;
 import org.apache.rocketmq.common.message.Message;
 import org.apache.rocketmq.common.message.MessageExt;
+import org.apache.rocketmq.common.protocol.body.ClusterInfo;
+import org.apache.rocketmq.common.protocol.route.BrokerData;
 import org.apache.rocketmq.remoting.exception.RemotingException;
 import org.apache.rocketmq.tools.admin.DefaultMQAdminExt;
 
@@ -395,7 +397,9 @@ public class RocketMQTester implements DatabaseTester {
         int readQueueNums = ((Number) queryMap.getOrDefault("read_queue_nums", 4)).intValue();
         int writeQueueNums = ((Number) queryMap.getOrDefault("write_queue_nums", 4)).intValue();
         String cluster = dbConfig.getCluster();
-
+        if (cluster == null || cluster.isEmpty()) {
+            throw new RuntimeException("Cluster name must be provided to create a topic.");
+        }
         DefaultMQAdminExt mqAdmin = new DefaultMQAdminExt();
         mqAdmin.setNamesrvAddr(nameServer);
 
@@ -417,6 +421,7 @@ public class RocketMQTester implements DatabaseTester {
         try {
             mqAdmin.start();
             Set<String> topicList = mqAdmin.fetchAllTopicList().getTopicList();
+            System.out.println(topicList.toString());
             return new RocketMQQueryResult(new ArrayList<>(topicList));
         } catch (MQClientException | InterruptedException e) {
             throw new RuntimeException("Failed to list topics", e);
@@ -435,7 +440,23 @@ public class RocketMQTester implements DatabaseTester {
         mqAdmin.setNamesrvAddr(nameServer);
         try {
             mqAdmin.start();
-            mqAdmin.deleteTopicInBroker(Collections.singleton(nameServer), topic);
+            ClusterInfo clusterInfo = mqAdmin.examineBrokerClusterInfo();
+            HashMap<String, BrokerData> brokerDataMap = clusterInfo.getBrokerAddrTable();
+            Set<String> masterAddresses = new HashSet<>();
+
+            if (brokerDataMap != null) {
+                for (BrokerData brokerData : brokerDataMap.values()) {
+                    // 只取 Master（即 brokerId == 0）
+                    String masterAddress = brokerData.selectBrokerAddr();
+                    if (masterAddress != null) {
+                        masterAddresses.add(masterAddress);
+                    }
+                }
+            }
+            if ( masterAddresses != null) {
+                System.out.println(masterAddresses);
+                mqAdmin.deleteTopicInBroker(masterAddresses, topic);
+            }
             mqAdmin.deleteTopicInNameServer(Collections.singleton(nameServer), topic, cluster);
             return new RocketMQQueryResult("Topic '" + topic + "' deleted successfully.");
         } catch (MQClientException | InterruptedException e) {
@@ -482,7 +503,9 @@ public class RocketMQTester implements DatabaseTester {
         @Override
         public void close() throws IOException {
             producer.shutdown();
-            consumer.shutdown();
+            if (consumer != null) {
+                consumer.shutdown();
+            }
         }
     }
 
@@ -512,7 +535,7 @@ public class RocketMQTester implements DatabaseTester {
 
         @Override
         public int getUpdateCount() {
-            return 0;
+            return 1;
         }
 
         public String getMessage() {
