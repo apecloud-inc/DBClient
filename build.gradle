@@ -184,6 +184,10 @@ dependencies {
 
     // This is for rabbitmq connector
     implementation 'com.rabbitmq:amqp-client:5.23.0'
+
+    // This is for rocketmq connector
+    implementation 'org.apache.rocketmq:rocketmq-client:4.9.8'
+    implementation 'org.apache.rocketmq:rocketmq-tools:4.9.8'
 }
 
 

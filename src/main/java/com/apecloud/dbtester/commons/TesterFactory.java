@@ -93,6 +93,8 @@ public class TesterFactory {
                 return new NebulaTester(config);
             case "rabbitmq":
                 return new RabbitMQTester(config);
+            case "rocketmq":
+                return new RocketMQTester(config);
             default:
                 throw new IllegalArgumentException("Unsupported database type: " + config.getDbType());
         }

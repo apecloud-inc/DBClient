@@ -418,6 +418,7 @@ public class DBConfig {
                 case "nebula":
                 case "tidb":
                 case "rabbitmq":
+                case "rocketmq":
                     break;
                 default:
                     throw new IllegalStateException("Unsupported database type: " + dbType);
