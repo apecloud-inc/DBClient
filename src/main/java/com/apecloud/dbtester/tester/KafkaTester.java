@@ -503,15 +503,6 @@ public class KafkaTester implements DatabaseTester {
     }
 
     public static void main(String[] args) throws IOException {
-//        DBConfig dbConfig = new DBConfig.Builder()
-//                .host("localhost")
-//                .port(9092)
-//                .build();
-//
-//        KafkaTester tester = new KafkaTester(dbConfig);
-//        String testResults = tester.executeTest();
-//        System.out.println(testResults);
-
         // 使用 DBConfig 方式
         DBConfig dbConfig = new DBConfig.Builder()
                 .host("localhost")
@@ -521,9 +512,7 @@ public class KafkaTester implements DatabaseTester {
                 .dbType("kafka")
                 .duration(2)
                 .interval(1)
-//            .query("{\"operation\":\"list_topics\"}")
                 .testType("executionloop")
-//                .topic("test_table")
                 .build();
         KafkaTester tester = new KafkaTester(dbConfig);
         DatabaseConnection connection = tester.connect();
