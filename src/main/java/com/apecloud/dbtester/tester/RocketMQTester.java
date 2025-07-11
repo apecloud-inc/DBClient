@@ -388,8 +388,8 @@ public class RocketMQTester implements DatabaseTester {
 
     private QueryResult handleCreateTopic(String topic, Map<String, Object> queryMap) {
         String nameServer = dbConfig.getHost() + ":" + dbConfig.getPort();
-        int readQueueNums = ((Number) queryMap.getOrDefault("read_queue_nums", 4)).intValue();
-        int writeQueueNums = ((Number) queryMap.getOrDefault("write_queue_nums", 4)).intValue();
+        int readQueueNums = ((Number) queryMap.getOrDefault("read_queue_nums", 8)).intValue();
+        int writeQueueNums = ((Number) queryMap.getOrDefault("write_queue_nums", 8)).intValue();
         String cluster = dbConfig.getCluster();
         if (cluster == null || cluster.isEmpty()) {
             throw new RuntimeException("Cluster name must be provided to create a topic.");
