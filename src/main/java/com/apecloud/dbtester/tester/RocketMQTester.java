@@ -285,22 +285,16 @@ public class RocketMQTester implements DatabaseTester {
                         genTest = "{\"operation\":\"list_topics\"}";
                         queryResult = execute(connection, genTest);
                         rocketMQQueryResult = (RocketMQQueryResult) queryResult;
-                        if (queryResult.hasResultSet()) {
-                            List<String> topicsList = rocketMQQueryResult.getResults();
-                            for (String topicTmp : topicsList) {
-                                if (topicTmp == table || topicTmp.equals(table)) {
-                                    tableCount = 1;
-                                    break;
-                                }
+                        List<String> topicsList = rocketMQQueryResult.getResults();
+                        for (String topicTmp : topicsList) {
+                            if (topicTmp == table || topicTmp.equals(table)) {
+                                tableCount = 1;
+                                break;
                             }
                         }
 
                         if (tableCount == 0) {
                             System.out.println("create topic " + table);
-                            genTest = "{\"operation\":\"create_topic\",\"topic\":\"" + table + "\"}";
-                            queryResult = execute(connection, genTest);
-                            rocketMQQueryResult = (RocketMQQueryResult) queryResult;
-                            System.out.println(rocketMQQueryResult.getMessage());
                         } else {
                             System.out.println("delete topic " + table);
                             genTest = "{\"operation\":\"delete_topic\",\"topic\":\"" + table + "\"}";
@@ -308,11 +302,11 @@ public class RocketMQTester implements DatabaseTester {
                             rocketMQQueryResult = (RocketMQQueryResult) queryResult;
                             System.out.println(rocketMQQueryResult.getMessage());
 
-                            genTest = "{\"operation\":\"create_topic\",\"topic\":\"" + table + "\"}";
-                            queryResult = execute(connection, genTest);
-                            rocketMQQueryResult = (RocketMQQueryResult) queryResult;
-                            System.out.println(rocketMQQueryResult.getMessage());
                         }
+                        genTest = "{\"operation\":\"create_topic\",\"topic\":\"" + table + "\"}";
+                        queryResult = execute(connection, genTest);
+                        rocketMQQueryResult = (RocketMQQueryResult) queryResult;
+                        System.out.println(rocketMQQueryResult.getMessage());
                     }
 
                     genTestQuery = 2;
