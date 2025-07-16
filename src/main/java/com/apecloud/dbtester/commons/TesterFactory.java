@@ -10,6 +10,7 @@ public class TesterFactory {
             case "mysql":
             case "foxlake":
             case "polardbx":
+            case "greatsql":
             case "greptime":
             case "greptimedb":
             case "tidb":
