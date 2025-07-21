@@ -1,3 +1,4 @@
+
 package com.apecloud.dbtester.tester;
 
 import com.apecloud.dbtester.commons.DBConfig;
@@ -5,15 +6,12 @@ import com.apecloud.dbtester.commons.DatabaseConnection;
 import com.apecloud.dbtester.commons.DatabaseTester;
 import com.apecloud.dbtester.commons.QueryResult;
 
-import java.sql.Connection;
-import java.sql.Statement;
-import java.sql.ResultSet;
-import java.sql.DriverManager;
 import java.io.IOException;
-import java.sql.SQLException;
+import java.sql.*;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Properties;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -31,58 +29,64 @@ public class TDEngineTester implements DatabaseTester {
         this.dbConfig = dbConfig;
     }
 
+    @Override
     public DatabaseConnection connect() throws IOException {
         if (dbConfig == null) {
-            throw new IllegalStateException("DBConfig not provided");
+            throw new IOException("Configuration is not set");
         }
 
-        String url = String.format("jdbc:TAOS://%s:%d/%s",
-                dbConfig.getHost(),
-                dbConfig.getPort(),
-                dbConfig.getDatabase());
-
         try {
-            Connection conn;
-            if (dbConfig.getUser() != null && dbConfig.getPassword() != null) {
-                conn = DriverManager.getConnection(url,
-                        dbConfig.getUser(),
-                        dbConfig.getPassword());
-            } else {
-                conn = DriverManager.getConnection(url);
+            String hostname = dbConfig.getHost();
+            int port = dbConfig.getPort();
+            String user = dbConfig.getUser();
+            String password = dbConfig.getPassword();
+            //String database = dbConfig.getDatabase();
+
+            if (hostname == null || port == 0 || user == null || password == null) {
+                throw new IOException("Hostname, port, user, password are required");
             }
-            return new TDEngineConnection(conn);
-        } catch (SQLException e) {
-            throw new IOException("Failed to connect to TDEngine server", e);
+
+            // JDBC URL 格式
+            String jdbcUrl = "jdbc:TAOS-RS://" + hostname + ":" + port;
+
+            // 设置时区为UTC，避免时间戳转换问题
+            Properties properties = new Properties();
+            properties.setProperty("user", user);
+            properties.setProperty("password", password);
+            properties.setProperty("timezone", "UTC");
+
+            Connection connection = DriverManager.getConnection(jdbcUrl, properties);
+            return new TDEngineConnection(connection);
+        } catch (Exception e) {
+            throw new IOException("Failed to connect to TDEngine: " + e.getMessage(), e);
         }
     }
 
     @Override
     public QueryResult execute(DatabaseConnection connection, String command) throws IOException {
-        TDEngineConnection tdConnection = (TDEngineConnection) connection;
-        Connection conn = tdConnection.connection;
+        TDEngineConnection tdengineConnection = (TDEngineConnection) connection;
+        Connection conn = tdengineConnection.getConnection();
 
         try {
-            String[] parts = command.split(" ", 2);
-            if (parts.length < 2) {
-                throw new IOException("Invalid command format");
-            }
-
-            String operation = parts[0].toUpperCase();
-            String content = parts[1];
-
             Statement stmt = conn.createStatement();
-            boolean hasResultSet = stmt.execute(content);
-            
-            if (hasResultSet) {
-                ResultSet rs = stmt.getResultSet();
-                return new TDEngineQueryResult(operation, rs, true, "Query executed successfully");
+
+            // 判断是查询还是写入
+            command = command.trim();
+            if (command.toLowerCase().startsWith("select") ||
+                    command.toLowerCase().startsWith("describe") ||
+                    command.toLowerCase().startsWith("show")) {
+
+                // 执行查询
+                ResultSet rs = stmt.executeQuery(command);
+                return new TDEngineQueryResult("QUERY", rs);
             } else {
+                // 执行写入
+                boolean isQuery = stmt.execute(command);
                 int updateCount = stmt.getUpdateCount();
-                return new TDEngineQueryResult(operation, null, true, 
-                    String.format("Update completed, affected rows: %d", updateCount));
+                return new TDEngineQueryResult("WRITE", isQuery, updateCount);
             }
-        } catch (SQLException e) {
-            throw new IOException("Failed to execute command", e);
+        } catch (Exception e) {
+            throw new IOException("Failed to execute command: " + e.getMessage(), e);
         }
     }
 
@@ -113,10 +117,10 @@ public class TDEngineTester implements DatabaseTester {
         long duration = endTime - startTime;
 
         result.append("Benchmark completed:\n")
-              .append("Iterations: ").append(iterations).append("\n")
-              .append("Concurrency: ").append(concurrency).append("\n")
-              .append("Total time: ").append(duration).append("ms\n")
-              .append("Average time per operation: ").append(duration / iterations).append("ms");
+                .append("Iterations: ").append(iterations).append("\n")
+                .append("Concurrency: ").append(concurrency).append("\n")
+                .append("Total time: ").append(duration).append("ms\n")
+                .append("Average time per operation: ").append(duration / iterations).append("ms");
 
         return result.toString();
     }
@@ -125,13 +129,12 @@ public class TDEngineTester implements DatabaseTester {
     public String connectionStress(int connections, int duration) {
         StringBuilder result = new StringBuilder();
         long startTime = System.currentTimeMillis();
-
+        DatabaseConnection connection;
         for (int i = 0; i < connections; i++) {
             try {
-                DatabaseConnection connection = connect();
+                connection = connect();
+                execute(connection, "SHOW DATABASES");
                 this.connections.add(connection);
-                // Execute a simple query to verify the connection
-                execute(connection, "QUERY SHOW DATABASES");
             } catch (IOException e) {
                 result.append("Failed to establish connection ").append(i).append(": ").append(e.getMessage()).append("\n");
             }
@@ -145,9 +148,10 @@ public class TDEngineTester implements DatabaseTester {
 
         long endTime = System.currentTimeMillis();
         result.append("Connection stress test completed:\n")
-              .append("Successful connections: ").append(this.connections.size()).append("\n")
-              .append("Duration: ").append((endTime - startTime) / 1000).append(" seconds");
+                .append("Successful connections: ").append(this.connections.size()).append("\n")
+                .append("Duration: ").append((endTime - startTime) / 1000).append(" seconds");
 
+        releaseConnections();
         return result.toString();
     }
 
@@ -183,8 +187,8 @@ public class TDEngineTester implements DatabaseTester {
             switch (testType.toLowerCase()) {
                 case "connectionstress":
                     result.append(connectionStress(
-                        dbConfig.getConnectionCount(),
-                        dbConfig.getDuration()
+                            dbConfig.getConnectionCount(),
+                            dbConfig.getDuration()
                     ));
                     break;
 
@@ -203,10 +207,10 @@ public class TDEngineTester implements DatabaseTester {
                         throw new IllegalArgumentException("Query not specified for benchmark");
                     }
                     result.append(bench(
-                        connection,
-                        benchQuery,
-                        dbConfig.getIterations(),
-                        dbConfig.getConcurrency()
+                            connection,
+                            benchQuery,
+                            dbConfig.getIterations(),
+                            dbConfig.getConcurrency()
                     ));
                     break;
 
@@ -225,57 +229,201 @@ public class TDEngineTester implements DatabaseTester {
 
     @Override
     public String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table) {
-        return null;
+        TDEngineConnection tdengineConnection;
+        StringBuilder result = new StringBuilder();
+        int successfulExecutions = 0;
+        int failedExecutions = 0;
+        int disconnectCounts = 0;
+        boolean executionError = false;
+
+        long startTime = System.currentTimeMillis();
+        long endTime = startTime + duration * 1000;
+        long errorTime = 0;
+        long recoveryTime;
+        long errorToRecoveryTime;
+        java.util.Date errorDate = null;
+        long lastOutputTime = System.currentTimeMillis();
+        int outputPassTime = 0;
+
+        int insertIndex = 0;
+        int genTestQuery = 0;
+        String genTestValue;
+        Statement stmt = null;
+
+        // Check gen test query
+        if (query == null || query.equals("") || (table != null && !table.equals(""))) {
+            genTestQuery = 1;
+        }
+
+        if (database == null || database.equals("")) {
+            database = "executions_loop";
+        }
+
+        if (table == null || table.equals("")) {
+            table = "executions_loop_table";
+        }
+
+        System.out.println("Execution loop start: " + query);
+        while (System.currentTimeMillis() < endTime) {
+            insertIndex = insertIndex + 1;
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastOutputTime >= interval * 1000) {
+                outputPassTime = outputPassTime + interval;
+                lastOutputTime = currentTime;
+                System.out.println("[ " + outputPassTime + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                        + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                        + " disconnect: " + disconnectCounts);
+            }
+
+            try {
+                if (executionError) {
+                    Thread.sleep(1000);
+                    connection = this.connect();
+                }
+                tdengineConnection = (TDEngineConnection) connection;
+                Connection conn = tdengineConnection.getConnection();
+
+                if (genTestQuery == 1) {
+                    stmt = conn.createStatement();
+
+                    // 创建数据库（如果不存在）
+                    stmt.execute("CREATE DATABASE IF NOT EXISTS " + database);
+                    System.out.println("Ensured database " + database + " exists");
+
+                    // 使用数据库
+                    stmt.execute("USE " + database);
+
+                    // 删除表（如果存在）
+                    stmt.execute("DROP TABLE IF EXISTS " + table);
+                    System.out.println("Dropped table " + table + " if it existed");
+
+                    // 创建表（如果不存在）
+                    stmt.execute("CREATE TABLE IF NOT EXISTS " + table +
+                            " (ts TIMESTAMP, executions_loop INT)");
+                    System.out.println("Ensured table " + table + " exists");
+
+                    genTestQuery = 2;
+                }
+
+                if ((genTestQuery == 2 && (query == null || query.equals("")) || genTestQuery == 3)) {
+                    long timestamp = System.currentTimeMillis() * 1000000; // 纳秒级时间戳
+                    genTestValue = "INSERT INTO " + table + " VALUES (now + " + insertIndex + "s, " + insertIndex + ")";
+                    // Set test query
+                    query = genTestValue;
+                    if (genTestQuery == 2) {
+                        System.out.println("Execution loop start: " + query);
+                    }
+                    genTestQuery = 3;
+                }
+
+                // 执行写入操作
+                stmt = conn.createStatement();
+                stmt.execute(query);
+                successfulExecutions++;
+
+                if (executionError) {
+                    recoveryTime = System.currentTimeMillis();
+                    java.util.Date recoveryDate = new java.util.Date(recoveryTime);
+                    System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                    System.out.println("[" + sdf.format(recoveryDate) + "] Connection successfully recovered!");
+                    errorToRecoveryTime = recoveryTime - errorTime;
+                    System.out.println("The connection was restored in " + errorToRecoveryTime + " milliseconds.");
+                    executionError = false;
+                }
+            } catch (Exception e) {
+                System.out.println("Execution loop failed: " + e.getMessage());
+                failedExecutions++;
+                insertIndex = insertIndex - 1;
+                if (!executionError) {
+                    disconnectCounts++;
+                    errorTime = System.currentTimeMillis();
+                    errorDate = new java.util.Date(errorTime);
+                    System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                    executionError = true;
+                }
+            } finally {
+                if (stmt != null) {
+                    try {
+                        stmt.close();
+                    } catch (SQLException e) {
+                        // Ignore
+                    }
+                }
+            }
+        }
+
+        System.out.println("[ " + duration + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                + " disconnect: " + disconnectCounts);
+
+        releaseConnections();
+
+        result.append("Execution loop completed during ").append(duration).append(" seconds");
+
+        return String.format("Total Executions: %d\n" +
+                        "Successful Executions: %d\n" +
+                        "Failed Executions: %d\n" +
+                        "Disconnection Counts: %d",
+                successfulExecutions + failedExecutions,
+                successfulExecutions,
+                failedExecutions,
+                disconnectCounts);
     }
 
-    private String formatQueryResult(QueryResult result) throws IOException {
+    private String formatQueryResult(QueryResult result) {
         if (!(result instanceof TDEngineQueryResult)) {
             return "Invalid result type";
         }
 
-        TDEngineQueryResult tdResult = (TDEngineQueryResult) result;
-        if (!tdResult.isSuccessful()) {
-            return String.format("Operation failed: %s\n", tdResult.getMessage());
+        TDEngineQueryResult tdengineResult = (TDEngineQueryResult) result;
+        if (!tdengineResult.isSuccessful()) {
+            return String.format("Operation failed: %s\n", tdengineResult.getMessage());
         }
 
         StringBuilder sb = new StringBuilder();
-        String operation = tdResult.getOperation();
+        String operation = tdengineResult.getOperation();
 
         switch (operation) {
+            case "WRITE":
+                sb.append("Write Operation:\n");
+                sb.append("Status: Success\n");
+                sb.append("Update count: ").append(tdengineResult.getUpdateCount()).append("\n");
+                break;
+
             case "QUERY":
                 sb.append("Query Operation:\n");
-                ResultSet rs = tdResult.getResultSet();
+                ResultSet rs = tdengineResult.getResultSet();
                 if (rs == null) {
                     sb.append("No results found\n");
                 } else {
                     try {
+                        ResultSetMetaData metaData = rs.getMetaData();
+                        int columnCount = metaData.getColumnCount();
+
+                        // 输出列名
+                        for (int i = 1; i <= columnCount; i++) {
+                            sb.append(metaData.getColumnName(i)).append("\t");
+                        }
+                        sb.append("\n");
+
+                        // 输出数据
                         while (rs.next()) {
-                            formatResultSetRow(rs, sb);
+                            for (int i = 1; i <= columnCount; i++) {
+                                sb.append(rs.getString(i)).append("\t");
+                            }
+                            sb.append("\n");
                         }
                     } catch (SQLException e) {
-                        throw new IOException("Error reading query results", e);
+                        sb.append("Error formatting result: ").append(e.getMessage()).append("\n");
                     }
                 }
                 break;
 
             default:
-                sb.append(String.format("%s Operation:\n", operation));
-                sb.append(String.format("Status: %s\n", tdResult.getMessage()));
-                break;
+                return String.format("Unknown operation: %s\n", operation);
         }
 
         return sb.toString();
-    }
-
-    private void formatResultSetRow(ResultSet rs, StringBuilder sb) throws SQLException {
-        int columnCount = rs.getMetaData().getColumnCount();
-        for (int i = 1; i <= columnCount; i++) {
-            if (i > 1) sb.append(", ");
-            sb.append(rs.getMetaData().getColumnName(i))
-              .append(": ")
-              .append(rs.getString(i));
-        }
-        sb.append("\n");
     }
 
     private static class TDEngineConnection implements DatabaseConnection {
@@ -288,10 +436,16 @@ public class TDEngineTester implements DatabaseTester {
         @Override
         public void close() throws IOException {
             try {
-                connection.close();
+                if (connection != null && !connection.isClosed()) {
+                    connection.close();
+                }
             } catch (SQLException e) {
-                throw new IOException("Failed to close connection", e);
+                throw new IOException("Failed to close connection: " + e.getMessage(), e);
             }
+        }
+
+        public Connection getConnection() {
+            return connection;
         }
     }
 
@@ -300,12 +454,28 @@ public class TDEngineTester implements DatabaseTester {
         private final String message;
         private final String operation;
         private final ResultSet resultSet;
+        private final int updateCount;
 
-        public TDEngineQueryResult(String operation, ResultSet resultSet, boolean success, String message) {
+        public TDEngineQueryResult(String operation, ResultSet resultSet) {
             this.operation = operation;
             this.resultSet = resultSet;
-            this.success = success;
-            this.message = message;
+            this.updateCount = -1;
+
+            if ("WRITE".equals(operation)) {
+                this.success = true;
+                this.message = "Write operation successful";
+            } else {
+                this.success = resultSet != null;
+                this.message = this.success ? "Query operation successful" : "No results found";
+            }
+        }
+
+        public TDEngineQueryResult(String operation, boolean isQuery, int updateCount) {
+            this.operation = operation;
+            this.resultSet = isQuery ? null : null;
+            this.updateCount = updateCount;
+            this.success = true;
+            this.message = "Write operation successful";
         }
 
         public ResultSet getResultSet() {
@@ -326,21 +496,56 @@ public class TDEngineTester implements DatabaseTester {
 
         @Override
         public boolean hasResultSet() {
-            return success && resultSet != null;
+            return resultSet != null;
         }
 
         @Override
         public int getUpdateCount() {
-            try {
-                return resultSet != null ? 0 : -1;
-            } catch (Exception e) {
-                return -1;
-            }
+            return updateCount;
         }
 
         @Override
         public String toString() {
-            return String.format("%s operation: %s", operation, message);
+            StringBuilder sb = new StringBuilder();
+            sb.append(String.format("%s operation: %s\n", operation, message));
+
+            if ("QUERY".equals(operation) && resultSet != null) {
+                try {
+                    resultSet.last();
+                    int rowCount = resultSet.getRow();
+                    sb.append(String.format("Number of rows: %d\n", rowCount));
+                    resultSet.beforeFirst();
+                } catch (SQLException e) {
+                    sb.append("Error getting row count: ").append(e.getMessage()).append("\n");
+                }
+            } else if ("WRITE".equals(operation)) {
+                sb.append(String.format("Update count: %d\n", updateCount));
+            }
+
+            return sb.toString();
         }
+    }
+
+    public static void main(String[] args) throws IOException {
+        // 使用示例
+        DBConfig dbConfig = new DBConfig.Builder()
+                .host("localhost")
+                .port(6041)  // REST 端口
+                .user("root")
+                .password("8H4y8f2BW7Kj")
+                .dbType("tdengine")
+                .duration(1)
+                .interval(1)
+                .testType("connectionstress")
+                .connectionCount(2)
+                .build();
+
+        TDEngineTester tester = new TDEngineTester(dbConfig);
+//        DatabaseConnection connection = tester.connect();
+//        String result = tester.executionLoop(connection, dbConfig.getQuery(), dbConfig.getDuration(),
+//                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
+        String result = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
+        System.out.println(result);
+//        connection.close();
     }
 }

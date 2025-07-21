@@ -161,7 +161,7 @@ dependencies {
     implementation 'org.opengauss:opengauss-jdbc:6.0.0-RC1-og'
 
     // This is for TDengine connector
-    // implementation 'com.taosdata.jdbc:taos-jdbcdriver:3.3.0'
+    implementation 'com.taosdata.jdbc:taos-jdbcdriver:3.3.0'
 
     // This is for Solr connector
     // implementation 'org.apache.solr:solr-solrj:8.11.1'
