@@ -368,6 +368,7 @@ public class DBConfig {
                 case "starrocks":
                 case "sr":
                 case "greatsql":
+                case "greatdb":
                 case "greptime":
                 case "greptimedb":
                 case "pg":

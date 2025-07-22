@@ -30,6 +30,7 @@ public class DatabaseConnectionFactory {
             case "starrocks":
             case "sr":
             case "greatsql":
+            case "greatdb":
                 Class.forName("com.mysql.cj.jdbc.Driver");
                 break;
             case "mysql 5.1":
@@ -91,6 +92,7 @@ public class DatabaseConnectionFactory {
             case "starrocks":
             case "sr":
             case "greatsql":
+            case "greatdb":
                 url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useSSL=false";
                 break;
             case "pg":

@@ -530,7 +530,7 @@ public class TDEngineTester implements DatabaseTester {
         // 使用示例
         DBConfig dbConfig = new DBConfig.Builder()
                 .host("localhost")
-                .port(6041)  // REST 端口
+                .port(6030)  // REST 端口
                 .user("root")
                 .password("8H4y8f2BW7Kj")
                 .dbType("tdengine")
@@ -541,11 +541,11 @@ public class TDEngineTester implements DatabaseTester {
                 .build();
 
         TDEngineTester tester = new TDEngineTester(dbConfig);
-//        DatabaseConnection connection = tester.connect();
-//        String result = tester.executionLoop(connection, dbConfig.getQuery(), dbConfig.getDuration(),
-//                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
-        String result = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
+        DatabaseConnection connection = tester.connect();
+        String result = tester.executionLoop(connection, dbConfig.getQuery(), dbConfig.getDuration(),
+                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
+//        String result = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
         System.out.println(result);
-//        connection.close();
+        connection.close();
     }
 }
