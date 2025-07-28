@@ -137,7 +137,7 @@ dependencies {
     // implementation 'com.yashandb:yashandb-jdbc:1.6.1'
 
     // This is for DMDB connector
-    // implementation 'com.dameng:Dm7JdbcDriver18:7.6.0.165'
+    implementation 'com.dameng:Dm7JdbcDriver18:7.6.0.165'
 
     // This is for InfluxDB connector
     implementation 'com.influxdb:influxdb-client-java:3.2.0'
