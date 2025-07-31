@@ -1,9 +1,6 @@
 package com.apecloud.dbtester.tester;
 
-import com.apecloud.dbtester.commons.DBConfig;
-import com.apecloud.dbtester.commons.DatabaseConnection;
-import com.apecloud.dbtester.commons.DatabaseTester;
-import com.apecloud.dbtester.commons.QueryResult;
+import com.apecloud.dbtester.commons.*;
 import com.mongodb.*;
 import com.mongodb.client.*;
 import com.mongodb.client.result.DeleteResult;
@@ -49,7 +46,7 @@ public class MongoDBTester implements DatabaseTester {
 
             MongoCredential credential = MongoCredential.createCredential(
                     dbConfig.getUser(),
-                    databaseConnection,
+                    "admin",
                     dbConfig.getPassword().toCharArray()
             );
 
@@ -379,11 +376,11 @@ public class MongoDBTester implements DatabaseTester {
         }
     }
 
-    private static class MongoDBQueryResult implements QueryResult {
+    private static class MongoDBQueryResult implements MongoDBResult {
         private final FindIterable<Document> mongoResultSet;
         private final int updateCount;
         private final List<Document> documents;
-    
+
         MongoDBQueryResult(FindIterable<Document> resultSet) {
             this.mongoResultSet = resultSet;
             this.updateCount = 0;
@@ -392,56 +389,69 @@ public class MongoDBTester implements DatabaseTester {
                 resultSet.into(this.documents);
             }
         }
-    
+
         MongoDBQueryResult(int updateCount) {
             this.mongoResultSet = null;
             this.updateCount = updateCount;
             this.documents = null;
         }
-    
+
         @Override
         public java.sql.ResultSet getResultSet() {
             return null; // 保持与接口一致，返回null
         }
-    
-        // 新增方法用于获取MongoDB特有的结果
+
+        @Override
         public List<Document> getDocuments() {
             return documents;
         }
-    
+
+        @Override
         public FindIterable<Document> getMongoResultSet() {
             return mongoResultSet;
         }
-    
+
         @Override
         public int getUpdateCount() {
             return updateCount;
         }
-    
+
         @Override
         public boolean hasResultSet() {
             return mongoResultSet != null;
         }
     }
 
+
     public static void main(String[] args) throws IOException {
         DBConfig dbConfig = new DBConfig.Builder()
-                .host("127.0.0.1")
-                .port(27017)
+                .host("192.168.10.42")
+                .port(30829)
+                .database("test")
 //                .table("test")
-                .user("root")
-                .password("08xN3j826yV2va1r")
+                .user("test")
+                .password("Abc1111111")
                 .dbType("mongodb")
-                .duration(60)
-                .interval(1)
-                .testType("executionloop")
+                .testType("query")
+                .query("{\"operation\":\"insert\",\"collection\":\"c\",\"data\":{\"name\":\"Alice\"}}")
                 .build();
 
         MongoDBTester tester = new MongoDBTester(dbConfig);
         DatabaseConnection connection = tester.connect();
-        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
-                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
-        System.out.println(result);
+
+        // 执行查询
+        QueryResult res = tester.execute(connection, "{\"operation\":\"find\",\"collection\":\"c\",\"data\":{\"name\":\"Alice\"}}");
+
+
+        // 强转成实现类并打印
+        MongoDBTester.MongoDBQueryResult mongoRes = (MongoDBTester.MongoDBQueryResult) res;
+        List<Document> docs = mongoRes.getDocuments();
+        System.out.println("查到 " + docs.size() + " 条");
+        docs.forEach(d -> System.out.println(d.toJson()));
+
+//        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
+//                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
+//        System.out.println(result);
         connection.close();
     }
 }

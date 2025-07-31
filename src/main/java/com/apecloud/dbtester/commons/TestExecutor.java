@@ -1,7 +1,11 @@
 package com.apecloud.dbtester.commons;
 
+import org.bson.Document;
+
 import java.io.IOException;
 import java.sql.*;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class TestExecutor {
     /**
@@ -87,43 +91,59 @@ public class TestExecutor {
      * 格式化查询结果
      */
     private static String formatQueryResult(QueryResult queryResult, String dbType) throws IOException {
-        StringBuilder sb = new StringBuilder();
-        try {
-            if (queryResult.hasResultSet()) {
-                ResultSet rs = queryResult.getResultSet();
-                if (rs.getMetaData() != null) {
-                    ResultSetMetaData metaData = rs.getMetaData();
-                    int columnCount = metaData.getColumnCount();
+            StringBuilder sb = new StringBuilder();
+            try {
+                if (dbType.toLowerCase().equals("mongodb")) {
+                    // 使用接口而不是具体实现类
+                    if (queryResult instanceof MongoDBResult) {
+                        MongoDBResult mongoRes = (MongoDBResult) queryResult;
+                        List<Document> docs = mongoRes.getDocuments();
 
-                    // 添加列名
-                    for (int i = 1; i <= columnCount; i++) {
-                        sb.append(metaData.getColumnName(i)).append("\t");
-                    }
-                    sb.append("\n");
+                        String jsonResult = docs.stream()
+                                .map(Document::toJson)
+                                .collect(Collectors.joining(",\n", "[\n", "\n]"));
 
-                    // 添加数据行
-                    while (rs.next()) {
-                        for (int i = 1; i <= columnCount; i++) {
-                            sb.append(rs.getString(i)).append("\t");
-                        }
-                        sb.append("\n");
-                    }
-                }else{
-                    if (dbType.toLowerCase().equals("qdrant")){
-                        while (rs.next()) {
-                            if (rs.getString("result") != null) {
-                                sb.append(rs.getString("result"));
-                            }
-                        }
-                        sb.append("\n");
+                        return jsonResult;
+                    } else {
+                        throw new IOException("Query result is not a MongoDB result");
                     }
                 }
-            } else {
-                sb.append("Update count: ").append(queryResult.getUpdateCount());
+                else if (queryResult.hasResultSet()) {
+                    ResultSet rs = queryResult.getResultSet();
+                    if (rs.getMetaData() != null) {
+                        ResultSetMetaData metaData = rs.getMetaData();
+                        int columnCount = metaData.getColumnCount();
+
+                        // 添加列名
+                        for (int i = 1; i <= columnCount; i++) {
+                            sb.append(metaData.getColumnName(i)).append("\t");
+                        }
+                        sb.append("\n");
+
+                        // 添加数据行
+                        while (rs.next()) {
+                            for (int i = 1; i <= columnCount; i++) {
+                                sb.append(rs.getString(i)).append("\t");
+                            }
+                            sb.append("\n");
+                        }
+                    }else{
+                        if (dbType.toLowerCase().equals("qdrant")){
+                            while (rs.next()) {
+                                if (rs.getString("result") != null) {
+                                    sb.append(rs.getString("result"));
+                                }
+                            }
+                            sb.append("\n");
+                        }
+                    }
+                } else {
+                    sb.append("Update count: ").append(queryResult.getUpdateCount());
+                }
+                return sb.toString();
+            } catch (SQLException e) {
+                throw new IOException("Failed to format query result", e);
             }
-            return sb.toString();
-        } catch (SQLException e) {
-            throw new IOException("Failed to format query result", e);
         }
-    }
+
 }
