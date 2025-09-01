@@ -16,7 +16,6 @@ public class ClickHouseTester implements DatabaseTester {
     private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     private final DBConfig dbConfig;
     private String databaseConnection = "default";
-    private String databaseCluster = "default";
 
     public ClickHouseTester() {
         this.dbConfig = null;
@@ -139,10 +138,8 @@ public class ClickHouseTester implements DatabaseTester {
         StringBuilder result = new StringBuilder();
         QueryResult executeResult;
         int executeUpdateCount;
-        String cluster = dbConfig.getCluster();
-        if (cluster != null && !cluster.equals("")) {
-            databaseCluster = cluster;
-        }
+        String databaseCluster = dbConfig.getCluster();
+
         int successfulExecutions = 0;
         int failedExecutions = 0;
         int disconnectCounts = 0;
@@ -197,6 +194,9 @@ public class ClickHouseTester implements DatabaseTester {
                     // create test database
                     System.out.println("create database " + database);
                     genTest = "CREATE DATABASE IF NOT EXISTS " + database + " ON CLUSTER " + databaseCluster + ";";
+                    if (databaseCluster == null || databaseCluster.equals("")) {
+                        genTest = "CREATE DATABASE IF NOT EXISTS " + database + ";";
+                    }
                     System.out.println(genTest);
                     execute(connection, genTest);
 
@@ -204,6 +204,9 @@ public class ClickHouseTester implements DatabaseTester {
                         // drop test table
                         System.out.println("drop table " + table);
                         genTest = "DROP TABLE IF EXISTS " + database + "." + table + " ON CLUSTER " + databaseCluster + ";";
+                        if (databaseCluster == null || databaseCluster.equals("")) {
+                            genTest = "DROP TABLE IF EXISTS " + database + "." + table + ";";
+                        }
                         System.out.println(genTest);
                         execute(connection, genTest);
                     }
@@ -212,6 +215,10 @@ public class ClickHouseTester implements DatabaseTester {
                     System.out.println("create table " + table);
                     genTest = "CREATE TABLE IF NOT EXISTS " + database + "." + table + " ON CLUSTER " + databaseCluster
                             + " (id UInt32, value String) ENGINE = ReplicatedMergeTree() ORDER BY id;";
+                    if (databaseCluster == null || databaseCluster.equals("")) {
+                        genTest = "CREATE TABLE IF NOT EXISTS " + database + "." + table
+                                + " (id UInt32, value String) ENGINE = MergeTree() ORDER BY id;";
+                    }
                     System.out.println(genTest);
                     execute(connection, genTest);
 
@@ -329,14 +336,14 @@ public class ClickHouseTester implements DatabaseTester {
                 .port(8123)
                 .user("admin")
 //                .database("default")
-                .password("8hH1rueHB79pIePT")
+                .password("14f5N7xPd5")
                 .dbType("clickhouse")
                 .duration(10)
                 .interval(1)
 //            .query("INSERT INTO test_table (value) VALUES ('1');")
                 .testType("executionloop")
 //            .database("test_db")
-                .table("test_table")
+                .cluster("default")
                 .build();
         ClickHouseTester tester = new ClickHouseTester(dbConfig);
         DatabaseConnection connection = tester.connect();
