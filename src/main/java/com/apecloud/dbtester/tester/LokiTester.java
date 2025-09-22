@@ -180,7 +180,114 @@ public class LokiTester implements DatabaseTester {
 
     @Override
     public String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table) {
-        return null;
+        StringBuilder result = new StringBuilder();
+        QueryResult executeResult;
+        int successfulExecutions = 0;
+        int failedExecutions = 0;
+        int disconnectCounts = 0;
+        boolean executionError = false;
+
+        long startTime = System.currentTimeMillis();
+        long endTime = startTime + duration * 1000;
+        long errorTime = 0;
+        long recoveryTime;
+        long errorToRecoveryTime;
+        java.util.Date errorDate = null;
+        long lastOutputTime = System.currentTimeMillis();
+        int outputPassTime = 0;
+
+        int insertIndex = 0;
+        int genTestQuery = 0;
+        String genTestValue;
+
+        // Check gen test query
+        if (query == null || query.equals("") || (table != null && !table.equals(""))) {
+            genTestQuery = 1;
+        }
+
+        System.out.println("Execution loop start: " + query);
+        while (System.currentTimeMillis() < endTime) {
+            insertIndex++;
+            long currentTime = System.currentTimeMillis();
+
+            if (currentTime - lastOutputTime >= interval * 1000) {
+                outputPassTime += interval;
+                lastOutputTime = currentTime;
+                System.out.println("[ " + outputPassTime + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                        + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                        + " disconnect: " + disconnectCounts);
+            }
+
+            try {
+                if (executionError) {
+                    Thread.sleep(1000);
+                    connection = this.connect();
+                }
+
+                if (genTestQuery == 1) {
+                    // For Loki, we'll create a default query if none provided
+                    System.out.println("Setting up default Loki query for execution loop");
+                    genTestQuery = 2;
+                }
+
+                if ((genTestQuery == 2 && (query == null || query.equals("")) || genTestQuery == 3)) {
+                    genTestValue = "executions_loop_log_entry_" + insertIndex;
+                    // Set test query - push log entry to Loki
+                    query = "push:" + genTestValue;
+                    if (genTestQuery == 2) {
+                        System.out.println("Execution loop start: " + query);
+                    }
+                    genTestQuery = 3;
+                }
+
+                executeResult = execute(connection, query);
+                if (executeResult != null && ((LokiQueryResult) executeResult).success) {
+                    successfulExecutions++;
+                    if (executionError) {
+                        recoveryTime = System.currentTimeMillis();
+                        java.util.Date recoveryDate = new java.util.Date(recoveryTime);
+                        System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                        System.out.println("[" + sdf.format(recoveryDate) + "] Connection successfully recovered!");
+                        errorToRecoveryTime = recoveryTime - errorTime;
+                        System.out.println("The connection was restored in " + errorToRecoveryTime + " milliseconds.");
+                        executionError = false;
+                    }
+                } else {
+                    failedExecutions++;
+                    insertIndex = insertIndex - 1;
+                    executionError = true;
+                }
+            } catch (Exception e) {
+                System.out.println("Execution loop failed: " + e.getMessage());
+                failedExecutions++;
+                insertIndex = insertIndex - 1;
+
+                if (!executionError) {
+                    disconnectCounts++;
+                    errorTime = System.currentTimeMillis();
+                    errorDate = new java.util.Date(errorTime);
+                    System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                    executionError = true;
+                }
+            }
+        }
+
+        System.out.println("[ " + duration + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                + " disconnect: " + disconnectCounts);
+
+        releaseConnections();
+
+        result.append("Execution loop completed during ").append(duration).append(" seconds");
+
+        return String.format("Total Executions: %d\n" +
+                        "Successful Executions: %d\n" +
+                        "Failed Executions: %d\n" +
+                        "Disconnection Counts: %d",
+                successfulExecutions + failedExecutions,
+                successfulExecutions,
+                failedExecutions,
+                disconnectCounts);
     }
 
     @Override
@@ -222,15 +329,81 @@ public class LokiTester implements DatabaseTester {
 
     @Override
     public String connectionStress(int connections, int duration) {
+        List<OkHttpClient> stressConnections = new ArrayList<>();
+        List<DatabaseConnection> lokiConnections = new ArrayList<>();
+
+        // 创建指定数量的连接
         for (int i = 0; i < connections; i++) {
             OkHttpClient client = new OkHttpClient.Builder()
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .writeTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(30, TimeUnit.SECONDS)
                     .build();
-            this.connections.add(client);
+            stressConnections.add(client);
         }
-        return String.format("Created %d connections", connections);
+
+        // 创建 Loki 连接对象
+        String baseUrl = String.format("http://%s:%d", dbConfig.getHost(), dbConfig.getPort());
+        for (OkHttpClient client : stressConnections) {
+            lokiConnections.add(new LokiConnection(client, baseUrl, dbConfig.getUser(), dbConfig.getPassword()));
+        }
+
+        // 在持续时间内定期向 Loki 发送请求
+        long startTime = System.currentTimeMillis();
+        long endTime = startTime + duration * 1000;
+        int totalRequests = 0;
+        int successfulRequests = 0;
+
+        try {
+            while (System.currentTimeMillis() < endTime) {
+                // 对每个连接发送一个简单的查询请求
+                for (DatabaseConnection conn : lokiConnections) {
+                    try {
+                        LokiConnection lokiConn = (LokiConnection) conn;
+                        // 发送一个简单的查询 Loki 状态的请求
+                        Request request = new Request.Builder()
+                                .url(lokiConn.getBaseUrl() + "/ready")
+                                .get()
+                                .build();
+
+                        try (Response response = lokiConn.getClient().newCall(request).execute()) {
+                            totalRequests++;
+                            if (response.isSuccessful()) {
+                                successfulRequests++;
+                            }
+                        }
+                    } catch (Exception e) {
+                        totalRequests++;
+                        // 忽略单个请求的错误，继续处理其他连接
+                    }
+                }
+
+                // 等待一小段时间再发送下一轮请求
+                Thread.sleep(100);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        } finally {
+            // 关闭所有连接
+            for (DatabaseConnection conn : lokiConnections) {
+                try {
+                    conn.close();
+                } catch (Exception e) {
+                    // 忽略关闭连接时的错误
+                }
+            }
+        }
+
+        this.connections.addAll(stressConnections);
+
+        return String.format("Connection stress test completed:\n" +
+                        "Total connections: %d\n" +
+                        "Duration: %d seconds\n" +
+                        "Total requests: %d\n" +
+                        "Successful requests: %d\n" +
+                        "Success rate: %.2f%%",
+                connections, duration, totalRequests, successfulRequests,
+                totalRequests > 0 ? (successfulRequests * 100.0 / totalRequests) : 0);
     }
 
     @Override
@@ -298,5 +471,28 @@ public class LokiTester implements DatabaseTester {
         public String toString() {
             return message;
         }
+    }
+
+    public static void main(String[] args) throws IOException {
+        // 使用示例
+        DBConfig dbConfig = new DBConfig.Builder()
+                .host("localhost")
+                .port(3100)  // REST 端口
+                .user("")
+                .password("")
+                .dbType("loki")
+                .duration(30)
+                .interval(1)
+                .testType("executionloop")
+                .connectionCount(100)
+                .build();
+
+        LokiTester tester = new LokiTester(dbConfig);
+        DatabaseConnection connection = tester.connect();
+        String result = tester.executionLoop(connection, dbConfig.getQuery(), dbConfig.getDuration(),
+                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
+//        String result = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
+        System.out.println(result);
+        connection.close();
     }
 }
