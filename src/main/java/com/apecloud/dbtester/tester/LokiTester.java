@@ -332,7 +332,7 @@ public class LokiTester implements DatabaseTester {
         List<OkHttpClient> stressConnections = new ArrayList<>();
         List<DatabaseConnection> lokiConnections = new ArrayList<>();
 
-        // 创建指定数量的连接
+        // create specified number of connections
         for (int i = 0; i < connections; i++) {
             OkHttpClient client = new OkHttpClient.Builder()
                     .connectTimeout(30, TimeUnit.SECONDS)
@@ -342,13 +342,13 @@ public class LokiTester implements DatabaseTester {
             stressConnections.add(client);
         }
 
-        // 创建 Loki 连接对象
+        // create Loki connection object
         String baseUrl = String.format("http://%s:%d", dbConfig.getHost(), dbConfig.getPort());
         for (OkHttpClient client : stressConnections) {
             lokiConnections.add(new LokiConnection(client, baseUrl, dbConfig.getUser(), dbConfig.getPassword()));
         }
 
-        // 在持续时间内定期向 Loki 发送请求
+        // send requests to Loki during the specified duration
         long startTime = System.currentTimeMillis();
         long endTime = startTime + duration * 1000;
         int totalRequests = 0;
@@ -356,11 +356,11 @@ public class LokiTester implements DatabaseTester {
 
         try {
             while (System.currentTimeMillis() < endTime) {
-                // 对每个连接发送一个简单的查询请求
+                // send a simple query request to Loki
                 for (DatabaseConnection conn : lokiConnections) {
                     try {
                         LokiConnection lokiConn = (LokiConnection) conn;
-                        // 发送一个简单的查询 Loki 状态的请求
+                        // send a request to Loki
                         Request request = new Request.Builder()
                                 .url(lokiConn.getBaseUrl() + "/ready")
                                 .get()
@@ -374,11 +374,13 @@ public class LokiTester implements DatabaseTester {
                         }
                     } catch (Exception e) {
                         totalRequests++;
-                        // 忽略单个请求的错误，继续处理其他连接
+                        // skip this request and continue with the next one
+                        System.out.println("Send request error occurred!");
+                        e.printStackTrace();
                     }
                 }
 
-                // 等待一小段时间再发送下一轮请求
+                // wait for a short period before sending the next batch of requests
                 Thread.sleep(100);
             }
         } catch (InterruptedException e) {
@@ -389,7 +391,9 @@ public class LokiTester implements DatabaseTester {
                 try {
                     conn.close();
                 } catch (Exception e) {
-                    // 忽略关闭连接时的错误
+                    // skip this connection and continue with the next one
+                    System.out.println("Close Connection error occurred!");
+                    e.printStackTrace();
                 }
             }
         }
