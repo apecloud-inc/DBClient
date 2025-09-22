@@ -62,6 +62,7 @@ public class TesterFactory {
                 return new InfluxDBTester(config);
             case "vm":
             case "victoriametrics":
+            case "victoria-metrics":
                 return new VictoriaMetricsTester(config);
             case "taos":
             case "tdengine":

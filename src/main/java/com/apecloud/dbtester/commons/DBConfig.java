@@ -402,6 +402,7 @@ public class DBConfig {
                 case "influxdb":
                 case "vm":
                 case "victoriametrics":
+                case "victoria-metrics":
                 case "taos":
                 case "tdengine":
                 case "td":
