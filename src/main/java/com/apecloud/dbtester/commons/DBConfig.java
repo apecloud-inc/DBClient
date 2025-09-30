@@ -422,6 +422,8 @@ public class DBConfig {
                 case "tidb":
                 case "rabbitmq":
                 case "rocketmq":
+                case "doris":
+                case "mariadb":
                     break;
                 default:
                     throw new IllegalStateException("Unsupported database type: " + dbType);
