@@ -15,6 +15,7 @@ public class TesterFactory {
             case "greptime":
             case "greptimedb":
             case "tidb":
+            case "mariadb":
                 return new MySQLTester(config);
             case "pg":
             case "postgres":
@@ -98,6 +99,8 @@ public class TesterFactory {
                 return new RabbitMQTester(config);
             case "rocketmq":
                 return new RocketMQTester(config);
+            case "doris":
+                return new DorisTester(config);
             default:
                 throw new IllegalArgumentException("Unsupported database type: " + config.getDbType());
         }

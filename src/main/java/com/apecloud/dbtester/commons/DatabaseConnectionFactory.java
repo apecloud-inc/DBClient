@@ -31,6 +31,8 @@ public class DatabaseConnectionFactory {
             case "sr":
             case "greatsql":
             case "greatdb":
+            case "greptime":
+            case "doris":
                 Class.forName("com.mysql.cj.jdbc.Driver");
                 break;
             case "mysql 5.1":
@@ -50,9 +52,6 @@ public class DatabaseConnectionFactory {
             case "dm":
             case "dameng":
                 Class.forName("dm.jdbc.driver.DmDriver");
-                break;
-            case "greptime":
-                Class.forName("com.mysql.cj.jdbc.Driver");
                 break;
             case "mariadb":
                 Class.forName("org.mariadb.jdbc.Driver");
@@ -93,6 +92,8 @@ public class DatabaseConnectionFactory {
             case "sr":
             case "greatsql":
             case "greatdb":
+            case "doris":
+            case "mariadb":
                 url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useSSL=false";
                 break;
             case "pg":
@@ -113,9 +114,6 @@ public class DatabaseConnectionFactory {
 //            case "greptime":
 //                url = "jdbc:mysql://" + host + ":" + port + "/public?serverTimezone=UTC";
 //                break;
-            case "mariadb":
-                url = "jdbc:mariadb://" + host + ":" + port + "/";
-                break;
             case "mogdb":
                 url = "jdbc:mogdb://" + host + ":" + port + "/mogdb?useSSL=false&serverTimezone=UTC";
                 break;
@@ -132,7 +130,6 @@ public class DatabaseConnectionFactory {
 //            case "yashan":
 //                url = "jdbc:yasdb://" + host + ":" + port + "/" + database;
 //                break;
-            // 可以添加其他数据库 JDBC URL 格式
             default:
                 throw new IllegalArgumentException("Unsupported database type: " + dbType);
         }
