@@ -103,8 +103,8 @@ public class TesterFactory {
                 return new DorisTester(config);
             case "hadoop":
                 return new HadoopTester(config);
-//            case "hive":
-//                return new HiveTester(config);
+            case "hive":
+                return new HiveTester(config);
             default:
                 throw new IllegalArgumentException("Unsupported database type: " + config.getDbType());
         }
