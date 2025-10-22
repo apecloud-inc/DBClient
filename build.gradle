@@ -188,6 +188,9 @@ dependencies {
     // This is for rocketmq connector
     implementation 'org.apache.rocketmq:rocketmq-client:4.9.8'
     implementation 'org.apache.rocketmq:rocketmq-tools:4.9.8'
+
+    // This is for Hadoop connector
+    implementation 'org.apache.hadoop:hadoop-client:3.3.6'
 }
 
 
