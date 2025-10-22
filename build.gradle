@@ -191,6 +191,9 @@ dependencies {
 
     // This is for Hadoop connector
     implementation 'org.apache.hadoop:hadoop-client:3.3.6'
+
+    // This is for Hive connector
+    implementation 'org.apache.hive:hive-jdbc:3.1.3'
 }
 
 
