@@ -424,6 +424,8 @@ public class DBConfig {
                 case "rocketmq":
                 case "doris":
                 case "mariadb":
+                case "hadoop":
+                case "hive":
                     break;
                 default:
                     throw new IllegalStateException("Unsupported database type: " + dbType);
