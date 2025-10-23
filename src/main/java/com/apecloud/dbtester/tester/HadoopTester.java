@@ -6,10 +6,10 @@ import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.Path;
 
 import java.io.IOException;
+import java.sql.Date;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -70,8 +70,6 @@ public class HadoopTester implements DatabaseTester {
         long startTime = System.currentTimeMillis();
         long endTime = startTime + duration * 1000;
         long errorTime = 0;
-        long recoveryTime;
-        long errorToRecoveryTime;
         java.sql.Date errorDate = null;
         long lastOutputTime = System.currentTimeMillis();
         int outputPassTime = 0;
@@ -138,7 +136,6 @@ public class HadoopTester implements DatabaseTester {
                 }
 
                 if ((genTestQuery == 2 && (query == null || query.equals(""))) || genTestQuery == 3) {
-                    Random random = new Random();
                     genTestValue = "executions_loop_test_" + insertIndex;
 
                     // Write data to file in the table directory
@@ -160,44 +157,38 @@ public class HadoopTester implements DatabaseTester {
                 // Execute the file operation
                 // In this case, we've already performed the write operation above
                 successfulExecutions++;
-
-            } catch (Exception e) {
+            } catch (IOException e) {
+                System.out.println(e);
                 failedExecutions++;
-                System.err.println("Error executing operation: " + e.getMessage());
-                e.printStackTrace();
-                executionError = true;
-
-                if (errorTime == 0) {
-                    errorTime = System.currentTimeMillis();
-                    errorDate = new java.sql.Date(errorTime);
-                }
-
-                try {
-                    connection = this.connect();
-                    executionError = false;
-                } catch (Exception connectionException) {
+                insertIndex = insertIndex - 1;
+                if (!executionError) {
                     disconnectCounts++;
-                    System.err.println("Reconnection failed: " + connectionException.getMessage());
+                    errorTime = System.currentTimeMillis();
+                    errorDate = new Date(errorTime);
+                    System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                    executionError=true;
                 }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
 
-        long totalTime = System.currentTimeMillis() - startTime;
-        result.append("\n").append(sdf.format(new java.util.Date())).append(" - ").append("Execution Loop completed.\n");
-        result.append("Total time: ").append(totalTime).append(" ms\n");
-        result.append("Successful executions: ").append(successfulExecutions).append("\n");
-        result.append("Failed executions: ").append(failedExecutions).append("\n");
-        result.append("Disconnect counts: ").append(disconnectCounts).append("\n");
+        System.out.println("[ " + duration + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                + " disconnect: " + disconnectCounts);
 
-        if (errorTime > 0) {
-            recoveryTime = System.currentTimeMillis();
-            errorToRecoveryTime = recoveryTime - errorTime;
-            result.append("Error occurred at: ").append(errorDate).append("\n");
-            result.append("Recovered at: ").append(sdf.format(new java.util.Date(recoveryTime))).append("\n");
-            result.append("Time from error to recovery: ").append(errorToRecoveryTime).append(" ms\n");
-        }
+        releaseConnections();
 
-        return result.toString();
+        result.append("Execution loop completed during ").append(duration).append(" seconds");
+
+        return String.format("Total Executions: %d\n" +
+                        "Successful Executions: %d\n" +
+                        "Failed Executions: %d\n" +
+                        "Disconnection Counts: %d",
+                successfulExecutions+failedExecutions,
+                successfulExecutions,
+                failedExecutions,
+                disconnectCounts);
     }
 
     @Override
