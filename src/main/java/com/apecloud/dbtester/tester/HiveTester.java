@@ -289,6 +289,7 @@ public class HiveTester implements DatabaseTester {
                 return new HiveQueryResult(null, stmt.getUpdateCount());
             }
         } catch (SQLException e) {
+            System.err.println("Error executing query: " + e.getMessage());
             throw new IOException("Failed to execute query: " + sql, e);
         }
     }
