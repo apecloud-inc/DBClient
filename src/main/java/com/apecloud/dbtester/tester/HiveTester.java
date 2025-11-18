@@ -425,12 +425,16 @@ public class HiveTester implements DatabaseTester {
     public static void main(String[] args) throws IOException {
         // 使用示例
         DBConfig dbConfig = new DBConfig.Builder()
-                .host("localhost")
+                .host("118.145.200.224")
                 .port(10000)
                 .user("admin")
-                .password("2K43h2N0kb")
+                .password("ehq48N30U4")
+//                .host("172.16.3.12")
+//                .port(31721)
+//                .user("admin")
+//                .password("6Kiv3693NH")
                 .dbType("hive")
-                .duration(40)
+                .duration(120)
                 .interval(1)
 //                .query("INSERT INTO test_table VALUES (1, 'test')")
                 .testType("executionloop")
@@ -439,9 +443,64 @@ public class HiveTester implements DatabaseTester {
                 .build();
         HiveTester tester = new HiveTester(dbConfig);
         DatabaseConnection connection = tester.connect();
-        String result = tester.executionLoop(connection, dbConfig.getQuery(), dbConfig.getDuration(),
-                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
-        System.out.println(result);
+
+        // 添加增删改测试代码
+        System.out.println("开始执行增删改测试...");
+
+        // 创建测试表
+        String createTableSQL = "CREATE TABLE IF NOT EXISTS test_crud_table " +
+                "(id INT, name STRING, age INT, created_at TIMESTAMP) " +
+                "STORED AS TEXTFILE";
+        System.out.println("创建测试表SQL：" + createTableSQL);
+        tester.execute(connection, createTableSQL);
+        System.out.println("创建测试表完成");
+
+        // 插入测试数据
+        String insertSQL = "INSERT INTO test_crud_table VALUES " +
+                "(1, 'Alice', 25, '" + new Timestamp(System.currentTimeMillis()) + "'), " +
+                "(2, 'Bob', 30, '" + new Timestamp(System.currentTimeMillis()) + "'), " +
+                "(3, 'Charlie', 35, '" + new Timestamp(System.currentTimeMillis()) + "')";
+        System.out.println("插入测试数据SQL：" + insertSQL);
+        tester.execute(connection, insertSQL);
+        System.out.println("插入测试数据完成");
+
+        // 模拟更新操作 - 使用INSERT OVERWRITE方式
+        String simulateUpdateSQL = "INSERT OVERWRITE TABLE test_crud_table " +
+                "SELECT id, name, CASE WHEN id = 1 THEN 26 ELSE age END as age, created_at " +
+                "FROM test_crud_table";
+        System.out.println("模拟更新SQL: " + simulateUpdateSQL);
+        tester.execute(connection, simulateUpdateSQL);
+        System.out.println("模拟更新测试数据完成");
+
+        // 模拟删除操作 - 使用INSERT OVERWRITE方式排除要删除的记录
+        String simulateDeleteSQL = "INSERT OVERWRITE TABLE test_crud_table " +
+                "SELECT id, name, age, created_at FROM test_crud_table WHERE id != 3";
+        System.out.println("模拟删除SQL: " + simulateDeleteSQL);
+        tester.execute(connection, simulateDeleteSQL);
+        System.out.println("模拟删除测试数据完成");
+
+        // 查询验证结果
+        String selectSQL = "SELECT * FROM test_crud_table";
+        System.out.println("查询测试数据SQL: " + selectSQL);
+        QueryResult result = tester.execute(connection, selectSQL);
+        if (result.hasResultSet()) {
+            try {
+                ResultSet rs = result.getResultSet();
+                System.out.println("查询结果:");
+                while (rs.next()) {
+                    System.out.println("ID: " + rs.getInt("id") +
+                            ", Name: " + rs.getString("name") +
+                            ", Age: " + rs.getInt("age"));
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+
+//        String resultStr = tester.executionLoop(connection, dbConfig.getQuery(), dbConfig.getDuration(),
+//                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
+//        System.out.println(resultStr);
         connection.close();
     }
+
 }
