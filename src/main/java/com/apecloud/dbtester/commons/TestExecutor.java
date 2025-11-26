@@ -108,6 +108,15 @@ public class TestExecutor {
                         throw new IOException("Query result is not a MongoDB result");
                     }
                 }
+                else if (dbType.equalsIgnoreCase("redis")) {
+                    List<String> results = queryResult.getRawResults();
+
+                    if (results == null || results.isEmpty()) {
+                        return "No results found (key may not exist).";
+                    }
+
+                    return String.join("\n", results);
+                }
                 else if (queryResult.hasResultSet()) {
                     ResultSet rs = queryResult.getResultSet();
                     if (rs.getMetaData() != null) {

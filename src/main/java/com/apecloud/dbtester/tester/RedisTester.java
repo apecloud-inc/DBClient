@@ -41,7 +41,7 @@ public class RedisTester implements DatabaseTester {
             poolConfig.setMaxIdle(100); // 设置最大空闲连接数
             poolConfig.setMinIdle(10); // 设置最小空闲连接数
             poolConfig.setMaxWaitMillis(3000); // 设置最大等待时间
-            JedisPool pool = new JedisPool(poolConfig, dbConfig.getHost(), dbConfig.getPort(), 2000, dbConfig.getPassword());
+            JedisPool pool = new JedisPool(poolConfig, dbConfig.getHost(), dbConfig.getPort(), dbConfig.getUser(), dbConfig.getPassword());
 
             return new RedisConnection(pool);
         } catch (Exception e) {
@@ -350,6 +350,10 @@ public class RedisTester implements DatabaseTester {
     private static class RedisQueryResult implements QueryResult {
         private final List<String> results;
         private final int updateCount;
+        @Override
+        public List<String> getRawResults() {
+            return results;
+        }
 
         RedisQueryResult(List<String> results) {
             this.results = results;
@@ -382,24 +386,66 @@ public class RedisTester implements DatabaseTester {
     }
 
     public static void main(String[] args) throws IOException {
+//        DBConfig dbConfig = new DBConfig.Builder()
+//                .host("localhost")
+//                .port(6379) // Change port to default Redis port
+//                .user("default")
+//                .password("9AT1200pTA")
+//                .dbType("redis")
+//                .duration(10)
+//                .interval(1)
+//                .testType("executionloop")
+////                .key("test")
+//                .build();
+//
+//        RedisTester tester = new RedisTester(dbConfig);
+//        DatabaseConnection connection = tester.connect();
+//        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
+//                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
+//        System.out.println(result);
+//        connection.close();
+
+
         DBConfig dbConfig = new DBConfig.Builder()
-                .host("localhost")
-                .port(6379) // Change port to default Redis port
-                .user("default")
-                .password("9AT1200pTA")
+                .host("172.16.3.14")
+                .port(31181) // Change port to default Redis port
+                .user("testadmin")
+                .password("Test@123456")
                 .dbType("redis")
-                .duration(10)
-                .interval(1)
-                .testType("executionloop")
-//                .key("test")
+                .testType("query")
+                .query("get a")
                 .build();
 
         RedisTester tester = new RedisTester(dbConfig);
-        DatabaseConnection connection = tester.connect();
-        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
-                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
-        System.out.println(result);
-        connection.close();
+        DatabaseConnection connection = null;
+        try {
+            connection = tester.connect();
+
+            QueryResult result = tester.execute(connection, "get a");
+
+            if (result.hasResultSet()) {
+                RedisQueryResult redisResult = (RedisQueryResult) result;
+
+                List<String> results = redisResult.getResults();
+
+                System.out.println("Query successful. Found " + results.size() + " result(s):");
+                for (String value : results) {
+                    System.out.println("  Value: " + value);
+                }
+
+            } else {
+                System.out.println("Command executed successfully.");
+                System.out.println("Update count: " + result.getUpdateCount());
+            }
+
+        } catch (IOException e) {
+            System.err.println("An error occurred: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
 
 //        DBConfig dbConfig = new DBConfig.Builder()
 //                .host("localhost")

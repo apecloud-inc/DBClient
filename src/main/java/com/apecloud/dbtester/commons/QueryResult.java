@@ -2,10 +2,21 @@ package com.apecloud.dbtester.commons;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.List;
+import java.util.Collections; // <-- 导入 Collections
 
 // 查询结果接口
 public interface QueryResult {
     // 根据不同的数据库类型定义不同的结果格式
+
+    /**
+     * 获取原始查询结果
+     *
+     * @return 原始查询结果列表, 如果查询不返回结果集则为 empty list
+     */
+    default List<String> getRawResults() {
+        return Collections.emptyList();
+    }
 
     /**
      * 获取查询结果集
