@@ -18,7 +18,7 @@ RUN chmod +x gradlew && \
     rm -rf build/classes && \
     rm -rf build/tmp
 
-FROM openjdk:11-jre-slim
+FROM openjdk:11.0.11-jre-slim
 
 RUN apt-get update && apt-get install -y tzdata
 
