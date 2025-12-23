@@ -1,4 +1,4 @@
-FROM openjdk:11-jdk-slim AS builder
+FROM openjdk:11.0.11-jdk-slim AS builder
 
 WORKDIR /app
 
