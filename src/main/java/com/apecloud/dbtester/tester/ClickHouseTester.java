@@ -70,7 +70,6 @@ public class ClickHouseTester implements DatabaseTester {
         ClickHouseConnection clickHouseConnection = (ClickHouseConnection) connection;
         try {
             Statement statement = clickHouseConnection.connection.createStatement();
-            boolean isResultSet = statement.execute(query);
             return new ClickHouseQueryResult(statement.getResultSet(), statement.getUpdateCount());
         } catch (SQLException e) {
             throw new IOException("Failed to execute query: " + e, e);
@@ -202,6 +201,14 @@ public class ClickHouseTester implements DatabaseTester {
 
                     if (table.equals("executions_loop_table")) {
                         // drop test table
+                        if (databaseCluster != null && !databaseCluster.equals("")) {
+                            System.out.println("drop distributed table " + table + "_distributed");
+                            genTest = "DROP TABLE IF EXISTS " + database + "." + table + "_distributed ON CLUSTER "
+                                    + databaseCluster + ";";
+                            System.out.println(genTest);
+                            execute(connection, genTest);
+                        }
+
                         System.out.println("drop table " + table);
                         genTest = "DROP TABLE IF EXISTS " + database + "." + table + " ON CLUSTER " + databaseCluster + ";";
                         if (databaseCluster == null || databaseCluster.equals("")) {
@@ -222,13 +229,30 @@ public class ClickHouseTester implements DatabaseTester {
                     System.out.println(genTest);
                     execute(connection, genTest);
 
+                    if (databaseCluster != null && !databaseCluster.equals("")) {
+                        // create distributed table
+                        System.out.println("create distributed table " + table + "_distributed");
+                        genTest = "CREATE TABLE IF NOT EXISTS " + database + "." + table + "_distributed ON CLUSTER "
+                                + databaseCluster
+                                + " AS " + database + "." + table
+                                + " ENGINE = Distributed('" + databaseCluster + "', '" + database + "', '" + table
+                                + "', rand());";
+                        System.out.println(genTest);
+                        execute(connection, genTest);
+                    }
+
                     genTestQuery = 2;
                 }
 
                 if ((genTestQuery == 2 && (query == null || query.equals("")) || genTestQuery == 3)) {
                     genTestValue = "executions_loop_test_" + insertIndex;
                     // set test query
-                    query = "INSERT INTO " + database + "." + table + " (id, value) VALUES (" + insertIndex + ", '" + genTestValue + "');";
+                    String targetTable = table;
+                    if (databaseCluster != null && !databaseCluster.equals("")) {
+                        targetTable = table + "_distributed";
+                    }
+                    query = "INSERT INTO " + database + "." + targetTable + " (id, value) VALUES (" + insertIndex
+                            + ", '" + genTestValue + "');";
                     if (genTestQuery == 2) {
                         System.out.println("Execution loop start:" + query);
                     }
