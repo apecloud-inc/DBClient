@@ -70,6 +70,7 @@ public class ClickHouseTester implements DatabaseTester {
         ClickHouseConnection clickHouseConnection = (ClickHouseConnection) connection;
         try {
             Statement statement = clickHouseConnection.connection.createStatement();
+            statement.execute(query);
             return new ClickHouseQueryResult(statement.getResultSet(), statement.getUpdateCount());
         } catch (SQLException e) {
             throw new IOException("Failed to execute query: " + e, e);
