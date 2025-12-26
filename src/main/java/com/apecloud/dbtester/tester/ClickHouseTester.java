@@ -205,13 +205,13 @@ public class ClickHouseTester implements DatabaseTester {
                         if (databaseCluster != null && !databaseCluster.equals("")) {
                             System.out.println("drop distributed table " + table + "_distributed");
                             genTest = "DROP TABLE IF EXISTS " + database + "." + table + "_distributed ON CLUSTER "
-                                    + databaseCluster + ";";
+                                    + databaseCluster + " SYNC;";
                             System.out.println(genTest);
                             execute(connection, genTest);
                         }
 
                         System.out.println("drop table " + table);
-                        genTest = "DROP TABLE IF EXISTS " + database + "." + table + " ON CLUSTER " + databaseCluster + ";";
+                        genTest = "DROP TABLE IF EXISTS " + database + "." + table + " ON CLUSTER " + databaseCluster + " SYNC;";
                         if (databaseCluster == null || databaseCluster.equals("")) {
                             genTest = "DROP TABLE IF EXISTS " + database + "." + table + ";";
                         }
