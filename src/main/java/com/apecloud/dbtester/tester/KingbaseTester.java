@@ -39,12 +39,12 @@ public class KingbaseTester implements DatabaseTester {
             throw new RuntimeException("Kingbase JDBC Driver not found, please try again..", e);
         }
 
-        String url = String.format("jdbc:kingbase8://%s:%d/%s",
+        String url = String.format("jdbc:kingbase8://%s:%d/%s?loginTimeout=30&socketTimeout=60",
                 dbConfig.getHost(),
                 dbConfig.getPort(),
                 dbConfig.getDatabase());
 
-        String url2 = String.format("jdbc:kingbase8://%s:%d/%s",
+        String url2 = String.format("jdbc:kingbase8://%s:%d/%s?loginTimeout=30&socketTimeout=60",
                 dbConfig.getHost(),
                 dbConfig.getPort(),
                 databaseConnection);
@@ -71,6 +71,7 @@ public class KingbaseTester implements DatabaseTester {
         KingbaseConnection kingbaseConnection = (KingbaseConnection) connection;
         try {
             Statement statement = kingbaseConnection.connection.createStatement();
+            statement.setQueryTimeout(30); // 设置30秒查询超时
             boolean isResultSet = statement.execute(query);
             return new KingbaseQueryResult(statement.getResultSet(), statement.getUpdateCount());
         } catch (SQLException e) {
