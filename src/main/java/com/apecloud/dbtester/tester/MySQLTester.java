@@ -410,7 +410,7 @@ public class MySQLTester implements DatabaseTester {
             .host("localhost")
             .port(3306)
             .user("root")
-            .password("J7v756R3x847Kjlv")
+            .password("***")
             .dbType("mysql")
             .duration(10)
             .interval(1)

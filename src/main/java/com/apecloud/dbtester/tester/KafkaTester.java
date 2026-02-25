@@ -508,7 +508,7 @@ public class KafkaTester implements DatabaseTester {
                 .host("localhost")
                 .port(9092)
                 .user("admin")
-                .password("test")
+                .password("***")
                 .dbType("kafka")
                 .duration(2)
                 .interval(1)

@@ -361,7 +361,7 @@ public class ClickHouseTester implements DatabaseTester {
                 .port(8123)
                 .user("admin")
 //                .database("default")
-                .password("14f5N7xPd5")
+                .password("***")
                 .dbType("clickhouse")
                 .duration(10)
                 .interval(1)

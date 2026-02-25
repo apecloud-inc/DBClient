@@ -502,7 +502,7 @@ public class MinioTester implements DatabaseTester {
 //                .host("127.0.0.1")
 //                .port(9000)
 //                .user("root")
-//                .password("8IkOu64ALX19202y")
+//                .password("***")
 //                .connectionCount(10)
 //                .duration(1)
 //                .build();
@@ -519,7 +519,7 @@ public class MinioTester implements DatabaseTester {
                 .host("localhost")
                 .port(9000)
                 .user("root")
-                .password("8IkOu64ALX19202y")
+                .password("***")
                 .dbType("minio")
                 .duration(10)
                 .interval(1)

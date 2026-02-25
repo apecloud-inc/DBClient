@@ -173,7 +173,7 @@ public class Gbase8cTester implements DatabaseTester {
             .port(5432)  // PostgreSQL 默认端口
             .database("postgres")
             .user("postgres")
-            .password("password")
+            .password("***")
             .build();
         Gbase8cTester tester = new Gbase8cTester(dbConfig);
         DatabaseConnection connection = tester.connect();

@@ -775,7 +775,7 @@ public class ElasticSearchTester implements DatabaseTester {
                 .host("localhost")
                 .port(9200)
                 .user("elastic")
-                .password("4335f9Zxyf")
+                .password("***")
                 .dbType("elasticsearch")
                 .duration(10)
                 .interval(1)
@@ -799,7 +799,7 @@ public class ElasticSearchTester implements DatabaseTester {
             .dbType("elasticsearch")
             .port(9200)
             .user("elastic")
-            .password("4335f9Zxyf")
+            .password("***")
             .build();
 
         tester = new ElasticSearchTester(dbConfig);
@@ -829,7 +829,7 @@ public class ElasticSearchTester implements DatabaseTester {
 //                .host("127.0.0.1")
 //                .port(9200)
 //                .user("elastic")
-//                .password("4335f9Zxyf")
+//                .password("***")
 //                .testType("connectionstress")
 //                .duration(60)
 //                .table("default")
