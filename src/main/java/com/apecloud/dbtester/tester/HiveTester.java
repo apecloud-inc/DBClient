@@ -425,14 +425,14 @@ public class HiveTester implements DatabaseTester {
     public static void main(String[] args) throws IOException {
         // 使用示例
         DBConfig dbConfig = new DBConfig.Builder()
-                .host("118.145.200.224")
+                .host("127.0.0.1")
                 .port(10000)
                 .user("admin")
-                .password("ehq48N30U4")
-//                .host("172.16.3.12")
+                .password("***")
+//                .host("127.0.0.1")
 //                .port(31721)
 //                .user("admin")
-//                .password("6Kiv3693NH")
+//                .password("***")
                 .dbType("hive")
                 .duration(120)
                 .interval(1)

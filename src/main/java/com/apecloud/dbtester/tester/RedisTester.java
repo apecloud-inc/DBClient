@@ -407,7 +407,7 @@ public class RedisTester implements DatabaseTester {
 
 
         DBConfig dbConfig = new DBConfig.Builder()
-                .host("172.16.3.14")
+                .host("127.0.0.1")
                 .port(31181) // Change port to default Redis port
                 .user("testadmin")
                 .password("Test@123456")

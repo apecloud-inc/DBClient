@@ -379,7 +379,7 @@ public class DorisTester implements DatabaseTester {
                 .host("localhost")
                 .port(9030)
                 .user("root")
-                .password("637q1DJ1jp")
+                .password("***")
                 .dbType("doris")
                 .duration(10)
                 .interval(1)

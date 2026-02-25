@@ -354,7 +354,7 @@ public class MogDBTester implements DatabaseTester {
 //            .port(5432)  // Mogdb 默认端口
 //            .database("root")
 //            .user("test")
-//            .password("password")
+//            .password("***")
 //            .build();
 //        MogdbTester tester = new MogdbTester(dbConfig);
 //        DatabaseConnection connection = tester.connect();
@@ -367,7 +367,7 @@ public class MogDBTester implements DatabaseTester {
                 .host("localhost")
                 .port(26000)
                 .user("kbadmin")
-                .password("test")
+                .password("***")
                 .dbType("mogdb")
                 .duration(10)
                 .interval(1)

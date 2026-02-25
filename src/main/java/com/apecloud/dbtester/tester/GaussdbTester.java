@@ -353,7 +353,7 @@ public class GaussdbTester implements DatabaseTester {
             .host("localhost")
             .port(5432)
             .user("dba")
-            .password("*u7N64j6D75f")
+            .password("***")
             .dbType("gaussdb")
             .duration(10)
             .interval(1)
@@ -373,7 +373,7 @@ public class GaussdbTester implements DatabaseTester {
 //                .host("localhost")
 //                .port(5432) // Change port to default Redis port
 //                .user("dba")
-//                .password("*u7N64j6D75f")
+//                .password("***")
 //                .dbType("gaussdb")
 //                .duration(10)
 //                .connectionCount(100)

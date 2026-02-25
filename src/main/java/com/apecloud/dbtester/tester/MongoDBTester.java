@@ -425,12 +425,12 @@ public class MongoDBTester implements DatabaseTester {
 
     public static void main(String[] args) throws IOException {
         DBConfig dbConfig = new DBConfig.Builder()
-                .host("192.168.10.42")
+                .host("127.0.0.1")
                 .port(30829)
                 .database("test")
 //                .table("test")
                 .user("test")
-                .password("Abc1111111")
+                .password("***")
                 .dbType("mongodb")
                 .testType("query")
                 .query("{\"operation\":\"insert\",\"collection\":\"c\",\"data\":{\"name\":\"Alice\"}}")

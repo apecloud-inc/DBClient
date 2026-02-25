@@ -354,7 +354,7 @@ public class KingbaseTester implements DatabaseTester {
                 .host("localhost")
                 .port(54321)
                 .user("esrep")
-                .password("Kingbaseha110")
+                .password("***")
                 .dbType("kingbase")
                 .duration(60)
                 .interval(1)
