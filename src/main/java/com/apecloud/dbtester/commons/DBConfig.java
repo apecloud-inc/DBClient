@@ -426,6 +426,7 @@ public class DBConfig {
                 case "mariadb":
                 case "hadoop":
                 case "hive":
+                case "vault":
                     break;
                 default:
                     throw new IllegalStateException("Unsupported database type: " + dbType);

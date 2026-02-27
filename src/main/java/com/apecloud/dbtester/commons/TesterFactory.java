@@ -105,6 +105,8 @@ public class TesterFactory {
                 return new HadoopTester(config);
             case "hive":
                 return new HiveTester(config);
+            case "vault":
+                return new VaultTester(config);
             default:
                 throw new IllegalArgumentException("Unsupported database type: " + config.getDbType());
         }
