@@ -107,6 +107,8 @@ public class TesterFactory {
                 return new HiveTester(config);
             case "vault":
                 return new VaultTester(config);
+            case "pulsar":
+                return new PulsarTester(config);
             default:
                 throw new IllegalArgumentException("Unsupported database type: " + config.getDbType());
         }

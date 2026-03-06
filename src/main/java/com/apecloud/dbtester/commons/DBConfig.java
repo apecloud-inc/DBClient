@@ -427,6 +427,7 @@ public class DBConfig {
                 case "hadoop":
                 case "hive":
                 case "vault":
+                case "pulsar":
                     break;
                 default:
                     throw new IllegalStateException("Unsupported database type: " + dbType);
