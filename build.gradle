@@ -101,7 +101,8 @@ dependencies {
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.0'
 
     // This is for Pulsar connector
-    // implementation 'org.apache.pulsar:pulsar-client:2.10.0'
+    implementation 'org.apache.pulsar:pulsar-client:2.10.0'
+    implementation 'org.apache.pulsar:pulsar-client-admin:2.10.0'
 
     // This is for Elasticsearch connector
     implementation 'co.elastic.clients:elasticsearch-java:8.8.2'
