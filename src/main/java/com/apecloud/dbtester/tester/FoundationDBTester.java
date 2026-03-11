@@ -34,37 +34,54 @@ public class FoundationDBTester implements DatabaseTester {
             throw new IllegalStateException("DBConfig not provided");
         }
 
-        String libPath = "/usr/local/lib/libfdb_c.dylib";
-        try {
-            // 检查文件是否存在
-            java.io.File libFile = new java.io.File(libPath);
-            if (libFile.exists()) {
-                System.load(libPath); // 直接加载绝对路径的库
-                System.out.println("Successfully loaded native library from: " + libPath);
-            } else {
-                // 尝试常见备选路径
-                String[] alternativePaths = {
-                        "/opt/homebrew/lib/libfdb_c.dylib",
-                        "/usr/local/lib/libfdb_c.dylib",
-                        "/usr/lib/libfdb_c.dylib"
-                };
+        // 尝试加载 libfdb_c.so 动态库（Linux）
+        // FoundationDB Java API 必须依赖此本地库
+        String[] libPaths = {
+                "/usr/lib/libfdb_c.so",         // 标准系统路径
+                "/usr/lib64/libfdb_c.so",       // 64 位系统路径
+                "/usr/local/lib/libfdb_c.so",   // 本地安装路径
+                System.getProperty("user.dir") + "/lib/libfdb_c.so"  // 项目目录
+        };
 
-                boolean loaded = false;
-                for (String path : alternativePaths) {
-                    if (new java.io.File(path).exists()) {
-                        System.load(path);
-                        System.out.println("Successfully loaded native library from: " + path);
-                        loaded = true;
-                        break;
-                    }
+        boolean loaded = false;
+        for (String path : libPaths) {
+            try {
+                java.io.File libFile = new java.io.File(path);
+                if (libFile.exists()) {
+                    System.load(path);
+                    System.out.println("Successfully loaded FoundationDB native library from: " + path);
+                    loaded = true;
+                    break;
                 }
-
-                if (!loaded) {
-                    throw new IOException("Cannot find libfdb_c.dylib in any of the expected locations");
-                }
+            } catch (UnsatisfiedLinkError e) {
+                System.out.println("Failed to load from " + path + ": " + e.getMessage());
             }
-        } catch (UnsatisfiedLinkError e) {
-            throw new IOException("Failed to load native library: " + e.getMessage(), e);
+        }
+
+        // 如果所有路径都失败，尝试系统自动查找
+        if (!loaded) {
+            try {
+                System.loadLibrary("fdb_c");
+                System.out.println("Successfully loaded FoundationDB native library using loadLibrary");
+                loaded = true;
+            } catch (UnsatisfiedLinkError e) {
+                System.out.println("System library lookup failed: " + e.getMessage());
+            }
+        }
+
+        if (!loaded) {
+            StringBuilder errorMsg = new StringBuilder();
+            errorMsg.append("Cannot find or load libfdb_c.so dynamic library.\n");
+            errorMsg.append("Please install FoundationDB client library:\n");
+            errorMsg.append("  Ubuntu/Debian: Download from https://github.com/apple/foundationdb/releases\n");
+            errorMsg.append("  RHEL/CentOS: Download from https://github.com/apple/foundationdb/releases\n");
+            errorMsg.append("\nOr place libfdb_c.so in one of these locations:\n");
+            errorMsg.append("  - /usr/lib/libfdb_c.so\n");
+            errorMsg.append("  - /usr/lib64/libfdb_c.so\n");
+            errorMsg.append("  - /usr/local/lib/libfdb_c.so\n");
+            errorMsg.append("  - <project_root>/lib/libfdb_c.so\n");
+            
+            throw new IOException(errorMsg.toString());
         }
 
         try {
