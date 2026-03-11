@@ -6,11 +6,11 @@ on:
       release_version:
         description: 'The tag name of image'
         required: true
-        default: ''
+        default: 'foundationdb'
       release_platform:
         description: 'The platform of release image'
         required: false
-        default: 'linux/amd64,linux/arm64'
+        default: 'linux/amd64'
   release:
     types:
       - published
