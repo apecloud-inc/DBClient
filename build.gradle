@@ -198,6 +198,9 @@ dependencies {
         exclude group: 'org.apache.hadoop'
         exclude group: 'org.apache.hbase'
     }
+
+    // This is for FoundationDB connector
+    implementation 'org.foundationdb:fdb-java:7.1.26'
 }
 
 

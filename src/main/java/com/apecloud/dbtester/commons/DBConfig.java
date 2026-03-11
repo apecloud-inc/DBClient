@@ -10,7 +10,8 @@ public class DBConfig {
         REDIS("redis"),
         MONGODB("mongodb"),
         INFLUXDB("influxdb"),
-        PROMETHEUS("prometheus");
+        PROMETHEUS("prometheus"),
+        FOUNDATIONDB("foundationdb");
 
         private final String mode;
 
@@ -428,6 +429,7 @@ public class DBConfig {
                 case "hive":
                 case "vault":
                 case "pulsar":
+                case "foundationdb":
                     break;
                 default:
                     throw new IllegalStateException("Unsupported database type: " + dbType);

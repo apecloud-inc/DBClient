@@ -109,6 +109,9 @@ public class TesterFactory {
                 return new VaultTester(config);
             case "pulsar":
                 return new PulsarTester(config);
+            case "fdb":
+            case "foundationdb":
+                return new FoundationDBTester(config);
             default:
                 throw new IllegalArgumentException("Unsupported database type: " + config.getDbType());
         }
