@@ -111,24 +111,27 @@ public class FoundationDBTester implements DatabaseTester {
             switch (operation) {
                 case "get":
                     String getKey = parts[1].trim();
-                    byte[] getValue = fdbConnection.database.runAsync(tr -> tr.get(Tuple.from(getKey).pack())).join();
+                    // 直接使用字符串键，不使用 Tuple 编码（避免添加\x02 前缀和\x00 后缀）
+                    byte[] getValue = fdbConnection.database.runAsync(tr ->
+                        tr.get(getKey.getBytes(StandardCharsets.UTF_8))).join();
                     String result = getValue != null ? new String(getValue, StandardCharsets.UTF_8) : null;
                     return new FoundationDBQueryResult(result != null ? List.of(result) : List.of());
 
                 case "set":
                     String setKey = parts[1].trim();
                     String setValue = parts[2].trim();
-                    System.out.println("Setting key: " + setKey + ", value: " + setValue);
+                    // 直接使用字符串键，不使用 Tuple 编码
                     fdbConnection.database.run(tr -> {
-                        tr.set(Tuple.from(setKey).pack(), setValue.getBytes(StandardCharsets.UTF_8));
+                        tr.set(setKey.getBytes(StandardCharsets.UTF_8), setValue.getBytes(StandardCharsets.UTF_8));
                         return null;
                     });
                     return new FoundationDBQueryResult(1);
 
                 case "delete":
                     String deleteKey = parts[1].trim();
+                    // 直接使用字符串键，不使用 Tuple 编码
                     fdbConnection.database.run(tr -> {
-                        tr.clear(Tuple.from(deleteKey).pack());
+                        tr.clear(deleteKey.getBytes(StandardCharsets.UTF_8));
                         return null;
                     });
                     return new FoundationDBQueryResult(1);
@@ -138,10 +141,11 @@ public class FoundationDBTester implements DatabaseTester {
                     String startKey = parts[1].trim();
                     String endKey = parts[2].trim();
                     List<String> rangeResults = new ArrayList<>();
+                    // 直接使用字符串键，不使用 Tuple 编码
                     fdbConnection.database.run(tr -> {
                         for (KeyValue kv : tr.getRange(
-                                Tuple.from(startKey).pack(),
-                                Tuple.from(endKey).pack())) {
+                                startKey.getBytes(StandardCharsets.UTF_8),
+                                endKey.getBytes(StandardCharsets.UTF_8))) {
                             rangeResults.add(new String(kv.getValue(), StandardCharsets.UTF_8));
                         }
                         return null;
@@ -307,9 +311,7 @@ public class FoundationDBTester implements DatabaseTester {
                     }
                     genTestQuery = 3;
                 }
-                System.out.println("1");
                 execute(connection, query);
-                System.out.println("2");
                 successfulExecutions++;
                 if (executionError) {
                     recoveryTime = System.currentTimeMillis();
