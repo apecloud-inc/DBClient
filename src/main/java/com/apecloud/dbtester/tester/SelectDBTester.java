@@ -6,57 +6,73 @@ import java.io.IOException;
 import java.sql.*;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-public class DamengTester implements DatabaseTester {
+public class SelectDBTester implements DatabaseTester {
     private List<DatabaseConnection> connections = new ArrayList<>();
     private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     private final DBConfig dbConfig;
+    private String databaseConnection = "mysql";
 
-    public DamengTester() {
+    public SelectDBTester() {
         this.dbConfig = null;
     }
 
-    public DamengTester(DBConfig dbConfig) {
+    public SelectDBTester(DBConfig dbConfig) {
         this.dbConfig = dbConfig;
     }
 
+    @Override
     public DatabaseConnection connect() throws IOException {
         if (dbConfig == null) {
             throw new IllegalStateException("DBConfig not provided");
         }
 
         try {
-            Class.forName("dm.jdbc.driver.DmDriver");
+            Class.forName("com.mysql.cj.jdbc.Driver");
         } catch (ClassNotFoundException e) {
-            throw new RuntimeException("Dameng JDBC Driver not found, please try again..", e);
+            throw new RuntimeException("SelectDB JDBC Driver not found, please try again..", e);
         }
 
-        String url = String.format("jdbc:dm://%s:%d",
+        String url = String.format("jdbc:mysql://%s:%d/%s?useSSL=false&allowPublicKeyRetrieval=true",
                 dbConfig.getHost(),
-                dbConfig.getPort());
-        
-        if (dbConfig.getDatabase() != null && !dbConfig.getDatabase().isEmpty()) {
-            url += "/" + dbConfig.getDatabase();
+                dbConfig.getPort(),
+                dbConfig.getDatabase());
+
+        String url2 = String.format("jdbc:mysql://%s:%d?useSSL=false&allowPublicKeyRetrieval=true",
+                dbConfig.getHost(),
+                dbConfig.getPort(),
+                databaseConnection);
+
+        if (dbConfig.getDatabase() == null || dbConfig.getDatabase().equals("")) {
+            url = url2;
         }
 
         try {
-            return new DamengConnection(DriverManager.getConnection(url, dbConfig.getUser(), dbConfig.getPassword()));
+            return new SelectDBTester.SelectDBConnection(DriverManager.getConnection(url, dbConfig.getUser(), dbConfig.getPassword()));
         } catch (SQLException e) {
-            throw new IOException("Failed to connect to Dameng database", e);
+            System.err.println("Failed to connect to SelectDB database: " + e);
+            System.err.println("Trying with database SelectDB.");
+            try {
+                return new SelectDBTester.SelectDBConnection(DriverManager.getConnection(url2, dbConfig.getUser(), dbConfig.getPassword()));
+            } catch (SQLException e2) {
+                throw new IOException("Failed to connect to SelectDB database: ", e2);
+            }
         }
     }
 
     @Override
     public QueryResult execute(DatabaseConnection connection, String query) throws IOException {
-        DamengConnection damengConnection = (DamengConnection) connection;
+        SelectDBConnection selectDBConnection = (SelectDBConnection) connection;
         try {
-            Statement statement = damengConnection.connection.createStatement();
+            Statement statement = selectDBConnection.connection.createStatement();
             boolean isResultSet = statement.execute(query);
-            return new DamengQueryResult(statement.getResultSet(), statement.getUpdateCount());
+            return new SelectDBTester.SelectDBQueryResult(statement.getResultSet(), statement.getUpdateCount());
         } catch (SQLException e) {
             throw new IOException("Failed to execute query: " + e, e);
         }
@@ -84,8 +100,7 @@ public class DamengTester implements DatabaseTester {
             e.printStackTrace();
         }
 
-        result.append("Benchmark completed with ").append(iterations)
-              .append(" iterations and ").append(concurrency).append(" concurrency");
+        result.append("Benchmark completed with ").append(iterations).append(" iterations and ").append(concurrency).append(" concurrency");
         return result.toString();
     }
 
@@ -122,6 +137,7 @@ public class DamengTester implements DatabaseTester {
 
     @Override
     public void releaseConnections() {
+        // 释放所有连接
         for (DatabaseConnection connection : connections) {
             try {
                 connection.close();
@@ -160,12 +176,17 @@ public class DamengTester implements DatabaseTester {
         int genTestQuery = 0;
         String genTest;
         String genTestValue;
-        QueryResult queryResult;
-        String tableCount = "0";
+
+        byte[] binaryData = new byte[10];
+        byte[] varbinaryData = new byte[155];
 
         // check gen test query
         if (query == null || query.equals("") || (database != null && !database.equals("")) || (table != null && !table.equals(""))) {
             genTestQuery = 1;
+        }
+
+        if (database == null || database.equals("")) {
+            database = "executions_loop";
         }
 
         if (table == null || table.equals("")) {
@@ -191,41 +212,74 @@ public class DamengTester implements DatabaseTester {
                 }
 
                 if (genTestQuery == 1) {
-                    genTest = "SELECT COUNT(*) FROM USER_TABLES WHERE TABLE_NAME ='" + table + "';";
-                    queryResult = this.execute(connection, genTest);
-                    if (queryResult.hasResultSet()) {
-                        ResultSet rs = queryResult.getResultSet();
-                        while (rs.next()) {
-                            String count = rs.getString(1);
-                            System.out.println("tableCount: " + count);
-                            tableCount = count;
-                        }
-                    }
+                    // create test databases
+                    System.out.println("create databases " + database);
+                    genTest = "CREATE DATABASE IF NOT EXISTS " + database + ";";
+                    System.out.println(genTest);
+                    execute(connection, genTest);
 
-                    if (table.equals("executions_loop_table") && !tableCount.equals("0")) {
+                    if (table.equals("executions_loop_table")) {
                         // drop test table
                         System.out.println("drop table " + table);
-                        genTest = "DROP TABLE IF EXISTS " + table + ";";
+                        genTest = "DROP TABLE IF EXISTS " + database + "." + table + ";";
                         System.out.println(genTest);
                         execute(connection, genTest);
-                        tableCount = "0";
                     }
 
-                    if (tableCount.equals("0")) {
-                        // create test table
-                        System.out.println("create table " + table);
-                        genTest = "CREATE TABLE IF NOT EXISTS " + table + " (id INT PRIMARY KEY AUTO_INCREMENT, value VARCHAR(255));";
-                        System.out.println(genTest);
-                        execute(connection, genTest);
-                    }
+                    // create test table with more field types
+                    System.out.println("create table " + table);
+                    genTest = "CREATE TABLE IF NOT EXISTS " + database + "." + table + " ("
+                            + "id INT, "
+                            + "value VARCHAR(255), "
+                            + "tinyint_col TINYINT, "
+                            + "smallint_col SMALLINT, "
+                            + "int_col INT, "
+                            + "bigint_col BIGINT, "
+                            + "float_col FLOAT, "
+                            + "double_col DOUBLE, "
+                            + "decimal_col DECIMAL(10, 2), "
+                            + "date_col DATE, "
+                            + "datetime_col DATETIME, "
+                            + "char_col CHAR(10), "
+                            + "text_col TEXT "
+                            + ") ENGINE=OLAP "
+                            + "DUPLICATE KEY(id) "
+                            + "DISTRIBUTED BY HASH(id) BUCKETS 3 "
+                            + "PROPERTIES ( 'replication_num' = '1' );";
+                    System.out.println(genTest);
+                    execute(connection, genTest);
 
                     genTestQuery = 2;
                 }
 
                 if ((genTestQuery == 2 && (query == null || query.equals("")) || genTestQuery == 3)) {
+                    Random random = new Random();
+
+                    // Generate random values
                     genTestValue = "executions_loop_test_" + insertIndex;
+
+                    random.nextBytes(binaryData);
+                    random.nextBytes(varbinaryData);
+
                     // set test query
-                    query = "INSERT INTO " + table + " (value) VALUES ('" + genTestValue + "');";
+                    query = "INSERT INTO " + database + "." + table + " (id, value, tinyint_col, smallint_col, "
+                            + "int_col, bigint_col, float_col, double_col, decimal_col, "
+                            + "date_col, datetime_col, char_col, text_col) "
+                            + "VALUES ("
+                            + insertIndex + ", "
+                            + "'" + genTestValue + "', "
+                            + random.nextInt(128) + ", " // TINYINT
+                            + random.nextInt(32768) + ", " // SMALLINT
+                            + random.nextInt() + ", " // INT
+                            + random.nextLong() + ", " // BIGINT
+                            + random.nextFloat() + ", " // FLOAT
+                            + random.nextDouble() + ", " // DOUBLE
+                            + random.nextDouble() * 100 + ", " // DECIMAL
+                            + "'" + new java.sql.Date(System.currentTimeMillis()) + "', " // DATE
+                            + "'" + new java.sql.Timestamp(System.currentTimeMillis()) + "', " // DATETIME
+                            + "'" + randomString(10) + "', " // CHAR
+                            + "'" + randomString(255) + "' " // TEXT
+                            + ");";
                     if (genTestQuery == 2) {
                         System.out.println("Execution loop start:" + query);
                     }
@@ -250,7 +304,8 @@ public class DamengTester implements DatabaseTester {
                     insertIndex = insertIndex - 1;
                     executionError = true;
                 }
-            } catch (IOException e) {
+            } catch (IOException | InterruptedException e) {
+                System.out.println(e);
                 failedExecutions++;
                 insertIndex = insertIndex - 1;
                 if (!executionError) {
@@ -260,10 +315,6 @@ public class DamengTester implements DatabaseTester {
                     System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
                     executionError = true;
                 }
-            } catch (SQLException e) {
-                e.printStackTrace();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
             }
         }
 
@@ -285,10 +336,10 @@ public class DamengTester implements DatabaseTester {
                 disconnectCounts);
     }
 
-    private static class DamengConnection implements DatabaseConnection {
+    private static class SelectDBConnection implements DatabaseConnection {
         private final Connection connection;
 
-        DamengConnection(Connection connection) {
+        SelectDBConnection(Connection connection) {
             this.connection = connection;
         }
 
@@ -297,16 +348,16 @@ public class DamengTester implements DatabaseTester {
             try {
                 connection.close();
             } catch (SQLException e) {
-                throw new IOException("Failed to close Dameng connection", e);
+                throw new IOException("Failed to close SelectDB connection", e);
             }
         }
     }
 
-    public static class DamengQueryResult implements QueryResult {
+    public static class SelectDBQueryResult implements QueryResult {
         private final ResultSet resultSet;
         private final int updateCount;
 
-        DamengQueryResult(ResultSet resultSet, int updateCount) {
+        SelectDBQueryResult(ResultSet resultSet, int updateCount) {
             this.resultSet = resultSet;
             this.updateCount = updateCount;
         }
@@ -327,58 +378,33 @@ public class DamengTester implements DatabaseTester {
         }
     }
 
-    public static void main(String[] args) throws IOException {
-        // 测试代码
-//        DBConfig dbConfig = new DBConfig.Builder()
-//            .host("localhost")
-//            .port(5236)
-//            .database("DAMENG")
-//            .user("sysdba")
-//            .password("***")
-//            .dbType("dameng")
-//            .testType("query")
-//            .query("SELECT COUNT(*) FROM USER_TABLES;")
-//            .build();
-//
-//        DamengTester tester = new DamengTester(dbConfig);
-//        DatabaseConnection connection = tester.connect();
-//
-//        // 测试查询
-//        QueryResult result = tester.execute(connection, dbConfig.getQuery());
-//
-//        try {
-//            if (result.hasResultSet()) {
-//                ResultSet rs = result.getResultSet();
-//                while (rs.next()) {
-//                    String count = rs.getString(1);
-//                    System.out.println("count: " + count);
-//                }
-//            }
-//        } catch (SQLException e) {
-//            e.printStackTrace();
-//        } finally {
-//            connection.close();
-//        }
+    // Helper method to generate random string
+    private String randomString(int length) {
+        return TestUtils.randomString(length);
+    }
 
+    public static void main(String[] args) throws IOException {
         // 使用 DBConfig 方式
         DBConfig dbConfig = new DBConfig.Builder()
                 .host("localhost")
-                .port(5236)
-                .user("sysdba")
-                .password("***")
-                .dbType("dameng")
+                .port(9030)
+                .user("root")
+                .password("zm785b6Y5S")
+                .dbType("selectdb")
                 .duration(10)
                 .interval(1)
-//            .query("INSERT INTO test_table (value) VALUES ('1');")
+//                .query("INSERT INTO test_table (id, value) VALUES (1, 'test');")
                 .testType("executionloop")
-//            .database("test_db")
-            .table("test_table2")
+//                .database("test_db")
+//                .table("test_table")
                 .build();
-        DamengTester tester = new DamengTester(dbConfig);
-        DatabaseConnection connection = tester.connect();
-        String result = tester.executionLoop(connection, dbConfig.getQuery(),dbConfig.getDuration(),
-                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
+        SelectDBTester tester = new SelectDBTester(dbConfig);
+        String result = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
         System.out.println(result);
-        connection.close();
+//        DatabaseConnection connection = tester.connect();
+//        String result = tester.executionLoop(connection, dbConfig.getQuery(), dbConfig.getDuration(),
+//                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
+//        System.out.println(result);
+//        connection.close();
     }
 }

@@ -107,16 +107,33 @@ public class MogDBTester implements DatabaseTester {
 
     @Override
     public String connectionStress(int connections, int duration) {
-        // 建立多个连接
+        int successfulConnections = 0;
+        int failedConnections = 0;
+
         for (int i = 0; i < connections; i++) {
             try {
                 DatabaseConnection connection = connect();
                 this.connections.add(connection);
+                successfulConnections++;
             } catch (IOException e) {
+                failedConnections++;
                 e.printStackTrace();
             }
         }
-        return null;
+
+        try {
+            Thread.sleep(duration * 1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            releaseConnections();
+        }
+
+        return String.format("Connection stress test results:\n" +
+                        "Duration: %d seconds\n" +
+                        "Successful connections: %d\n" +
+                        "Failed connections: %d",
+                duration, successfulConnections, failedConnections);
     }
 
     @Override
