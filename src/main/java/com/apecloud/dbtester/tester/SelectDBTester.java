@@ -17,7 +17,7 @@ public class SelectDBTester implements DatabaseTester {
     private List<DatabaseConnection> connections = new ArrayList<>();
     private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     private final DBConfig dbConfig;
-    private String databaseConnection = "sys";
+    private String databaseConnection = "mysql";
 
     public SelectDBTester() {
         this.dbConfig = null;
@@ -106,16 +106,33 @@ public class SelectDBTester implements DatabaseTester {
 
     @Override
     public String connectionStress(int connections, int duration) {
-        // 建立多个连接
+        int successfulConnections = 0;
+        int failedConnections = 0;
+
         for (int i = 0; i < connections; i++) {
             try {
                 DatabaseConnection connection = connect();
                 this.connections.add(connection);
+                successfulConnections++;
             } catch (IOException e) {
+                failedConnections++;
                 e.printStackTrace();
             }
         }
-        return null;
+
+        try {
+            Thread.sleep(duration * 1000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } finally {
+            releaseConnections();
+        }
+
+        return String.format("Connection stress test results:\n" +
+                        "Duration: %d seconds\n" +
+                        "Successful connections: %d\n" +
+                        "Failed connections: %d",
+                duration, successfulConnections, failedConnections);
     }
 
     @Override
@@ -377,17 +394,17 @@ public class SelectDBTester implements DatabaseTester {
                 .duration(10)
                 .interval(1)
 //                .query("INSERT INTO test_table (id, value) VALUES (1, 'test');")
-                .testType("connectionstress")
+                .testType("executionloop")
 //                .database("test_db")
 //                .table("test_table")
                 .build();
         SelectDBTester tester = new SelectDBTester(dbConfig);
-//        String result = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
-//        System.out.println(result);
-        DatabaseConnection connection = tester.connect();
-        String result = tester.executionLoop(connection, dbConfig.getQuery(), dbConfig.getDuration(),
-                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
+        String result = tester.connectionStress(dbConfig.getConnectionCount(), dbConfig.getDuration());
         System.out.println(result);
-        connection.close();
+//        DatabaseConnection connection = tester.connect();
+//        String result = tester.executionLoop(connection, dbConfig.getQuery(), dbConfig.getDuration(),
+//                dbConfig.getInterval(), dbConfig.getDatabase(), dbConfig.getTable());
+//        System.out.println(result);
+//        connection.close();
     }
 }
