@@ -370,14 +370,7 @@ public class StarRocksTester implements DatabaseTester {
 
     // Helper method to generate random string
     private String randomString(int length) {
-        String characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-        StringBuilder sb = new StringBuilder(length);
-        Random random = new Random();
-        for (int i = 0; i < length; i++) {
-            int index = random.nextInt(characters.length());
-            sb.append(characters.charAt(index));
-        }
-        return sb.toString();
+        return TestUtils.randomString(length);
     }
 
     // Helper method to convert bytes to hex string

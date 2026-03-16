@@ -33,6 +33,7 @@ public class DatabaseConnectionFactory {
             case "greatdb":
             case "greptime":
             case "doris":
+            case "selectdb":
                 Class.forName("com.mysql.cj.jdbc.Driver");
                 break;
             case "mysql 5.1":
@@ -94,6 +95,7 @@ public class DatabaseConnectionFactory {
             case "greatdb":
             case "doris":
             case "mariadb":
+            case "selectdb":
                 url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useSSL=false";
                 break;
             case "pg":
