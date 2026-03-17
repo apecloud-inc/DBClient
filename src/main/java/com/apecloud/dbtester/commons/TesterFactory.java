@@ -78,6 +78,8 @@ public class TesterFactory {
                 return new QdrantTester(config);
             case "redis":
             case "sentinelredis":
+            case "camellia-proxy":
+            case "camellia-redis-proxy":
                 return new RedisTester(config);
             case "zk":
             case "zookeeper":

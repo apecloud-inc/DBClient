@@ -429,6 +429,8 @@ public class DBConfig {
                 case "vault":
                 case "pulsar":
                 case "selectdb":
+                case "camellia-proxy":
+                case "camellia-redis-proxy":
                     break;
                 default:
                     throw new IllegalStateException("Unsupported database type: " + dbType);
