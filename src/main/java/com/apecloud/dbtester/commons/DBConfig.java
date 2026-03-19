@@ -403,6 +403,8 @@ public class DBConfig {
                 case "vm":
                 case "victoriametrics":
                 case "victoria-metrics":
+                case "victorialogs":
+                case "victoria-logs":
                 case "taos":
                 case "tdengine":
                 case "td":

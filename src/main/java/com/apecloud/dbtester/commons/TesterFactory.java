@@ -65,6 +65,9 @@ public class TesterFactory {
             case "victoriametrics":
             case "victoria-metrics":
                 return new VictoriaMetricsTester(config);
+            case "victorialogs":
+            case "victoria-logs":
+                return new VictoriaLogsTester(config);
             case "taos":
             case "tdengine":
             case "td":
