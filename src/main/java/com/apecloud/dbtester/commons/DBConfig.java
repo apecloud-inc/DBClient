@@ -362,77 +362,78 @@ public class DBConfig {
 
             // 验证数据库类型
             switch (dbType.toLowerCase()) {
-                case "mysql":
-                case "foxlake":
-                case "polardbx":
-                case "starrocks":
-                case "sr":
-                case "greatsql":
-                case "greatdb":
-                case "greptime":
-                case "greptimedb":
-                case "pg":
-                case "postgres":
-                case "postgresql":
-                case "opentenbase":
-                case "gaussdb":
-                case "vastbase":
-                case "gbase":
-                case "gbase8c":
-                case "oracle":
-                case "ob":
-                case "oceanbase":
-                case "sqlserver":
-                case "clickhouse":
+                case "camellia-proxy":
+                case "camellia-redis-proxy":
                 case "ck":
-                case "dm":
-                case "dmdb":
+                case "clickhouse":
                 case "dameng":
                 case "damengdb":
-                case "es":
+                case "dm":
+                case "dmdb":
+                case "doris":
                 case "elastic":
                 case "elasticsearch":
                 case "elasticsearch7":
                 case "elasticsearch8":
-                case "opensearch":
-                case "loki":
+                case "es":
                 case "etcd":
-                case "kafka":
-                case "influx":
-                case "influxdb":
-                case "vm":
-                case "victoriametrics":
-                case "victoria-metrics":
-                case "victorialogs":
-                case "victoria-logs":
-                case "taos":
-                case "tdengine":
-                case "td":
-                case "mongo":
-                case "mongodb":
-                case "opengauss":
-                case "qdrant":
-                case "redis":
-                case "sentinelredis":
-                case "zk":
-                case "zookeeper":
-                case "kingbase":
-                case "minio":
-                case "mogdb":
-                case "milvus":
-                case "nebula":
-                case "tidb":
-                case "rabbitmq":
-                case "rocketmq":
-                case "doris":
-                case "mariadb":
+                case "foxlake":
+                case "gbase":
+                case "gbase8c":
+                case "gaussdb":
+                case "greatdb":
+                case "greatsql":
+                case "greptime":
+                case "greptimedb":
                 case "hadoop":
                 case "hive":
-                case "vault":
+                case "influx":
+                case "influxdb":
+                case "kafka":
+                case "kingbase":
+                case "loki":
+                case "mariadb":
+                case "milvus":
+                case "minio":
+                case "mogdb":
+                case "mongo":
+                case "mongodb":
+                case "mssql":
+                case "mysql":
+                case "nebula":
+                case "ob":
+                case "oceanbase":
+                case "opengauss":
+                case "opensearch":
+                case "opentenbase":
+                case "oracle":
+                case "pg":
+                case "postgres":
+                case "postgresql":
+                case "polardbx":
                 case "pulsar":
+                case "qdrant":
+                case "rabbitmq":
+                case "redis":
+                case "rocketmq":
                 case "selectdb":
-                case "camellia-proxy":
-                case "camellia-redis-proxy":
+                case "sentinelredis":
+                case "sr":
+                case "sqlserver":
+                case "starrocks":
+                case "taos":
+                case "td":
+                case "tdengine":
+                case "tidb":
+                case "vastbase":
+                case "vault":
+                case "victoria-logs":
+                case "victorialogs":
+                case "victoria-metrics":
+                case "victoriametrics":
+                case "vm":
+                case "zk":
+                case "zookeeper":
                     break;
                 default:
                     throw new IllegalStateException("Unsupported database type: " + dbType);

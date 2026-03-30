@@ -24,59 +24,70 @@ public class DatabaseConnectionFactory {
 
     private static void registerDriver(String dbType) throws ClassNotFoundException {
         switch (dbType.toLowerCase()) {
-            case "mysql":
-            case "polardbx":
-            case "foxlake":
-            case "starrocks":
-            case "sr":
-            case "greatsql":
-            case "greatdb":
-            case "greptime":
-            case "doris":
-            case "selectdb":
-                Class.forName("com.mysql.cj.jdbc.Driver");
-                break;
-            case "mysql 5.1":
-                Class.forName("com.mysql.jdbc.Driver");
-                break;
-            case "pg":
-            case "postgresql":
-                Class.forName("org.postgresql.Driver");
-                break;
-            case "gaussdb":
-                Class.forName("com.huawei.opengauss.jdbc.Driver");
-                break;
+            // ClickHouse
             case "ck":
             case "clickhouse":
                 Class.forName("ru.yandex.clickhouse.ClickHouseDriver");
                 break;
-            case "dm":
+            // Dameng
             case "dameng":
+            case "dm":
                 Class.forName("dm.jdbc.driver.DmDriver");
                 break;
+            // GaussDB
+            case "gaussdb":
+                Class.forName("com.huawei.opengauss.jdbc.Driver");
+                break;
+            // KingBase
+            case "kingbase":
+                Class.forName("com.kingbase8.Driver");
+                break;
+            // MariaDB
             case "mariadb":
                 Class.forName("org.mariadb.jdbc.Driver");
                 break;
+            // MogDB
             case "mogdb":
                 Class.forName("io.mogdb.Driver");
                 break;
+            // MySQL (包括各种兼容 MySQL 协议的数据库)
+            case "doris":
+            case "foxlake":
+            case "greatdb":
+            case "greatsql":
+            case "greptime":
+            case "polardbx":
+            case "selectdb":
+            case "sr":
+            case "starrocks":
+                Class.forName("com.mysql.cj.jdbc.Driver");
+                break;
+            // MySQL 5.1
+            case "mysql 5.1":
+                Class.forName("com.mysql.jdbc.Driver");
+                break;
+            // OpenGauss
             case "opengauss":
                 Class.forName("org.opengauss.Driver");
                 break;
+            // Oracle
             case "oracle":
                 Class.forName("oracle.jdbc.driver.OracleDriver");
                 break;
+            // PostgreSQL
+            case "pg":
+            case "postgresql":
+                Class.forName("org.postgresql.Driver");
+                break;
+            // TDEngine
             case "taos":
             case "tdengine":
                 Class.forName("com.taosdata.jdbc.rs.RestfulDriver");
                 break;
+            // YashanDB
             case "yanshan":
                 Class.forName("com.yashandb.jdbc.Driver");
                 break;
-            case "kingbase":
-                Class.forName("com.kingbase8.Driver");
-                break;
-            // 可以添加其他数据库驱动程序
             default:
                 throw new IllegalArgumentException("Unsupported database type: " + dbType);
         }
@@ -85,53 +96,48 @@ public class DatabaseConnectionFactory {
     private static String getJDBCUrl(String dbType, String host, String database, int port) {
         String url = null;
         switch (dbType.toLowerCase()) {
-            case "mysql":
-            case "mysql 5.1":
-            case "foxlake":
-            case "polardbx":
-            case "starrocks":
-            case "sr":
-            case "greatsql":
-            case "greatdb":
-            case "doris":
-            case "mariadb":
-            case "selectdb":
-                url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useSSL=false";
-                break;
-            case "pg":
-            case "postgresql":
-                url = "jdbc:postgresql://" + host + ":" + port + "/" + database;
-                break;
-            case "gaussdb":
-                url = "jdbc:opengauss://" + host + ":" + port + "/" + database;
-                break;
+            // ClickHouse
             case "ck":
             case "clickhouse":
                 url = "jdbc:clickhouse://"+ host + ":" + port + "/" + database;
                 break;
-            case "dm":
+            // Dameng
             case "dameng":
+            case "dm":
                 url = "jdbc:dm://" + host + ":" + port;
                 break;
-//            case "greptime":
-//                url = "jdbc:mysql://" + host + ":" + port + "/public?serverTimezone=UTC";
-//                break;
+            // GaussDB / OpenGauss
+            case "gaussdb":
+            case "opengauss":
+                url = "jdbc:opengauss://" + host + ":" + port + "/" + database;
+                break;
+            // MogDB
             case "mogdb":
                 url = "jdbc:mogdb://" + host + ":" + port + "/mogdb?useSSL=false&serverTimezone=UTC";
                 break;
-            case "opengauss":
-                url = "jdbc:opengauss://" + host + ":" + port + "/opengauss";
+            // MySQL (包括各种兼容 MySQL 协议的数据库)
+            case "doris":
+            case "foxlake":
+            case "greatdb":
+            case "greatsql":
+            case "mariadb":
+            case "mysql":
+            case "mysql 5.1":
+            case "polardbx":
+            case "selectdb":
+            case "sr":
+            case "starrocks":
+                url = "jdbc:mysql://" + host + ":" + port + "/" + database + "?useSSL=false";
                 break;
+            // Oracle
             case "oracle":
                 url = "jdbc:oracle:thin:@" + host + ":" + port + ":ORCLCDB";
                 break;
-//            case "taos":
-//            case "tdengine":
-//                url = "jdbc:TAOS-RS://" + host + ":" + port;
-//                break;
-//            case "yashan":
-//                url = "jdbc:yasdb://" + host + ":" + port + "/" + database;
-//                break;
+            // PostgreSQL
+            case "pg":
+            case "postgresql":
+                url = "jdbc:postgresql://" + host + ":" + port + "/" + database;
+                break;
             default:
                 throw new IllegalArgumentException("Unsupported database type: " + dbType);
         }
