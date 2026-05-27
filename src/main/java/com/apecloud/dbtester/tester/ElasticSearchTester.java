@@ -38,9 +38,15 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.http.HttpEntityEnclosingRequest;
+import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.elasticsearch.client.Response;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 
 public class ElasticSearchTester implements DatabaseTester {
     private final DBConfig dbConfig;
@@ -48,6 +54,8 @@ public class ElasticSearchTester implements DatabaseTester {
     private List<RestClient> connections = new ArrayList<>();
     private ElasticsearchClient esClient;
     private RestClient restClient;
+    private int esMajorVersion = 8; // 默认假设是 ES 8.x,支持 6/7/8
+    private int esMinorVersion = 0; // ES 次版本号,用于精确判断
 
     public ElasticSearchTester() {
         this.dbConfig = null;
@@ -77,9 +85,49 @@ public class ElasticSearchTester implements DatabaseTester {
                     );
                     httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
                 }
+                
+                // 添加请求拦截器,用于兼容 ES 6.x 和 7.x
+                httpClientBuilder.addInterceptorLast((HttpRequestInterceptor) (request, context) -> {
+                    if ((esMajorVersion == 6 || esMajorVersion == 7) && request instanceof HttpEntityEnclosingRequest) {
+                        HttpEntityEnclosingRequest enclosingRequest = (HttpEntityEnclosingRequest) request;
+                        
+                        // 处理 Content-Type header
+                        if (enclosingRequest.containsHeader("Content-Type")) {
+                            String contentType = enclosingRequest.getFirstHeader("Content-Type").getValue();
+                            
+                            // ES 8.x 客户端会发送 compatible-with=8,需要移除
+                            if (contentType.contains("compatible-with=8")) {
+                                enclosingRequest.removeHeaders("Content-Type");
+                                // ES 6.x 和 7.x 使用标准的 application/json
+                                enclosingRequest.setHeader("Content-Type", "application/json");
+                            }
+                        }
+                        
+                        // 处理 Accept header
+                        if (enclosingRequest.containsHeader("Accept")) {
+                            String accept = enclosingRequest.getFirstHeader("Accept").getValue();
+                            
+                            // ES 8.x 客户端会发送 compatible-with=8,需要移除
+                            if (accept.contains("compatible-with=8")) {
+                                enclosingRequest.removeHeaders("Accept");
+                                // ES 6.x 和 7.x 使用标准的 application/json
+                                enclosingRequest.setHeader("Accept", "application/json");
+                            }
+                        }
+                    }
+                });
+                
                 return httpClientBuilder;
             })
+            .setRequestConfigCallback(requestConfigBuilder -> {
+                requestConfigBuilder.setConnectTimeout(5000);
+                requestConfigBuilder.setSocketTimeout(60000);
+                return requestConfigBuilder;
+            })
             .build();
+
+        // 检测 ES 版本
+        detectElasticsearchVersion();
 
         ElasticsearchTransport transport = new RestClientTransport(
             restClient,
@@ -87,6 +135,60 @@ public class ElasticSearchTester implements DatabaseTester {
         );
 
         esClient = new ElasticsearchClient(transport);
+    }
+
+    // 检测 Elasticsearch 版本
+    private void detectElasticsearchVersion() throws IOException {
+        try {
+            Request request = new Request("GET", "/");
+            Response response = restClient.performRequest(request);
+            
+            BufferedReader reader = new BufferedReader(new InputStreamReader(response.getEntity().getContent()));
+            StringBuilder result = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                result.append(line);
+            }
+            
+            // 解析版本号
+            String jsonResponse = result.toString();
+            ObjectMapper mapper = new ObjectMapper();
+            ObjectNode rootNode = (ObjectNode) mapper.readTree(jsonResponse);
+            
+            if (rootNode.has("version") && rootNode.get("version").has("number")) {
+                String versionNumber = rootNode.get("version").get("number").asText();
+                String[] versionParts = versionNumber.split("\\.");
+                esMajorVersion = Integer.parseInt(versionParts[0]);
+                esMinorVersion = versionParts.length > 1 ? Integer.parseInt(versionParts[1]) : 0;
+                
+                // 验证版本号是否在支持范围内
+                if (esMajorVersion < 6 || esMajorVersion > 8) {
+                    System.err.println("Warning: Elasticsearch version " + versionNumber + " is not officially supported.");
+                    System.err.println("Supported versions: 6.x, 7.x, 8.x. Attempting compatibility mode...");
+                }
+                
+                System.out.println("Detected Elasticsearch version: " + versionNumber + " (major: " + esMajorVersion + ")");
+            } else {
+                System.out.println("Could not detect Elasticsearch version, defaulting to 8.x");
+                esMajorVersion = 8;
+            }
+        } catch (Exception e) {
+            System.err.println("Failed to detect Elasticsearch version: " + e.getMessage());
+            System.err.println("Defaulting to ES 8.x compatibility mode");
+            esMajorVersion = 8;
+        }
+    }
+
+    // 判断是否需要使用底层 REST API(避免 X-Elastic-Product header 检查)
+    // ES 6.x 全部需要,ES 7.x < 7.16 也需要,ES 7.16+ 和 8.x 不需要
+    private boolean shouldUseLowLevelRestApi() {
+        if (esMajorVersion == 6) {
+            return true;  // ES 6.x 全部使用底层 API
+        } else if (esMajorVersion == 7 && esMinorVersion < 16) {
+            return true;  // ES 7.0-7.15 使用底层 API
+        } else {
+            return false;  // ES 7.16+ 和 8.x 使用高级 API
+        }
     }
 
     @Override
@@ -475,37 +577,118 @@ public class ElasticSearchTester implements DatabaseTester {
     }
 
     private QueryResult createIndex(String indexName) throws IOException {
-        // 定义示例映射
-        String mappings = "{\n" +
-                "  \"properties\" : {\n" +
-                "    \"id\" : { \"type\" : \"keyword\" },\n" +
-                "    \"name\" : { \"type\" : \"text\" },\n" +
-                "    \"value\" : { \"type\" : \"long\" }\n" +
-                "  }\n" +
-                "}";
+        if (shouldUseLowLevelRestApi()) {
+            // ES 6.x 和 ES 7.0-7.15: 使用底层 REST API
+            String mappings;
+            if (esMajorVersion == 6) {
+                // ES 6.x 需要包含 type 名称
+                mappings = "{\n" +
+                        "  \"mappings\" : {\n" +
+                        "    \"_doc\" : {\n" +
+                        "      \"properties\" : {\n" +
+                        "        \"id\" : { \"type\" : \"keyword\" },\n" +
+                        "        \"name\" : { \"type\" : \"text\" },\n" +
+                        "        \"value\" : { \"type\" : \"long\" }\n" +
+                        "      }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}";
+            } else {
+                // ES 7.x 不需要 type 名称,但需要 mappings 包裹
+                mappings = "{\n" +
+                        "  \"mappings\" : {\n" +
+                        "    \"properties\" : {\n" +
+                        "      \"id\" : { \"type\" : \"keyword\" },\n" +
+                        "      \"name\" : { \"type\" : \"text\" },\n" +
+                        "      \"value\" : { \"type\" : \"long\" }\n" +
+                        "    }\n" +
+                        "  }\n" +
+                        "}";
+            }
+            
+            org.elasticsearch.client.Request request = new org.elasticsearch.client.Request(
+                "PUT", "/" + indexName
+            );
+            request.setJsonEntity(mappings);
+            restClient.performRequest(request);
+        } else {
+            // ES 7.16+ 和 8.x: 使用高级 Client API
+            String mappings = "{\n" +
+                    "  \"properties\" : {\n" +
+                    "    \"id\" : { \"type\" : \"keyword\" },\n" +
+                    "    \"name\" : { \"type\" : \"text\" },\n" +
+                    "    \"value\" : { \"type\" : \"long\" }\n" +
+                    "  }\n" +
+                    "}";
 
-        JsonParser parser = Json.createParser(new StringReader(mappings));
-        CreateIndexRequest request = new CreateIndexRequest.Builder()
-            .index(indexName)
-            .mappings(TypeMapping._DESERIALIZER.deserialize(
-                parser,
-                esClient._transport().jsonpMapper()
-            ))
-            .build();
-
-        esClient.indices().create(request);
+            JsonParser parser = Json.createParser(new StringReader(mappings));
+            CreateIndexRequest request = new CreateIndexRequest.Builder()
+                .index(indexName)
+                .mappings(TypeMapping._DESERIALIZER.deserialize(
+                    parser,
+                    esClient._transport().jsonpMapper()
+                ))
+                .build();
+            esClient.indices().create(request);
+        }
+        
         return new ElasticSearchQueryResult(true, "Index created: " + indexName);
     }
 
     private QueryResult deleteIndex(String indexName) throws IOException {
-        esClient.indices().delete(builder -> builder.index(indexName));
+        if (shouldUseLowLevelRestApi()) {
+            // ES 6.x 和 ES 7.0-7.15: 使用底层 REST API
+            org.elasticsearch.client.Request request = new org.elasticsearch.client.Request(
+                "DELETE", "/" + indexName
+            );
+            try {
+                restClient.performRequest(request);
+            } catch (org.elasticsearch.client.ResponseException e) {
+                // 忽略 404 错误(索引不存在)
+                if (e.getResponse().getStatusLine().getStatusCode() != 404) {
+                    throw e;
+                }
+                // 404 是正常情况,继续执行
+            }
+        } else {
+            // ES 7.16+ 和 8.x: 使用高级 Client API
+            try {
+                esClient.indices().delete(builder -> builder.index(indexName));
+            } catch (co.elastic.clients.elasticsearch._types.ElasticsearchException e) {
+                // 忽略索引不存在的错误
+                if (!e.getMessage().contains("index_not_found_exception")) {
+                    throw e;
+                }
+            }
+        }
         return new ElasticSearchQueryResult(true, "Index deleted: " + indexName);
     }
 
     private QueryResult checkIndex(String indexName) throws IOException {
-        boolean exists = esClient.indices().exists(builder -> 
-            builder.index(indexName)
-        ).value();
+        boolean exists;
+        
+        if (shouldUseLowLevelRestApi()) {
+            // ES 6.x 和 ES 7.0-7.15: 使用底层 REST API
+            org.elasticsearch.client.Request request = new org.elasticsearch.client.Request(
+                "HEAD", "/" + indexName
+            );
+            try {
+                restClient.performRequest(request);
+                exists = true;
+            } catch (org.elasticsearch.client.ResponseException e) {
+                if (e.getResponse().getStatusLine().getStatusCode() == 404) {
+                    exists = false;
+                } else {
+                    throw e;
+                }
+            }
+        } else {
+            // ES 7.16+ 和 8.x: 使用高级 Client API
+            exists = esClient.indices().exists(builder -> 
+                builder.index(indexName)
+            ).value();
+        }
+        
         return new ElasticSearchQueryResult(true, "Index exists: " + exists);
     }
 
@@ -775,7 +958,7 @@ public class ElasticSearchTester implements DatabaseTester {
                 .host("localhost")
                 .port(9200)
                 .user("elastic")
-                .password("***")
+                .password("I2zv3x2kXjkYN6xe")
                 .dbType("elasticsearch")
                 .duration(10)
                 .interval(1)
@@ -791,19 +974,19 @@ public class ElasticSearchTester implements DatabaseTester {
         System.out.println(result);
         connection.close();
 
-        Thread.sleep(2000);
-        dbConfig = new DBConfig.Builder()
-            .host("127.0.0.1")
-            .testType("query")
-            .query("search")
-            .dbType("elasticsearch")
-            .port(9200)
-            .user("elastic")
-            .password("***")
-            .build();
-
-        tester = new ElasticSearchTester(dbConfig);
-        connection = tester.connect();
+//        Thread.sleep(2000);
+//        dbConfig = new DBConfig.Builder()
+//            .host("127.0.0.1")
+//            .testType("query")
+//            .query("search")
+//            .dbType("elasticsearch")
+//            .port(9200)
+//            .user("elastic")
+//            .password("***")
+//            .build();
+//
+//        tester = new ElasticSearchTester(dbConfig);
+//        connection = tester.connect();
 
         // 测试索引操作
         // System.out.println(tester.execute(connection, "create_index:test_index"));
@@ -815,7 +998,7 @@ public class ElasticSearchTester implements DatabaseTester {
         // String documentId = qrs[1].trim();
 
         // 测试文档搜索（match_all查询）
-        System.out.println(tester.execute(connection, "search:executions_loop_index"));
+//        System.out.println(tester.execute(connection, "search:executions_loop_index"));
 
         // 测试条件搜索
         // System.out.println(tester.execute(connection, "get:test_index:"+documentId));
@@ -823,7 +1006,7 @@ public class ElasticSearchTester implements DatabaseTester {
         // 清理测试数据
         // System.out.println(tester.execute(connection, "delete_index:test_index"));
 
-        connection.close();
+//        connection.close();
 
 //        DBConfig dbConfig = new DBConfig.Builder()
 //                .host("127.0.0.1")
