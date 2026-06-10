@@ -6,7 +6,7 @@ on:
       release_version:
         description: 'The tag name of image'
         required: true
-        default: ''
+        default: 'test'
       release_platform:
         description: 'The platform of release image'
         required: false
