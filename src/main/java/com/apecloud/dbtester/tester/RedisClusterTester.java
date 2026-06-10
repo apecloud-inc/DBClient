@@ -86,7 +86,9 @@ public class RedisClusterTester implements DatabaseTester {
 
             JedisCluster cluster;
             if (user != null && !user.isEmpty()) {
-                cluster = new JedisCluster(nodes, 2000, 2000, 5, user, password, poolConfig);
+                // Jedis 3.7.0: 2-string ctor is (password, clientName), not (user, password).
+                // Use the 3-string (user, password, clientName) ctor instead.
+                cluster = new JedisCluster(nodes, 2000, 2000, 5, user, password, null, poolConfig);
             } else if (password != null && !password.isEmpty()) {
                 cluster = new JedisCluster(nodes, 2000, 2000, 5, password, poolConfig);
             } else {
