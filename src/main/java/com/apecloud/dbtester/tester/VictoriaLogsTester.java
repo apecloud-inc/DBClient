@@ -132,6 +132,36 @@ public class VictoriaLogsTester implements DatabaseTester {
         }
     }
 
+
+    private void cleanupOldData(VictoriaLogsConnection conn) {
+        try {
+            StringBuilder deleteQuery = new StringBuilder("{job=\"test_job\"");
+            if (dbConfig.getTable() != null && !dbConfig.getTable().isEmpty()) {
+                deleteQuery.append(", stream=\"").append(dbConfig.getTable()).append("\"");
+            }
+            deleteQuery.append("}");
+
+            HttpUrl.Builder urlBuilder = HttpUrl.parse(conn.getBaseUrl() + "/delete").newBuilder();
+            urlBuilder.addQueryParameter("query", deleteQuery.toString());
+
+            Request request = new Request.Builder()
+                    .url(urlBuilder.build())
+                    .post(RequestBody.create("", JSON))
+                    .build();
+
+            try (Response response = conn.getClient().newCall(request).execute()) {
+                String responseBody = response.body() != null ? response.body().string() : "";
+                if (response.isSuccessful()) {
+                    System.out.println("Cleaned up old test data successfully");
+                } else {
+                    System.out.println("Cleanup old test data response: " + responseBody);
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Failed to cleanup old test data: " + e.getMessage());
+        }
+    }
+
     @Override
     public String executeTest() throws IOException {
         if (dbConfig == null) {
@@ -214,6 +244,9 @@ public class VictoriaLogsTester implements DatabaseTester {
         if (query == null || query.equals("") || (table != null && !table.equals(""))) {
             genTestQuery = 1;
         }
+
+        // Cleanup old test data before starting execution loop
+        cleanupOldData((VictoriaLogsConnection) connection);
 
         System.out.println("Execution loop start: " + query);
         while (System.currentTimeMillis() < endTime) {
