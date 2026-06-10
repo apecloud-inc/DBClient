@@ -117,6 +117,8 @@ public class TesterFactory {
             case "redis":
             case "sentinelredis":
                 return new RedisTester(config);
+            case "redis-cluster":
+                return new RedisClusterTester(config);
             // RocketMQ
             case "rocketmq":
                 return new RocketMQTester(config);

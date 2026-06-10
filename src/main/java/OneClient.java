@@ -149,6 +149,7 @@ public class OneClient {
                     System.out.printf("Interval: %d seconds%n", config.getInterval());
                     switch (config.getDbType().toLowerCase()) {
                         case "redis":
+                        case "redis-cluster":
                             System.out.printf("Key: %s%n", config.getKey());
                             break;
                         case "kafka":
