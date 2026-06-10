@@ -30,8 +30,8 @@ public class RedisClusterTester implements DatabaseTester {
     }
 
     /**
-     * 从 DBConfig 构建 Redis Cluster 的 seed nodes 集合。
-     * 主 host:port 始终作为 seed；cluster 字段如果是 "host1:port1,host2:port2" 格式，会解析为额外 seed。
+     * Build Redis Cluster seed nodes set from DBConfig.
+     * Primary host:port always as seed; cluster field if it is "host1:port1,host2:port2" format, will be parsed as extra seed.
      */
     private Set<HostAndPort> buildClusterNodes() {
         Set<HostAndPort> nodes = new HashSet<>();

@@ -503,7 +503,7 @@ public class KafkaTester implements DatabaseTester {
     }
 
     public static void main(String[] args) throws IOException {
-        // 使用 DBConfig 方式
+        // Using DBConfig approach
         DBConfig dbConfig = new DBConfig.Builder()
                 .host("localhost")
                 .port(9092)
