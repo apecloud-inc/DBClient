@@ -6,11 +6,16 @@ on:
       release_version:
         description: 'The tag name of image'
         required: true
-        default: ''
+        default: 'test'
       release_platform:
         description: 'The platform of release image'
         required: false
-        default: 'linux/amd64,linux/arm64'
+        default: 'linux/amd64'
+        type: choice
+        options:
+          - linux/amd64
+          - linux/arm64
+          - linux/amd64,linux/arm64
   release:
     types:
       - published

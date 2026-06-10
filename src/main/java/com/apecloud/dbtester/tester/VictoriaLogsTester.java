@@ -23,9 +23,11 @@ public class VictoriaLogsTester implements DatabaseTester {
     private List<OkHttpClient> connections = new ArrayList<>();
     private static final MediaType JSON = MediaType.get("application/json; charset=utf-8");
     private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+    private final String testSessionId;
 
     public VictoriaLogsTester(DBConfig dbConfig) {
         this.dbConfig = dbConfig;
+        this.testSessionId = String.valueOf(System.currentTimeMillis());
         this.httpClient = new OkHttpClient.Builder()
                 .connectTimeout(30, TimeUnit.SECONDS)
                 .writeTimeout(30, TimeUnit.SECONDS)
@@ -67,6 +69,7 @@ public class VictoriaLogsTester implements DatabaseTester {
         JSONObject labels = new JSONObject();
         labels.put("job", "test_job");
         labels.put("level", "info");
+        labels.put("test_session", testSessionId);
         if (dbConfig.getTable() != null && !dbConfig.getTable().isEmpty()) {
             labels.put("stream", dbConfig.getTable());
         }
@@ -129,6 +132,41 @@ public class VictoriaLogsTester implements DatabaseTester {
         try (Response response = conn.getClient().newCall(request).execute()) {
             String responseBody = response.body() != null ? response.body().string() : "";
             return new VictoriaLogsQueryResult(response.isSuccessful(), responseBody);
+        }
+    }
+
+
+    private void cleanupOldData(VictoriaLogsConnection conn) {
+        try {
+            // Try to delete old data with previous test_session IDs
+            // Only delete data with the same job/table filter but different test_session
+            StringBuilder deleteQuery = new StringBuilder("{job=\"test_job\"");
+            if (dbConfig.getTable() != null && !dbConfig.getTable().isEmpty()) {
+                deleteQuery.append(", stream=\"").append(dbConfig.getTable()).append("\"");
+            }
+            deleteQuery.append("}");
+
+            HttpUrl.Builder urlBuilder = HttpUrl.parse(conn.getBaseUrl() + "/delete").newBuilder();
+            urlBuilder.addQueryParameter("query", deleteQuery.toString());
+
+            Request request = new Request.Builder()
+                    .url(urlBuilder.build())
+                    .post(RequestBody.create("", JSON))
+                    .build();
+
+            try (Response response = conn.getClient().newCall(request).execute()) {
+                String responseBody = response.body() != null ? response.body().string() : "";
+                if (response.isSuccessful()) {
+                    System.out.println("Cleaned up old test data successfully");
+                } else if (response.code() == 404 || responseBody.contains("unsupported path")) {
+                    System.out.println("VictoriaLogs delete API not available ( retentionPeriod may not be configured ), skipping cleanup.");
+                    System.out.println("New test data will use test_session=" + testSessionId + " to avoid mixing with old data.");
+                } else {
+                    System.out.println("Cleanup old test data response: " + responseBody);
+                }
+            }
+        } catch (IOException e) {
+            System.out.println("Failed to cleanup old test data: " + e.getMessage());
         }
     }
 
@@ -214,6 +252,9 @@ public class VictoriaLogsTester implements DatabaseTester {
         if (query == null || query.equals("") || (table != null && !table.equals(""))) {
             genTestQuery = 1;
         }
+
+        // Cleanup old test data before starting execution loop
+        cleanupOldData((VictoriaLogsConnection) connection);
 
         System.out.println("Execution loop start: " + query);
         while (System.currentTimeMillis() < endTime) {
