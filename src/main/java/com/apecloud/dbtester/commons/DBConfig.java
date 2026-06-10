@@ -415,6 +415,7 @@ public class DBConfig {
                 case "qdrant":
                 case "rabbitmq":
                 case "redis":
+                case "redis-cluster":
                 case "rocketmq":
                 case "selectdb":
                 case "sentinelredis":

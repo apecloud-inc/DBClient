@@ -360,7 +360,7 @@ public class DamengTester implements DatabaseTester {
 //            connection.close();
 //        }
 
-        // 使用 DBConfig 方式
+        // Using DBConfig approach
         DBConfig dbConfig = new DBConfig.Builder()
                 .host("localhost")
                 .port(5236)

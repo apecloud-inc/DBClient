@@ -1,0 +1,481 @@
+package com.apecloud.dbtester.tester;
+
+import com.apecloud.dbtester.commons.DBConfig;
+import com.apecloud.dbtester.commons.DatabaseConnection;
+import com.apecloud.dbtester.commons.DatabaseTester;
+import com.apecloud.dbtester.commons.QueryResult;
+import redis.clients.jedis.HostAndPort;
+import redis.clients.jedis.JedisCluster;
+import redis.clients.jedis.JedisPoolConfig;
+
+import java.io.IOException;
+import java.sql.Date;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
+public class RedisClusterTester implements DatabaseTester {
+    private List<DatabaseConnection> connections = new ArrayList<>();
+    private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
+    private final DBConfig dbConfig;
+
+    public RedisClusterTester() {
+        this.dbConfig = null;
+    }
+
+    public RedisClusterTester(DBConfig dbConfig) {
+        this.dbConfig = dbConfig;
+    }
+
+    /**
+     * Build Redis Cluster seed nodes set from DBConfig.
+     * Primary host:port always as seed; cluster field if it is "host1:port1,host2:port2" format, will be parsed as extra seed.
+     */
+    private Set<HostAndPort> buildClusterNodes() {
+        Set<HostAndPort> nodes = new HashSet<>();
+        nodes.add(new HostAndPort(dbConfig.getHost(), dbConfig.getPort()));
+
+        String clusterStr = dbConfig.getCluster();
+        if (clusterStr != null && !clusterStr.isEmpty()) {
+            for (String nodeStr : clusterStr.split(",")) {
+                String trimmed = nodeStr.trim();
+                if (trimmed.isEmpty()) {
+                    continue;
+                }
+                if (trimmed.contains(":")) {
+                    String[] parts = trimmed.split(":");
+                    if (parts.length == 2) {
+                        try {
+                            int port = Integer.parseInt(parts[1].trim());
+                            nodes.add(new HostAndPort(parts[0].trim(), port));
+                        } catch (NumberFormatException e) {
+                            // 忽略格式错误的节点
+                        }
+                    }
+                } else {
+                    nodes.add(new HostAndPort(trimmed, 6379));
+                }
+            }
+        }
+        return nodes;
+    }
+
+    private JedisPoolConfig buildPoolConfig() {
+        JedisPoolConfig poolConfig = new JedisPoolConfig();
+        poolConfig.setMaxTotal(800);
+        poolConfig.setMaxIdle(100);
+        poolConfig.setMinIdle(10);
+        poolConfig.setMaxWaitMillis(3000);
+        return poolConfig;
+    }
+
+    @Override
+    public DatabaseConnection connect() throws IOException {
+        if (dbConfig == null) {
+            throw new IllegalStateException("DBConfig not provided");
+        }
+
+        try {
+            Set<HostAndPort> nodes = buildClusterNodes();
+            JedisPoolConfig poolConfig = buildPoolConfig();
+
+            String user = dbConfig.getUser();
+            String password = dbConfig.getPassword();
+
+            JedisCluster cluster;
+            if (user != null && !user.isEmpty()) {
+                // Jedis 3.7.0: 2-string ctor is (password, clientName), not (user, password).
+                // Use the 3-string (user, password, clientName) ctor instead.
+                cluster = new JedisCluster(nodes, 2000, 2000, 5, user, password, null, poolConfig);
+            } else if (password != null && !password.isEmpty()) {
+                cluster = new JedisCluster(nodes, 2000, 2000, 5, password, poolConfig);
+            } else {
+                cluster = new JedisCluster(nodes, poolConfig);
+            }
+
+            return new RedisClusterConnection(cluster);
+        } catch (Exception e) {
+            throw new IOException("Failed to connect to Redis Cluster", e);
+        }
+    }
+
+    @Override
+    public QueryResult execute(DatabaseConnection connection, String command) throws IOException {
+        RedisClusterConnection redisConnection = (RedisClusterConnection) connection;
+        try {
+            String[] parts = command.trim().split("\\s+");
+            if (parts.length == 0) {
+                throw new IOException("Empty command");
+            }
+
+            JedisCluster jedis = redisConnection.getCluster();
+            String operation = parts[0].toLowerCase();
+
+            switch (operation) {
+                case "get":
+                    if (parts.length != 2) {
+                        throw new IOException("GET command requires one key");
+                    }
+                    String result = jedis.get(parts[1]);
+                    return new RedisQueryResult(Collections.singletonList(result));
+
+                case "set":
+                    if (parts.length != 3) {
+                        throw new IOException("SET command requires key and value");
+                    }
+                    jedis.set(parts[1], parts[2]);
+                    return new RedisQueryResult(1);
+
+                case "del":
+                    if (parts.length != 2) {
+                        throw new IOException("DEL command requires one key");
+                    }
+                    Long delResult = jedis.del(parts[1]);
+                    return new RedisQueryResult(delResult.intValue());
+
+                case "keys":
+                    if (parts.length != 2) {
+                        throw new IOException("KEYS command requires pattern");
+                    }
+                    Set<String> keys = jedis.keys(parts[1]);
+                    return new RedisQueryResult(new ArrayList<>(keys));
+
+                default:
+                    throw new IOException("Unsupported operation: " + operation);
+            }
+        } catch (Exception e) {
+            throw new IOException("Failed to execute Redis command", e);
+        }
+    }
+
+    @Override
+    public String bench(DatabaseConnection connection, String command, int iterations, int concurrency) {
+        StringBuilder result = new StringBuilder();
+        ExecutorService executor = Executors.newFixedThreadPool(concurrency);
+        long startTime = System.currentTimeMillis();
+
+        for (int i = 0; i < iterations; i++) {
+            executor.execute(() -> {
+                try {
+                    execute(connection, command);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
+        }
+
+        executor.shutdown();
+        try {
+            executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        long endTime = System.currentTimeMillis();
+        double duration = (endTime - startTime) / 1000.0;
+        double qps = iterations / duration;
+
+        result.append("Benchmark results:\n")
+                .append("Total iterations: ").append(iterations).append("\n")
+                .append("Concurrency level: ").append(concurrency).append("\n")
+                .append("Total time: ").append(duration).append(" seconds\n")
+                .append("Queries per second: ").append(String.format("%.2f", qps));
+
+        return result.toString();
+    }
+
+    @Override
+    public String connectionStress(int connections, int duration) {
+        long startTime = System.currentTimeMillis();
+        int successfulConnections = 0;
+        int failedConnections = 0;
+
+        while ((System.currentTimeMillis() - startTime) < duration * 1000) {
+            try {
+                DatabaseConnection connection = connect();
+                this.connections.add(connection);
+                successfulConnections++;
+            } catch (IOException e) {
+                failedConnections++;
+            }
+        }
+
+        return String.format("Connection stress test results:\n" +
+                        "Duration: %d seconds\n" +
+                        "Successful connections: %d\n" +
+                        "Failed connections: %d",
+                duration, successfulConnections, failedConnections);
+    }
+
+    @Override
+    public void releaseConnections() {
+        for (DatabaseConnection connection : connections) {
+            try {
+                connection.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+        connections.clear();
+    }
+
+    @Override
+    public String executeTest() throws IOException {
+        DatabaseConnection connection = null;
+        StringBuilder results = new StringBuilder();
+        String testType = dbConfig.getTestType();
+
+        try {
+            connection = connect();
+            String testCommand = "set test_key test_value";
+
+            switch (testType) {
+                case "query":
+                    execute(connection, testCommand);
+                    results.append("Basic query test: SUCCESS\n");
+                    break;
+
+                case "connectionstress":
+                    results.append("Connection stress test:\n")
+                            .append(connectionStress(10, 5))
+                            .append("\n");
+                    break;
+
+                case "benchmark":
+                    results.append("Benchmark test:\n")
+                            .append(bench(connection, testCommand, 1000, 10))
+                            .append("\n");
+                    break;
+
+                default:
+                    results.append("Unknown test type\n");
+            }
+        } catch (Exception e) {
+            results.append("Test failed: ").append(e.getMessage());
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+            releaseConnections();
+        }
+
+        return results.toString();
+    }
+
+    @Override
+    public String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table) {
+        StringBuilder result = new StringBuilder();
+        QueryResult executeResult;
+        int executeUpdateCount;
+        String key = dbConfig.getKey();
+        int successfulExecutions = 0;
+        int failedExecutions = 0;
+        int disconnectCounts = 0;
+        boolean executionError = false;
+
+        long startTime = System.currentTimeMillis();
+        long endTime = startTime + duration * 1000;
+        long errorTime = 0;
+        long recoveryTime;
+        long errorToRecoveryTime;
+        java.sql.Date errorDate = null;
+        long lastOutputTime = System.currentTimeMillis();
+        int outputPassTime = 0;
+
+        int insertIndex = 0;
+        int genTestQuery = 0;
+        String genTestValue;
+
+        // check gen test query
+        if (query == null || query.equals("") || (key != null && !key.equals(""))) {
+            genTestQuery = 1;
+        }
+
+        if (key != null && !key.equals("")) {
+            table = key;
+        } else {
+            table = "executions_loop_key";
+        }
+
+        System.out.println("Execution loop start:" + query);
+        while (System.currentTimeMillis() < endTime) {
+            insertIndex = insertIndex + 1;
+            long currentTime = System.currentTimeMillis();
+            if (currentTime - lastOutputTime >= interval * 1000) {
+                outputPassTime = outputPassTime + interval;
+                lastOutputTime = currentTime;
+                System.out.println("[ " + outputPassTime + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                        + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                        + " disconnect: " + disconnectCounts);
+            }
+
+            try {
+                if (executionError) {
+                    Thread.sleep(1000);
+                    connection = this.connect();
+                }
+
+                if (genTestQuery == 1) {
+                    genTestQuery = 2;
+                }
+
+                if ((genTestQuery == 2 && (query == null || query.equals("")) || genTestQuery == 3 )) {
+                    genTestValue = "executions_loop_test_" + insertIndex;
+                    // set test query
+                    query = "set " + table + " " + genTestValue;
+                    if (genTestQuery == 2) {
+                        System.out.println("Execution loop start:" + query);
+                    }
+                    genTestQuery = 3;
+                }
+
+                executeResult = execute(connection, query);
+                executeUpdateCount = executeResult.getUpdateCount();
+                if (executeUpdateCount != -1) {
+                    successfulExecutions++;
+                    if (executionError) {
+                        recoveryTime = System.currentTimeMillis();
+                        java.sql.Date recoveryDate = new java.sql.Date(recoveryTime);
+                        System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                        System.out.println("[" + sdf.format(recoveryDate) + "] Connection successfully recovered!");
+                        errorToRecoveryTime = recoveryTime - errorTime;
+                        System.out.println("The connection was restored in " + errorToRecoveryTime + " milliseconds.");
+                        executionError=false;
+                    }
+                } else {
+                    failedExecutions++;
+                    insertIndex = insertIndex - 1;
+                    executionError = true;
+                }
+            } catch (IOException e) {
+                failedExecutions++;
+                insertIndex = insertIndex - 1;
+                if (!executionError) {
+                    disconnectCounts++;
+                    errorTime = System.currentTimeMillis();
+                    errorDate = new Date(errorTime);
+                    System.out.println("[" + sdf.format(errorDate) + "] Connection error occurred!");
+                    executionError=true;
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+
+        System.out.println("[ " + duration + "s ] executions total: " + (successfulExecutions + failedExecutions)
+                + " successful: " + successfulExecutions + " failed: " + failedExecutions
+                + " disconnect: " + disconnectCounts);
+
+        releaseConnections();
+
+        result.append("Execution loop completed during ").append(duration).append(" seconds");
+
+        return String.format("Total Executions: %d\n" +
+                        "Successful Executions: %d\n" +
+                        "Failed Executions: %d\n" +
+                        "Disconnection Counts: %d",
+                successfulExecutions+failedExecutions,
+                successfulExecutions,
+                failedExecutions,
+                disconnectCounts);
+    }
+
+    private static class RedisClusterConnection implements DatabaseConnection {
+        private final JedisCluster cluster;
+
+        RedisClusterConnection(JedisCluster cluster) {
+            this.cluster = cluster;
+        }
+
+        public JedisCluster getCluster() {
+            return cluster;
+        }
+
+        @Override
+        public void close() throws IOException {
+            cluster.close();
+        }
+    }
+
+    private static class RedisQueryResult implements QueryResult {
+        private final List<String> results;
+        private final int updateCount;
+        @Override
+        public List<String> getRawResults() {
+            return results;
+        }
+
+        RedisQueryResult(List<String> results) {
+            this.results = results;
+            this.updateCount = 0;
+        }
+
+        RedisQueryResult(int updateCount) {
+            this.results = null;
+            this.updateCount = updateCount;
+        }
+
+        @Override
+        public java.sql.ResultSet getResultSet() {
+            return null;
+        }
+
+        public List<String> getResults() {
+            return results;
+        }
+
+        @Override
+        public int getUpdateCount() {
+            return updateCount;
+        }
+
+        @Override
+        public boolean hasResultSet() {
+            return results != null;
+        }
+    }
+
+    public static void main(String[] args) throws IOException {
+        DBConfig dbConfig = new DBConfig.Builder()
+                .host("127.0.0.1")
+                .port(6379)
+                .password("O5h748a7Ui")
+                .dbType("redis-cluster")
+                .testType("query")
+                .query("get a")
+                .build();
+
+        RedisClusterTester tester = new RedisClusterTester(dbConfig);
+        DatabaseConnection connection = null;
+        try {
+            connection = tester.connect();
+
+            QueryResult result = tester.execute(connection, "get a");
+
+            if (result.hasResultSet()) {
+                RedisQueryResult redisResult = (RedisQueryResult) result;
+
+                List<String> results = redisResult.getResults();
+
+                System.out.println("Query successful. Found " + results.size() + " result(s):");
+                for (String value : results) {
+                    System.out.println("  Value: " + value);
+                }
+
+            } else {
+                System.out.println("Command executed successfully.");
+                System.out.println("Update count: " + result.getUpdateCount());
+            }
+
+        } catch (IOException e) {
+            System.err.println("An error occurred: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            if (connection != null) {
+                connection.close();
+            }
+        }
+    }
+}

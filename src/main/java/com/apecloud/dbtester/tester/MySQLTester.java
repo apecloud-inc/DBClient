@@ -28,7 +28,7 @@ public class MySQLTester implements DatabaseTester {
         this.dbConfig = dbConfig;
     }
 
-    // 增加使用 DBConfig 的 connect 方法
+    // 增加connect() method using DBConfig
     public DatabaseConnection connect() throws IOException {
         if (dbConfig == null) {
             throw new IllegalStateException("DBConfig not provided");
@@ -415,7 +415,7 @@ public class MySQLTester implements DatabaseTester {
     }
 
     public static void main(String[] args) throws IOException {
-        // 使用 DBConfig 方式
+        // Using DBConfig approach
         DBConfig dbConfig = new DBConfig.Builder()
             .host("localhost")
             .port(3306)

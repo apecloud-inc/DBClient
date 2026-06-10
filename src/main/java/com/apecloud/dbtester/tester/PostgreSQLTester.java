@@ -29,7 +29,7 @@ public class PostgreSQLTester implements DatabaseTester {
         this.dbConfig = dbConfig;
     }
 
-    // 使用 DBConfig 的 connect 方法
+    // connect() method using DBConfig
     public DatabaseConnection connect() throws IOException {
         if (dbConfig == null) {
             throw new IllegalStateException("DBConfig not provided");

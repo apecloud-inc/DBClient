@@ -31,3 +31,9 @@ replay_pid*
 
 # Ignore Gradle build output directory
 build
+
+# codex
+skills
+
+# idea
+.idea
