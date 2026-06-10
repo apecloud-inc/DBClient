@@ -11,6 +11,11 @@ on:
         description: 'The platform of release image'
         required: false
         default: 'linux/amd64,linux/arm64'
+        type: choice
+        options:
+          - linux/amd64,linux/arm64
+          - linux/amd64
+          - linux/arm64
   release:
     types:
       - published
