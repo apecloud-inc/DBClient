@@ -1,145 +1,124 @@
 ---
 name: dbclient-add-engine
 description: >
-  Complete checklist and template for adding a new database or middleware engine to DBClient.
+  Practical guide for adding a new database or middleware engine to DBClient.
   Use this skill when you need to introduce a new dbType.
 ---
 
 # DBClient: Add a New Engine
 
-## Preliminary Check
+## Decision Tree
 
-1. **Is it protocol-compatible?**
-   - MySQL protocol -> try reusing `MySQLTester` first
-   - PostgreSQL protocol -> try reusing `PostgreSQLTester` first
-   - Neither -> add a dedicated `XxxTester`
-2. **Does it have an official Java SDK or JDBC driver?**
-3. **Which testTypes should be supported?** At least implement `query` + `connectionstress`.
+```mermaid
+flowchart LR
+    A[New dbType] --> B{MySQL protocol?}
+    B -->|Yes| C[Reuse MySQLTester]
+    B --> D{PostgreSQL protocol?}
+    D -->|Yes| E[Reuse PostgreSQLTester]
+    D -->|No| F{Existing SDK / JDBC / HTTP?}
+    F -->|JDBC| G[Copy MySQLTester pattern]
+    F -->|HTTP/REST| H[Copy QdrantTester pattern]
+    F -->|SDK| I[Copy RedisTester pattern]
+```
 
-## Change Checklist
+## Path 1: Reuse an Existing Tester
 
-| # | File / Directory | Change |
+If the new engine speaks MySQL or PostgreSQL protocol, you usually only need to register an alias and add the driver dependency.
+
+Example for a MySQL-compatible engine named `foomysql`:
+
+1. In `TesterFactory.java`:
+   ```java
+   case "foomysql":
+       return new MySQLTester(config);
+   ```
+2. In `DBConfig.java` whitelist:
+   ```java
+   case "foomysql":
+   ```
+3. In `build.gradle`:
+   ```groovy
+   implementation 'com.example:foo-mysql-driver:1.0.0'
+   ```
+4. Add a note to `dbclient-engine-relational/SKILL.md`.
+
+## Path 2: Add a New Tester
+
+### Choose a Reference Implementation
+
+| Protocol / Client Type | Reference Tester | Why |
 |---|---|---|
-| 1 | `src/main/java/com/apecloud/dbtester/tester/XxxTester.java` | Create the Tester implementing `DatabaseTester` |
-| 2 | `src/main/java/com/apecloud/dbtester/commons/TesterFactory.java` | Register dbType aliases in the switch |
-| 3 | `src/main/java/com/apecloud/dbtester/commons/DBConfig.java` | Append dbType aliases to the `validate()` whitelist |
-| 4 | `build.gradle` | Add the corresponding Maven dependency or local jar |
-| 5 | Relevant `skills/dbclient-engine-*/SKILL.md` | Add engine description, aliases, and dependencies |
-| 6 | `skills/dbclient-add-engine/SKILL.md` | Update the template or known pitfalls |
+| JDBC | `MySQLTester.java` | Clean `DatabaseConnection` + `ResultSet` pattern |
+| HTTP/REST JSON | `QdrantTester.java` | Uses Apache HttpClient and Jackson parsing |
+| SDK client | `RedisTester.java` | Pool-based client lifecycle |
+| Document store | `MongoDBTester.java` | Custom `QueryResult` subclass (`MongoDBResult`) |
 
-## Minimal Tester Skeleton
+### Minimum Implementation Order
 
-```java
-package com.apecloud.dbtester.tester;
+Implement only what you need for the first smoke test, in this order:
 
-import com.apecloud.dbtester.commons.*;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.*;
+1. `connect()` + a private `DatabaseConnection` subclass.
+2. `execute()` + a `QueryResult` that carries either a `ResultSet`, raw results, or update count.
+3. `releaseConnections()`.
+4. `executeTest()` (just return `TestExecutor.executeTest(this, dbConfig)`).
+5. After query works, add `connectionStress()`.
+6. Add `bench()` and `executionLoop()` only if required.
 
-public class XxxTester implements DatabaseTester {
-    private final DBConfig dbConfig;
-    private final List<DatabaseConnection> connections = new ArrayList<>();
+### Registration Checklist
 
-    public XxxTester() {
-        this.dbConfig = null;
-    }
+| # | File | Change |
+|---|---|---|
+| 1 | `src/main/java/com/apecloud/dbtester/tester/XxxTester.java` | New Tester with `DatabaseTester` implementation |
+| 2 | `src/main/java/com/apecloud/dbtester/commons/TesterFactory.java` | Add dbType aliases in the switch |
+| 3 | `src/main/java/com/apecloud/dbtester/commons/DBConfig.java` | Add the same aliases to `validate()` whitelist |
+| 4 | `build.gradle` | Add Maven dependency or local jar |
+| 5 | `skills/dbclient-engine-*/SKILL.md` | Add engine row and dependency note |
 
-    public XxxTester(DBConfig dbConfig) {
-        this.dbConfig = dbConfig;
-    }
+Reminder: keep the alias lists in #2 and #3 identical, otherwise `config.build()` will fail with `Unsupported database type`.
 
-    @Override
-    public DatabaseConnection connect() throws IOException {
-        if (dbConfig == null) {
-            throw new IllegalStateException("DBConfig not provided");
-        }
-        // TODO: create a connection and return a DatabaseConnection subclass
-        throw new UnsupportedOperationException("Not implemented");
-    }
+## Dependency Notes
 
-    @Override
-    public QueryResult execute(DatabaseConnection connection, String query) throws IOException {
-        // TODO: execute the query and wrap it into a QueryResult
-        throw new UnsupportedOperationException("Not implemented");
-    }
+- Prefer Maven Central coordinates in `build.gradle`.
+- If you must use a local jar, place it under `libs/` and reference it as:
+  ```groovy
+  implementation files('libs/xxx-client.jar')
+  ```
+- Exclude conflicting transitive dependencies when needed (see Hive example in `dbclient-engine-storage`).
+- `shadowJar` already excludes signature files and merges service files; verify with:
+  ```bash
+  jar tf build/libs/oneclient-1.0-all.jar | grep -i xxx
+  ```
 
-    @Override
-    public String bench(DatabaseConnection connection, String query, int iterations, int concurrency) {
-        // TODO: run the query concurrently for the given iterations
-        throw new UnsupportedOperationException("Not implemented");
-    }
-
-    @Override
-    public String connectionStress(int connections, int duration) {
-        // TODO: loop creating and closing the given number of connections for the duration
-        throw new UnsupportedOperationException("Not implemented");
-    }
-
-    @Override
-    public String executeTest() throws IOException {
-        return TestExecutor.executeTest(this, dbConfig);
-    }
-
-    @Override
-    public String executionLoop(DatabaseConnection connection, String query,
-                                int duration, int interval, String database, String table) {
-        // TODO: execute periodically and print intermediate reports
-        throw new UnsupportedOperationException("Not implemented");
-    }
-
-    @Override
-    public void releaseConnections() {
-        for (DatabaseConnection conn : connections) {
-            try { conn.close(); } catch (Exception ignored) {}
-        }
-        connections.clear();
-    }
-}
-```
-
-## Registration Example
-
-Append to `TesterFactory.createTester()`:
-
-```java
-case "xxx":
-case "xxxdb":
-    return new XxxTester(config);
-```
-
-Append the same aliases to the dbType whitelist in `DBConfig.Builder.validate()`.
-
-## Dependency Example
-
-If the SDK is on Maven Central:
-
-```groovy
-implementation 'com.example:xxx-client:1.0.0'
-```
-
-If using a local jar:
-
-```groovy
-implementation files('libs/xxx-client.jar')
-```
-
-## Smoke Test
+## Smoke Test Sequence
 
 ```bash
+# Build
 gradle shadowJar
+
+# 1. Query smoke test
 java -jar build/libs/oneclient-1.0-all.jar \
   -h 127.0.0.1 -P <port> -u <user> -p <pass> -d <db> \
   -e xxx -t query -q "<minimal query>"
+
+# 2. Connection stress smoke test
+java -jar build/libs/oneclient-1.0-all.jar \
+  -h 127.0.0.1 -P <port> -u <user> -p <pass> \
+  -e xxx -t connectionstress -c 50 -s 10
+
+# 3. Benchmark smoke test
+java -jar build/libs/oneclient-1.0-all.jar \
+  -h 127.0.0.1 -P <port> -u <user> -p <pass> -d <db> \
+  -e xxx -t benchmark -q "<minimal query>" -i 1000 -m 10
 ```
 
-## Recommended Next Steps
+## Result Formatting
 
-- Get `query` working first.
-- Then implement `connectionStress` to verify connection leaks.
-- Finally implement `benchmark` and `executionloop` as needed.
+If your engine returns something other than a JDBC `ResultSet`, check whether `TestExecutor.formatQueryResult()` needs a new branch:
+
+- JSON documents -> look at `mongodb` branch
+- Raw string list -> look at `redis` branch
+- REST response column -> look at `qdrant` branch
 
 ## Maintenance Notes
-- Keep `TesterFactory` and the `DBConfig` whitelist consistent when adding new aliases.
-- If the new engine needs special result formatting, update `TestExecutor.formatQueryResult()`.
+- When adding a new engine family, consider creating a new `dbclient-engine-<family>` skill.
+- When the new engine fits an existing family, update that family skill instead of duplicating notes.
