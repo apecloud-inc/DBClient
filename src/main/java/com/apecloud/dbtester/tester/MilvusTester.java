@@ -1,13 +1,11 @@
 package com.apecloud.dbtester.tester;
+import com.apecloud.dbtester.commons.BenchmarkUtils;
 
 import com.apecloud.dbtester.commons.*;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.Date;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.sql.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -176,40 +174,10 @@ public class MilvusTester implements DatabaseTester {
     }
 
     @Override
-    public String bench(DatabaseConnection connection, String query, int iterations, int concurrency) {
-        StringBuilder result = new StringBuilder();
-        ExecutorService executor = Executors.newFixedThreadPool(concurrency);
-        long startTime = System.currentTimeMillis();
-
-        for (int i = 0; i < iterations; i++) {
-            executor.execute(() -> {
-                try {
-                    execute(connection, query);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
-        }
-
-        executor.shutdown();
-        try {
-            boolean terminated = executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-            System.out.println("Terminated: " + terminated);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        long endTime = System.currentTimeMillis();
-        double duration = (endTime - startTime) / 1000.0;
-
-        result.append("Benchmark completed:\n")
-                .append("Total iterations: ").append(iterations).append("\n")
-                .append("Concurrency level: ").append(concurrency).append("\n")
-                .append("Total time: ").append(duration).append(" seconds\n")
-                .append("Queries per second: ").append(iterations / duration);
-
-        return result.toString();
+        public String bench(DatabaseConnection connection, String query, int iterations, int concurrency) {
+        return BenchmarkUtils.run(iterations, concurrency, connection, c -> execute(c, query));
     }
+
 
     @Override
     public String connectionStress(int connections, int duration) {
@@ -279,7 +247,7 @@ public class MilvusTester implements DatabaseTester {
                     break;
 
                 case "benchmark":
-                    results.append(bench(connection, dbConfig.getQuery(), 1000, 10)).append("\n");
+                    results.append(bench(connection, dbConfig.getQuery(), dbConfig.getIterations(), dbConfig.getConcurrency())).append("\n");
                     break;
 
                 default:

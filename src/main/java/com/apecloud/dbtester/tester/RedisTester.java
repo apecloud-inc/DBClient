@@ -1,4 +1,5 @@
 package com.apecloud.dbtester.tester;
+import com.apecloud.dbtester.commons.BenchmarkUtils;
 
 import com.apecloud.dbtester.commons.DBConfig;
 import com.apecloud.dbtester.commons.DatabaseConnection;
@@ -12,9 +13,6 @@ import java.io.IOException;
 import java.sql.Date;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 public class RedisTester implements DatabaseTester {
     private List<DatabaseConnection> connections = new ArrayList<>();
@@ -35,16 +33,19 @@ public class RedisTester implements DatabaseTester {
             throw new IllegalStateException("DBConfig not provided");
         }
 
-        try {
-            JedisPoolConfig poolConfig = new JedisPoolConfig();
-            poolConfig.setMaxTotal(800); // 设置最大连接数
-            poolConfig.setMaxIdle(100); // 设置最大空闲连接数
-            poolConfig.setMinIdle(10); // 设置最小空闲连接数
-            poolConfig.setMaxWaitMillis(3000); // 设置最大等待时间
-            JedisPool pool = new JedisPool(poolConfig, dbConfig.getHost(), dbConfig.getPort(), dbConfig.getUser(), dbConfig.getPassword());
+        JedisPoolConfig poolConfig = new JedisPoolConfig();
+        poolConfig.setMaxTotal(800);
+        poolConfig.setMaxIdle(100);
+        poolConfig.setMinIdle(10);
+        poolConfig.setMaxWaitMillis(3000);
 
+        JedisPool pool = new JedisPool(poolConfig, dbConfig.getHost(), dbConfig.getPort(), dbConfig.getUser(), dbConfig.getPassword());
+
+        try (Jedis jedis = pool.getResource()) {
+            jedis.ping();
             return new RedisConnection(pool);
         } catch (Exception e) {
+            pool.close();
             throw new IOException("Failed to connect to Redis", e);
         }
     }
@@ -52,13 +53,12 @@ public class RedisTester implements DatabaseTester {
     @Override
     public QueryResult execute(DatabaseConnection connection, String command) throws IOException {
         RedisConnection redisConnection = (RedisConnection) connection;
-        try {
+        try (Jedis jedis = redisConnection.getResource()) {
             String[] parts = command.trim().split("\\s+");
             if (parts.length == 0) {
                 throw new IOException("Empty command");
             }
 
-            Jedis jedis = redisConnection.getResource();
             String operation = parts[0].toLowerCase();
 
             switch (operation) {
@@ -99,40 +99,10 @@ public class RedisTester implements DatabaseTester {
     }
 
     @Override
-    public String bench(DatabaseConnection connection, String command, int iterations, int concurrency) {
-        StringBuilder result = new StringBuilder();
-        ExecutorService executor = Executors.newFixedThreadPool(concurrency);
-        long startTime = System.currentTimeMillis();
-
-        for (int i = 0; i < iterations; i++) {
-            executor.execute(() -> {
-                try {
-                    execute(connection, command);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
-        }
-
-        executor.shutdown();
-        try {
-            executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        long endTime = System.currentTimeMillis();
-        double duration = (endTime - startTime) / 1000.0;
-        double qps = iterations / duration;
-
-        result.append("Benchmark results:\n")
-                .append("Total iterations: ").append(iterations).append("\n")
-                .append("Concurrency level: ").append(concurrency).append("\n")
-                .append("Total time: ").append(duration).append(" seconds\n")
-                .append("Queries per second: ").append(String.format("%.2f", qps));
-
-        return result.toString();
+        public String bench(DatabaseConnection connection, String command, int iterations, int concurrency) {
+        return BenchmarkUtils.run(iterations, concurrency, connection, c -> execute(c, command));
     }
+
 
     @Override
     public String connectionStress(int connections, int duration) {
@@ -191,11 +161,13 @@ public class RedisTester implements DatabaseTester {
                             .append("\n");
                     break;
 
-                case "benchmark":
+                case "benchmark": {
+                    String benchQuery = (dbConfig.getQuery() != null && !dbConfig.getQuery().isEmpty()) ? dbConfig.getQuery() : testCommand;
                     results.append("Benchmark test:\n")
-                            .append(bench(connection, testCommand, 1000, 10))
-                            .append("\n");
+                           .append(bench(connection, benchQuery, dbConfig.getIterations(), dbConfig.getConcurrency()))
+                           .append("\n");
                     break;
+                }
 
                 default:
                     results.append("Unknown test type\n");

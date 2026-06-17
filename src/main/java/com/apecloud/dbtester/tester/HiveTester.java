@@ -1,5 +1,6 @@
 
 package com.apecloud.dbtester.tester;
+import com.apecloud.dbtester.commons.BenchmarkUtils;
 
 import com.apecloud.dbtester.commons.*;
 import java.io.IOException;
@@ -289,9 +290,10 @@ public class HiveTester implements DatabaseTester {
     }
 
     @Override
-    public String bench(DatabaseConnection connection, String query, int iterations, int concurrency) {
-        return null;
+        public String bench(DatabaseConnection connection, String query, int iterations, int concurrency) {
+        return BenchmarkUtils.run(iterations, concurrency, this::connect, c -> executeBenchmark(c, query));
     }
+
 
     @Override
     public String connectionStress(int connections, int duration) {
@@ -375,6 +377,18 @@ public class HiveTester implements DatabaseTester {
 
         return result.toString();
     }
+    /**
+     * Execute query for benchmark mode and close Statement/ResultSet immediately.
+     */
+    private void executeBenchmark(DatabaseConnection connection, String query) throws IOException {
+        HiveConnection conn = (HiveConnection) connection;
+        try (Statement stmt = conn.getConnection().createStatement()) {
+            stmt.execute(query);
+        } catch (SQLException e) {
+            throw new IOException("Failed to execute query: " + e, e);
+        }
+    }
+
 
     private static class HiveConnection implements DatabaseConnection {
         private final Connection connection;

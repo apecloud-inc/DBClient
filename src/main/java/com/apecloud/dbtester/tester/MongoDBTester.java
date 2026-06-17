@@ -1,4 +1,5 @@
 package com.apecloud.dbtester.tester;
+import com.apecloud.dbtester.commons.BenchmarkUtils;
 
 import com.apecloud.dbtester.commons.*;
 import com.mongodb.*;
@@ -15,8 +16,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public class MongoDBTester implements DatabaseTester {
@@ -124,40 +123,10 @@ public class MongoDBTester implements DatabaseTester {
     }
 
     @Override
-    public String bench(DatabaseConnection connection, String query, int iterations, int concurrency) {
-        StringBuilder result = new StringBuilder();
-        ExecutorService executor = Executors.newFixedThreadPool(concurrency);
-        long startTime = System.currentTimeMillis();
-
-        for (int i = 0; i < iterations; i++) {
-            executor.execute(() -> {
-                try {
-                    execute(connection, query);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
-        }
-
-        executor.shutdown();
-        try {
-            executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        long endTime = System.currentTimeMillis();
-        double duration = (endTime - startTime) / 1000.0;
-        double qps = iterations / duration;
-
-        result.append("Benchmark results:\n")
-              .append("Total iterations: ").append(iterations).append("\n")
-              .append("Concurrency level: ").append(concurrency).append("\n")
-              .append("Total time: ").append(duration).append(" seconds\n")
-              .append("Queries per second: ").append(String.format("%.2f", qps));
-
-        return result.toString();
+        public String bench(DatabaseConnection connection, String query, int iterations, int concurrency) {
+        return BenchmarkUtils.run(iterations, concurrency, connection, c -> execute(c, query));
     }
+
 
     @Override
     public String connectionStress(int connections, int duration) {
@@ -216,11 +185,13 @@ public class MongoDBTester implements DatabaseTester {
                            .append("\n");
                     break;
                     
-                case "benchmark":
+                case "benchmark": {
+                    String benchQuery = (dbConfig.getQuery() != null && !dbConfig.getQuery().isEmpty()) ? dbConfig.getQuery() : testQuery;
                     results.append("Benchmark test:\n")
-                           .append(bench(connection, testQuery, 1000, 10))
+                           .append(bench(connection, benchQuery, dbConfig.getIterations(), dbConfig.getConcurrency()))
                            .append("\n");
                     break;
+                }
                     
                 default:
                     results.append("Unknown test type\n");

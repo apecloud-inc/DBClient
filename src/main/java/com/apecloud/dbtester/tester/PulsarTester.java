@@ -1,4 +1,5 @@
 package com.apecloud.dbtester.tester;
+import com.apecloud.dbtester.commons.BenchmarkUtils;
 
 import com.apecloud.dbtester.commons.DBConfig;
 import com.apecloud.dbtester.commons.DatabaseConnection;
@@ -15,14 +16,14 @@ import java.util.*;
 import java.util.concurrent.*;
 
 /**
- * Pulsar 测试器，实现 DatabaseTester 接口
- * 支持操作：produce, consume, create_topic, delete_topic, list_topics
+ * Pulsar tester implementing the DatabaseTester interface.
+ * Supported operations: produce, consume, create_topic, delete_topic, list_topics.
  */
 public class PulsarTester implements DatabaseTester {
     private List<DatabaseConnection> connections = new ArrayList<>();
     private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     private final DBConfig dbConfig;
-    // Pulsar HTTP 服务默认端口（可根据实际情况修改或通过 dbConfig 传入）
+    // Default Pulsar HTTP service port (can be changed or passed via dbConfig if needed).
     private static final int DEFAULT_HTTP_PORT = 8080;
 
     public PulsarTester() {
@@ -40,16 +41,16 @@ public class PulsarTester implements DatabaseTester {
         }
 
         try {
-            // 构建 Pulsar 服务 URL（二进制端口）
+            // Build the Pulsar service URL (binary protocol port).
             String serviceUrl = "pulsar://" + dbConfig.getHost() + ":" + dbConfig.getPort();
 
-            // 创建客户端
+            // Create the client.
             PulsarClient client = PulsarClient.builder()
                     .serviceUrl(serviceUrl)
                     .build();
 
-            // 构建 Admin 客户端 URL（HTTP 端口，通常为 8080）
-            // 注意：如果实际 HTTP 端口不是 8080，请修改此处或从 dbConfig 中获取
+            // Build the admin client URL (HTTP port, usually 8080).
+            // Note: change this or read it from dbConfig if the actual HTTP port is not 8080.
             String adminUrl = "http://" + dbConfig.getHost() + ":" + DEFAULT_HTTP_PORT;
             PulsarAdmin admin = PulsarAdmin.builder()
                     .serviceHttpUrl(adminUrl)
@@ -57,7 +58,7 @@ public class PulsarTester implements DatabaseTester {
 
             return new PulsarConnection(client, admin);
         } catch (Exception e) {
-            // 打印详细异常信息以便调试
+            // Print detailed exception information for debugging.
             e.printStackTrace();
             throw new IOException("Failed to connect to Pulsar", e);
         }
@@ -86,7 +87,7 @@ public class PulsarTester implements DatabaseTester {
                     throw new IOException("Unsupported operation: " + operation);
             }
         } catch (Exception e) {
-            // 打印详细异常信息
+            // Print detailed exception information.
             e.printStackTrace();
             throw new IOException("Failed to execute Pulsar operation", e);
         }
@@ -101,12 +102,12 @@ public class PulsarTester implements DatabaseTester {
         String key = (String) queryMap.get("key");
         String value = (String) queryMap.get("value");
 
-        // 创建 Producer（可考虑复用，但为简单起见每次新建）
+        // Create a producer (could be reused; created per call for simplicity).
         Producer<byte[]> producer = conn.getClient().newProducer(Schema.BYTES)
                 .topic(topic)
                 .create();
 
-        // 发送消息
+        // Send the message.
         MessageId messageId = producer.send(value.getBytes());
 
         producer.close();
@@ -119,7 +120,7 @@ public class PulsarTester implements DatabaseTester {
         int timeout = (int) queryMap.getOrDefault("timeout", 5000);
         int maxMessages = (int) queryMap.getOrDefault("maxMessages", 10);
 
-        // 创建 Consumer
+        // Create a consumer.
         Consumer<byte[]> consumer = conn.getClient().newConsumer(Schema.BYTES)
                 .topic(topic)
                 .subscriptionName("pulsar-tester-subscription")
@@ -151,10 +152,10 @@ public class PulsarTester implements DatabaseTester {
         int partitions = (int) queryMap.getOrDefault("partitions", 1);
 
         if (partitions > 1) {
-            // 创建分区主题
+            // Create a partitioned topic.
             conn.getAdmin().topics().createPartitionedTopic(topic, partitions);
         } else {
-            // 创建非分区主题
+            // Create a non-partitioned topic.
             conn.getAdmin().topics().createNonPartitionedTopic(topic);
         }
 
@@ -162,7 +163,7 @@ public class PulsarTester implements DatabaseTester {
     }
 
     private QueryResult handleDeleteTopic(PulsarConnection conn, String topic) throws Exception {
-        // 先尝试删除分区主题，若失败则删除非分区主题
+        // Try deleting a partitioned topic first; fall back to deleting a non-partitioned topic.
         try {
             conn.getAdmin().topics().deletePartitionedTopic(topic);
         } catch (Exception e) {
@@ -172,7 +173,7 @@ public class PulsarTester implements DatabaseTester {
     }
 
     private QueryResult handleListTopics(PulsarConnection conn) throws Exception {
-        // 获取默认命名空间（public/default）的所有主题
+        // List all topics in the default namespace (public/default).
         String tenant = "public";
         String namespace = "default";
         List<String> topics = conn.getAdmin().topics().getList(tenant + "/" + namespace);
@@ -180,43 +181,10 @@ public class PulsarTester implements DatabaseTester {
     }
 
     @Override
-    public String bench(DatabaseConnection connection, String query, int iterations, int concurrency) {
-        StringBuilder result = new StringBuilder();
-        ExecutorService executor = Executors.newFixedThreadPool(concurrency);
-        long startTime = System.currentTimeMillis();
-
-        CountDownLatch latch = new CountDownLatch(iterations);
-        for (int i = 0; i < iterations; i++) {
-            executor.execute(() -> {
-                try {
-                    execute(connection, query);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } finally {
-                    latch.countDown();
-                }
-            });
-        }
-
-        try {
-            latch.await();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        executor.shutdown();
-        long endTime = System.currentTimeMillis();
-        double duration = (endTime - startTime) / 1000.0;
-        double qps = iterations / duration;
-
-        result.append("Benchmark results:\n")
-                .append("Total iterations: ").append(iterations).append("\n")
-                .append("Concurrency level: ").append(concurrency).append("\n")
-                .append("Total time: ").append(duration).append(" seconds\n")
-                .append("Operations per second: ").append(String.format("%.2f", qps));
-
-        return result.toString();
+        public String bench(DatabaseConnection connection, String query, int iterations, int concurrency) {
+        return BenchmarkUtils.run(iterations, concurrency, connection, c -> execute(c, query));
     }
+
 
     @Override
     public String connectionStress(int connections, int duration) {
@@ -283,11 +251,13 @@ public class PulsarTester implements DatabaseTester {
                             .append("\n");
                     break;
 
-                case "benchmark":
+                case "benchmark": {
+                    String benchQuery = (dbConfig.getQuery() != null && !dbConfig.getQuery().isEmpty()) ? dbConfig.getQuery() : testQuery;
                     results.append("Benchmark test:\n")
-                            .append(bench(connection, testQuery, 1000, 10))
-                            .append("\n");
+                           .append(bench(connection, benchQuery, dbConfig.getIterations(), dbConfig.getConcurrency()))
+                           .append("\n");
                     break;
+                }
 
                 default:
                     results.append("Unknown test type\n");
@@ -335,7 +305,7 @@ public class PulsarTester implements DatabaseTester {
         PulsarQueryResult pulsarQueryResult;
         int tableCount = 0;
 
-        // check gen test query
+        // Check whether a test query needs to be generated.
         if (query == null || query.equals("") || (topic != null && !topic.equals(""))) {
             genTestQuery = 1;
         }
@@ -365,14 +335,14 @@ public class PulsarTester implements DatabaseTester {
                 }
 
                 if (genTestQuery == 1) {
-                    // check topics exists
+                    // Check whether the topic exists.
                     genTest = "{\"operation\":\"list_topics\"}";
                     queryResult = execute(connection, genTest);
                     pulsarQueryResult = (PulsarQueryResult) queryResult;
                     if (queryResult.hasResultSet()) {
                         List<String> topicsList = pulsarQueryResult.getResults();
                         for (String topicTmp : topicsList) {
-                            // 提取简单主题名（去除完整路径前缀）
+                            // Extract the simple topic name (remove the full path prefix).
                             String simpleTopicName = topicTmp.substring(topicTmp.lastIndexOf("/") + 1);
                             if (simpleTopicName.equals(table)) {
                                 tableCount = 1;
@@ -382,7 +352,7 @@ public class PulsarTester implements DatabaseTester {
                     }
 
                     if (tableCount == 0) {
-                        // create test topic
+                        // Create the test topic.
                         System.out.println("create topic " + table);
                         genTest = "{\"operation\":\"create_topic\",\"topic\":\"" + table + "\"}";
                         execute(connection, genTest);
@@ -394,7 +364,7 @@ public class PulsarTester implements DatabaseTester {
                 if ((genTestQuery == 2 && (query == null || query.equals("")) || genTestQuery == 3)) {
                     genTestKey = "executions_loop_key_" + insertIndex;
                     genTestValue = "executions_loop_value_" + insertIndex;
-                    // set test query
+                    // Set the test query.
                     query = "{\"operation\":\"produce\",\"topic\":\"" + table + "\",\"key\":\""
                             + genTestKey + "\",\"value\":\"" + genTestValue + "\"}";
                     if (genTestQuery == 2) {
@@ -422,7 +392,7 @@ public class PulsarTester implements DatabaseTester {
                     executionError = true;
                 }
             } catch (IOException e) {
-                e.printStackTrace(); // 添加异常打印
+                e.printStackTrace(); // Print exception details.
                 failedExecutions++;
                 insertIndex = insertIndex - 1;
                 if (!executionError) {
@@ -435,7 +405,7 @@ public class PulsarTester implements DatabaseTester {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             } catch (Exception e) {
-                e.printStackTrace(); // 捕获其他异常
+                e.printStackTrace(); // Catch other exceptions.
                 failedExecutions++;
                 insertIndex = insertIndex - 1;
                 if (!executionError) {
@@ -540,7 +510,7 @@ public class PulsarTester implements DatabaseTester {
         // Using DBConfig approach
         DBConfig dbConfig = new DBConfig.Builder()
                 .host("localhost")
-                .port(6650)  // Pulsar 二进制端口
+                .port(6650)  // Pulsar binary protocol port.
                 .dbType("pulsar")
                 .duration(10)
                 .interval(1)
