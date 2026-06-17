@@ -1,4 +1,5 @@
 package com.apecloud.dbtester.tester;
+import com.apecloud.dbtester.commons.BenchmarkUtils;
 
 import com.apecloud.dbtester.commons.DBConfig;
 import com.apecloud.dbtester.commons.DatabaseConnection;
@@ -13,8 +14,6 @@ import java.sql.ResultSet;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 public class VictoriaMetricsTester implements DatabaseTester {
@@ -121,39 +120,10 @@ public class VictoriaMetricsTester implements DatabaseTester {
     }
 
     @Override
-    public String bench(DatabaseConnection connection, String query, int iterations, int concurrency) {
-        StringBuilder result = new StringBuilder();
-        ExecutorService executor = Executors.newFixedThreadPool(concurrency);
-        long startTime = System.currentTimeMillis();
-
-        for (int i = 0; i < iterations; i++) {
-            executor.execute(() -> {
-                try {
-                    execute(connection, query);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
-        }
-
-        executor.shutdown();
-        try {
-            executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        long endTime = System.currentTimeMillis();
-        long duration = endTime - startTime;
-
-        result.append("Benchmark completed:\n")
-              .append("Iterations: ").append(iterations).append("\n")
-              .append("Concurrency: ").append(concurrency).append("\n")
-              .append("Total time: ").append(duration).append("ms\n")
-              .append("Average time per operation: ").append(duration / iterations).append("ms");
-
-        return result.toString();
+        public String bench(DatabaseConnection connection, String query, int iterations, int concurrency) {
+        return BenchmarkUtils.run(iterations, concurrency, connection, c -> execute(c, query));
     }
+
 
     @Override
     public String connectionStress(int connections, int duration) {

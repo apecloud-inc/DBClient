@@ -1,4 +1,5 @@
 package com.apecloud.dbtester.tester;
+import com.apecloud.dbtester.commons.BenchmarkUtils;
 
 import com.apecloud.dbtester.commons.DBConfig;
 import com.apecloud.dbtester.commons.DatabaseConnection;
@@ -14,20 +15,17 @@ import java.sql.Date;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 /**
- * Vault 测试器，实现 DatabaseTester 接口
- * 支持操作: read, write, delete, list
- * 使用 Java 11 HttpClient，无需额外依赖
+ * Vault tester implementing the DatabaseTester interface.
+ * Supported operations: read, write, delete, list.
+ * Uses Java 11 HttpClient; no extra dependencies required.
  */
 public class VaultTester implements DatabaseTester {
     private final List<DatabaseConnection> connections = new ArrayList<>();
     private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS");
     private final DBConfig dbConfig;
-    private HttpClient sharedHttpClient; // 共享的 HttpClient，支持连接池
+    private HttpClient sharedHttpClient; // Shared HttpClient with connection pooling.
 
     public VaultTester() {
         this.dbConfig = null;
@@ -43,7 +41,7 @@ public class VaultTester implements DatabaseTester {
             throw new IllegalStateException("DBConfig not provided");
         }
 
-        // 创建共享 HttpClient（若未创建）
+        // Create the shared HttpClient if it does not already exist.
         if (sharedHttpClient == null) {
             sharedHttpClient = HttpClient.newBuilder()
                     .connectTimeout(Duration.ofSeconds(10))
@@ -66,23 +64,23 @@ public class VaultTester implements DatabaseTester {
 
         String operation = parts[0].toLowerCase();
         String path = parts[1];
-        // 构建完整 URL
+        // Build the full URL.
         String baseUrl = buildBaseUrl(dbConfig);
         String url = baseUrl + "/v1/" + path;
 
-        // 根据操作构建请求
+        // Build the request based on the operation.
         HttpRequest request;
         switch (operation) {
             case "read":
                 request = HttpRequest.newBuilder()
                         .uri(URI.create(url))
-                        .header("X-Vault-Token", dbConfig.getPassword()) // 使用 password 字段存放 token
+                        .header("X-Vault-Token", dbConfig.getPassword()) // Use the password field to store the token.
                         .header("Accept", "application/json")
                         .GET()
                         .build();
                 break;
             case "write":
-                // 解析键值对，构造 JSON 体
+                // Parse key=value pairs and construct the JSON body.
                 Map<String, String> data = new HashMap<>();
                 for (int i = 2; i < parts.length; i++) {
                     String[] kv = parts[i].split("=", 2);
@@ -93,12 +91,12 @@ public class VaultTester implements DatabaseTester {
                     }
                 }
                 String jsonBody;
-                // 判断是否为 KV v2 路径（包含 /data/）
+                // Determine whether this is a KV v2 path (contains /data/).
                 if (path.contains("/data/")) {
-                    // KV v2 格式：{"data": {"key":"value"}}
+                    // KV v2 format: {"data": {"key":"value"}}.
                     jsonBody = "{\"data\":" + buildJsonBody(data) + "}";
                 } else {
-                    // KV v1 或其他：直接 {"key":"value"}
+                    // KV v1 or others: directly {"key":"value"}.
                     jsonBody = buildJsonBody(data);
                 }
                 request = HttpRequest.newBuilder()
@@ -116,7 +114,7 @@ public class VaultTester implements DatabaseTester {
                         .build();
                 break;
             case "list":
-                // Vault list 操作使用 GET 并添加 list=true 参数
+                // Vault list uses GET with the list=true parameter.
                 String listUrl = url + "?list=true";
                 request = HttpRequest.newBuilder()
                         .uri(URI.create(listUrl))
@@ -136,12 +134,12 @@ public class VaultTester implements DatabaseTester {
                 throw new IOException("Vault request failed with status " + statusCode + ": " + response.body());
             }
 
-            // 根据操作类型构建 QueryResult
+            // Build the QueryResult based on the operation type.
             if (operation.equals("read") || operation.equals("list")) {
-                // 返回响应体作为结果集
+                // Return the response body as the result set.
                 return new VaultQueryResult(Collections.singletonList(response.body()), 0);
             } else {
-                // write, delete 返回更新计数 1
+                // write and delete return update count 1.
                 return new VaultQueryResult(null, 1);
             }
         } catch (InterruptedException e) {
@@ -151,40 +149,10 @@ public class VaultTester implements DatabaseTester {
     }
 
     @Override
-    public String bench(DatabaseConnection connection, String command, int iterations, int concurrency) {
-        StringBuilder result = new StringBuilder();
-        ExecutorService executor = Executors.newFixedThreadPool(concurrency);
-        long startTime = System.currentTimeMillis();
-
-        for (int i = 0; i < iterations; i++) {
-            executor.execute(() -> {
-                try {
-                    execute(connection, command);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
-        }
-
-        executor.shutdown();
-        try {
-            executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        long endTime = System.currentTimeMillis();
-        double duration = (endTime - startTime) / 1000.0;
-        double qps = iterations / duration;
-
-        result.append("Benchmark results:\n")
-                .append("Total iterations: ").append(iterations).append("\n")
-                .append("Concurrency level: ").append(concurrency).append("\n")
-                .append("Total time: ").append(duration).append(" seconds\n")
-                .append("Queries per second: ").append(String.format("%.2f", qps));
-
-        return result.toString();
+        public String bench(DatabaseConnection connection, String command, int iterations, int concurrency) {
+        return BenchmarkUtils.run(iterations, concurrency, connection, c -> execute(c, command));
     }
+
 
     @Override
     public String connectionStress(int connections, int duration) {
@@ -192,14 +160,14 @@ public class VaultTester implements DatabaseTester {
         int failed = 0;
         List<DatabaseConnection> tempConnections = new ArrayList<>();
 
-        // 创建指定数量的连接对象
+        // Create the specified number of connection objects.
         for (int i = 0; i < connections; i++) {
             try {
                 HttpClient independentClient = HttpClient.newBuilder()
                         .connectTimeout(Duration.ofSeconds(10))
                         .build();
                 VaultConnection conn = new VaultConnection(independentClient, dbConfig);
-                // 发送一个轻量请求以建立实际连接
+                // Send a lightweight request to establish the actual connection.
                 HttpRequest healthReq = HttpRequest.newBuilder()
                         .uri(URI.create(buildBaseUrl(dbConfig) + "/v1/sys/health"))
                         .header("X-Vault-Token", dbConfig.getPassword())
@@ -216,22 +184,22 @@ public class VaultTester implements DatabaseTester {
         long createEnd = System.currentTimeMillis();
         long releaseTime = createEnd + duration * 1000L;
 
-        // 等待 duration 秒
+        // Wait for the configured duration in seconds.
         while (System.currentTimeMillis() < releaseTime) {
             try {
-                Thread.sleep(100); // 避免忙等
+                Thread.sleep(100); // Avoid busy-waiting.
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 break;
             }
         }
 
-        // 释放所有连接
+        // Release all connections.
         for (DatabaseConnection conn : tempConnections) {
             try {
                 conn.close();
             } catch (IOException e) {
-                e.printStackTrace(); // 可根据需要记录日志
+                e.printStackTrace(); // Can be replaced with logging if needed.
             }
         }
         tempConnections.clear();
@@ -246,9 +214,9 @@ public class VaultTester implements DatabaseTester {
 
     @Override
     public void releaseConnections() {
-        // 关闭共享 HttpClient
+        // Clean up the shared HttpClient reference.
         if (sharedHttpClient != null) {
-            // HttpClient 没有显式 close 方法，由 JVM 管理，但可以置空
+            // HttpClient has no explicit close method; managed by the JVM, but clear the reference.
             sharedHttpClient = null;
         }
         connections.clear();
@@ -262,13 +230,13 @@ public class VaultTester implements DatabaseTester {
 
         try {
             connection = connect();
-            String testCommand = "write secret/data/hello foo=bar"; // 默认写操作
+            String testCommand = "write secret/data/hello foo=bar"; // Default write operation.
 
             switch (testType) {
                 case "query":
                     execute(connection, testCommand);
                     results.append("Basic write test: SUCCESS\n");
-                    // 再执行一次读
+                    // Then perform a read.
                     String readCmd = "read secret/data/hello";
                     QueryResult readResult = execute(connection, readCmd);
                     results.append("Basic read test: SUCCESS, data: ").append(readResult.getRawResults()).append("\n");
@@ -280,11 +248,13 @@ public class VaultTester implements DatabaseTester {
                             .append("\n");
                     break;
 
-                case "benchmark":
+                case "benchmark": {
+                    String benchQuery = (dbConfig.getQuery() != null && !dbConfig.getQuery().isEmpty()) ? dbConfig.getQuery() : testCommand;
                     results.append("Benchmark test:\n")
-                            .append(bench(connection, testCommand, 1000, 10))
-                            .append("\n");
+                           .append(bench(connection, benchQuery, dbConfig.getIterations(), dbConfig.getConcurrency()))
+                           .append("\n");
                     break;
+                }
 
                 default:
                     results.append("Unknown test type\n");
@@ -303,16 +273,16 @@ public class VaultTester implements DatabaseTester {
 
     @Override
     public String executionLoop(DatabaseConnection connection, String query, int duration, int interval, String database, String table) {
-        // 使用 database 作为引擎挂载点
+        // Use the database value as the secret engine mount path.
         if (database == null || database.equals("")) {
             database = "executions_loop";
         }
         String mountPath = database;
         String baseUrl = buildBaseUrl(dbConfig);
         HttpClient httpClient = HttpClient.newHttpClient();
-        // ---------- 重置引擎：删除并重新创建 ----------
+        // ---------- Reset the engine: delete and recreate ----------.
         try {
-            // 1. 尝试删除已有引擎（如果存在）
+            // 1. Try to delete the existing engine if it exists.
             String deleteUrl = baseUrl + "/v1/sys/mounts/" + mountPath;
             HttpRequest deleteRequest = HttpRequest.newBuilder()
                     .uri(URI.create(deleteUrl))
@@ -326,10 +296,10 @@ public class VaultTester implements DatabaseTester {
                 System.out.println("No existing engine at '" + mountPath + "', will create new.");
             } else {
                 System.err.println("Unexpected response when deleting engine: " + deleteResponse.statusCode());
-                // 继续尝试创建，可能权限不足等
+                // Continue trying to create; may be due to insufficient permissions etc.
             }
 
-            // 2. 创建新的 KV v2 引擎
+            // 2. Create a new KV v2 engine.
             String enableUrl = baseUrl + "/v1/sys/mounts/" + mountPath;
             String enableBody = "{\"type\":\"kv-v2\"}";
             HttpRequest enableRequest = HttpRequest.newBuilder()
@@ -352,7 +322,7 @@ public class VaultTester implements DatabaseTester {
             throw new RuntimeException("Failed to reset Vault engine", e);
         }
 
-        // ---------- 持续写入循环（自动生成命令）----------
+        // ---------- Continuous write loop (auto-generate commands) ----------.
         StringBuilder result = new StringBuilder();
         QueryResult executeResult;
         int executeUpdateCount;
@@ -371,15 +341,15 @@ public class VaultTester implements DatabaseTester {
         int outputPassTime = 0;
 
         int insertIndex = 0;
-        int genTestQuery = 0; // 0: no need, 1: need generate, 2: generating, 3: generated
+        int genTestQuery = 0; // 0: no need, 1: need to generate, 2: generating, 3: generated.
 
-        // 判断是否需要自动生成测试命令
+        // Determine whether a test command needs to be generated.
         if (query == null || query.isEmpty()) {
             genTestQuery = 1;
         }
         String baseValue = "";
         String baseKeyName = "";
-        // 使用 table 作为密钥的基础名称
+        // Use table as the base name for secrets.
         if (table == null || table.equals("")) {
             baseKeyName = "executions_loop_key";
             baseValue = "executions_loop_value";
@@ -403,7 +373,7 @@ public class VaultTester implements DatabaseTester {
             try {
                 if (executionError) {
                     Thread.sleep(1000);
-                    // 重新连接（获取新的连接实例，但共享 HttpClient）
+                    // Reconnect (obtain a new connection instance while sharing the HttpClient).
                     connection = this.connect();
                 }
 
@@ -411,9 +381,9 @@ public class VaultTester implements DatabaseTester {
                     genTestQuery = 2;
                 }
 
-                // 自动生成测试命令（Vault 格式，使用 database 和 table）
+                // Auto-generate a test command in Vault format using database and table.
                 if ((genTestQuery == 2 && (query == null || query.isEmpty())) || genTestQuery == 3) {
-                    // 生成命令：write <database>/data/<table>_<index> value=test_value_<index>
+                    // Generated command: write <database>/data/<table>_<index> value=test_value_<index>.
                     String secretKey = baseKeyName + "_" + insertIndex;
                     String secretValue = baseValue + "_" + insertIndex;
                     query = "write " + mountPath + "/data/" + secretKey + " value=" + secretValue;
@@ -425,7 +395,7 @@ public class VaultTester implements DatabaseTester {
 
                 executeResult = execute(connection, query);
                 executeUpdateCount = executeResult.getUpdateCount();
-                // 对于 Vault，写/删返回 updateCount=1，读返回 0（但视为成功）
+                // For Vault, write/delete return updateCount=1; read returns 0 but is treated as success.
                 if (executeUpdateCount != -1) {
                     successfulExecutions++;
                     if (executionError) {
@@ -475,7 +445,7 @@ public class VaultTester implements DatabaseTester {
     }
 
     /**
-     * 构建基础 URL，格式：scheme://host:port
+     * Build the base URL in the format scheme://host:port.
      */
     private String buildBaseUrl(DBConfig config) {
         String scheme = "http";
@@ -483,10 +453,10 @@ public class VaultTester implements DatabaseTester {
     }
 
     /**
-     * 将 Map 转换为 JSON 字符串
+     * Convert the map to a JSON string.
      */
     private String buildJsonBody(Map<String, String> data) {
-        // 简单 JSON 构建，不引入 JSON 库
+        // Simple JSON construction without introducing a JSON library.
         StringBuilder sb = new StringBuilder("{");
         boolean first = true;
         for (Map.Entry<String, String> entry : data.entrySet()) {
@@ -502,14 +472,14 @@ public class VaultTester implements DatabaseTester {
     }
 
     /**
-     * 简单转义 JSON 字符串中的双引号
+     * Escape double quotes in the JSON string.
      */
     private String escapeJson(String s) {
         return s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     /**
-     * Vault 连接实现，持有 HttpClient 和配置
+     * Vault connection implementation holding the HttpClient and configuration.
      */
     private static class VaultConnection implements DatabaseConnection {
         private final HttpClient httpClient;
@@ -526,12 +496,12 @@ public class VaultTester implements DatabaseTester {
 
         @Override
         public void close() throws IOException {
-            // HttpClient 由 VaultTester 管理，无需单独关闭
+            // The HttpClient is managed by VaultTester; no need to close it here.
         }
     }
 
     /**
-     * Vault 查询结果实现
+     * Vault query result implementation.
      */
     private static class VaultQueryResult implements QueryResult {
         private final List<String> results;
@@ -544,7 +514,7 @@ public class VaultTester implements DatabaseTester {
 
         @Override
         public java.sql.ResultSet getResultSet() {
-            return null; // 不实现 JDBC ResultSet
+            return null; // JDBC ResultSet is not implemented.
         }
 
         @Override
@@ -564,18 +534,18 @@ public class VaultTester implements DatabaseTester {
     }
 
     /**
-     * 简单测试示例
+     * Simple usage examples.
      */
     public static void main(String[] args) throws IOException {
-        // 示例1：执行持续循环测试（需在配置中设置 testType=executionloop 及其他参数）
+        // Example 1: run a continuous loop test (set testType=executionloop and other parameters).
 //        DBConfig config = new DBConfig.Builder()
 //                .host("127.0.0.1")
 //                .port(8200)
 //                .password("***")
 //                .dbType("vault")
 //                .testType("executionloop")
-////                .database("myengine")           // 引擎名称
-////                .table("mysecret")               // 密钥基础名称
+////                .database("myengine")           // Engine mount path.
+////                .table("mysecret")               // Base secret name.
 //                .duration(30)
 //                .interval(1)
 //                .build();
@@ -585,11 +555,11 @@ public class VaultTester implements DatabaseTester {
 //        String result = tester.executionLoop(conn, null, config.getDuration(), config.getInterval(), config.getDatabase(), config.getTable());
 //        System.out.println(result);
 
-        // 示例2：执行一次读操作
+        // Example 2: perform a single read operation.
 //        DBConfig config = new DBConfig.Builder()
 //                .host("127.0.0.1")
 //                .port(8200)
-//                .password("***")  // 使用 password 字段存放 token
+//                .password("***")  // Use the password field to store the token.
 //                .dbType("vault")
 //                .testType("query")
 //                .query("read executions_loop/data/executions_loop_key_1")
@@ -610,7 +580,7 @@ public class VaultTester implements DatabaseTester {
 //            tester.releaseConnections();
 //        }
         
-        // 示例3：执行创建连接测试（需在配置中设置 testType=connectionstress 及其他参数）
+        // Example 3: run a connection stress test (set testType=connectionstress and other parameters).
         DBConfig config = new DBConfig.Builder()
                 .host("127.0.0.1")
                 .port(8200)
@@ -627,14 +597,14 @@ public class VaultTester implements DatabaseTester {
     }
 
 //    public static void main(String[] args) throws IOException {
-//        // ---------- 配置参数 ----------
+//        // ---------- Configuration parameters ----------.
 //        String host = "127.0.0.1";
 //        int port = 8200;
-//        String token = "***";  // 请替换为有效 token
-//        String mountPath = "test";                     // 引擎挂载路径
-//        String secretPath = "test/data/test";          // 完整 secret 路径（KV v2 格式）
+//        String token = "***";  // Replace with a valid token.
+//        String mountPath = "test";                     // Engine mount path.
+//        String secretPath = "test/data/test";          // Full secret path (KV v2 format).
 //
-//        // ---------- 步骤1：创建 DBConfig 和 VaultTester ----------
+//        // ---------- Step 1: create DBConfig and VaultTester ----------.
 //        DBConfig config = new DBConfig.Builder()
 //                .host(host)
 //                .port(port)
@@ -648,14 +618,14 @@ public class VaultTester implements DatabaseTester {
 //        DatabaseConnection conn = null;
 //
 //        try {
-//            // 步骤2：建立连接（您的原有方式）
+//            // Step 2: establish the connection (your original approach).
 //            conn = tester.connect();
 //
-//            // ---------- 步骤3：重置引擎（删除后重新创建）----------
+//            // ---------- Step 3: reset the engine (delete then recreate) ----------.
 //            HttpClient httpClient = HttpClient.newHttpClient();
 //            String baseUrl = "http://" + host + ":" + port;
 //
-//            // 3.1 尝试删除已有引擎（如果存在）
+//            // 3.1 Try to delete the existing engine if it exists.
 //            String deleteUrl = baseUrl + "/v1/sys/mounts/" + mountPath;
 //            HttpRequest deleteRequest = HttpRequest.newBuilder()
 //                    .uri(URI.create(deleteUrl))
@@ -666,18 +636,18 @@ public class VaultTester implements DatabaseTester {
 //            try {
 //                HttpResponse<String> deleteResponse = httpClient.send(deleteRequest, HttpResponse.BodyHandlers.ofString());
 //                if (deleteResponse.statusCode() == 204) {
-//                    System.out.println("✅ 已删除原有引擎 '" + mountPath + "'");
+//                    System.out.println("✅ Existing engine at '" + mountPath + "' deleted.");
 //                } else if (deleteResponse.statusCode() == 404) {
-//                    System.out.println("ℹ️ 引擎 '" + mountPath + "' 不存在，无需删除");
+//                    System.out.println("ℹ️ Engine '" + mountPath + "' does not exist; no need to delete.");
 //                } else {
-//                    System.err.println("⚠️ 删除引擎返回意外状态码 " + deleteResponse.statusCode() + "，将继续尝试创建");
+//                    System.err.println("⚠️ Unexpected status code while deleting engine: " + deleteResponse.statusCode() + ". Will continue trying to create.");
 //                }
 //            } catch (Exception e) {
-//                System.err.println("❌ 删除引擎请求异常: " + e.getMessage());
-//                // 继续尝试创建
+//                System.err.println("❌ Engine deletion request failed: " + e.getMessage());
+//                // Continue trying to create.
 //            }
 //
-//            // 3.2 创建新的 KV v2 引擎
+//            // 3.2 Create a new KV v2 engine.
 //            String enableUrl = baseUrl + "/v1/sys/mounts/" + mountPath;
 //            String enableBody = "{\"type\":\"kv-v2\"}";
 //            HttpRequest enableRequest = HttpRequest.newBuilder()
@@ -690,15 +660,15 @@ public class VaultTester implements DatabaseTester {
 //            try {
 //                HttpResponse<String> enableResponse = httpClient.send(enableRequest, HttpResponse.BodyHandlers.ofString());
 //                if (enableResponse.statusCode() == 204) {
-//                    System.out.println("✅ 引擎已成功挂载到 '" + mountPath + "'");
+//                    System.out.println("✅ Engine successfully mounted at '" + mountPath + "'.");
 //                } else {
-//                    System.err.println("❌ 启用引擎失败，HTTP " + enableResponse.statusCode() + ": " + enableResponse.body());
+//                    System.err.println("❌ Failed to enable engine, HTTP " + enableResponse.statusCode() + ": " + enableResponse.body());
 //                }
 //            } catch (Exception e) {
-//                System.err.println("❌ 启用引擎请求异常: " + e.getMessage());
+//                System.err.println("❌ Engine enable request failed: " + e.getMessage());
 //            }
 //
-//            // ---------- 步骤4：写入测试密钥（使用原生 API） ----------
+//            // ---------- Step 4: write a test secret using the native API ----------.
 //            String writeUrl = baseUrl + "/v1/" + secretPath;
 //            String writeBody = "{\"data\": {\"foo\":\"bar\", \"baz\":\"qux\"}}";
 //            HttpRequest writeRequest = HttpRequest.newBuilder()
@@ -711,20 +681,20 @@ public class VaultTester implements DatabaseTester {
 //            try {
 //                HttpResponse<String> writeResponse = httpClient.send(writeRequest, HttpResponse.BodyHandlers.ofString());
 //                if (writeResponse.statusCode() == 200 || writeResponse.statusCode() == 204) {
-//                    System.out.println("✅ 测试密钥写入成功");
+//                    System.out.println("✅ Test secret written successfully.");
 //                } else {
-//                    System.err.println("❌ 写入失败，HTTP " + writeResponse.statusCode() + ": " + writeResponse.body());
+//                    System.err.println("❌ Write failed, HTTP " + writeResponse.statusCode() + ": " + writeResponse.body());
 //                }
 //            } catch (Exception e) {
-//                System.err.println("❌ 写入请求异常: " + e.getMessage());
+//                System.err.println("❌ Write request failed: " + e.getMessage());
 //            }
 //
-//            // ---------- 步骤5：使用您的 execute 方法读取密钥进行验证 ----------
+//            // ---------- Step 5: read the secret using your execute method for verification ----------.
 //            QueryResult result = tester.execute(conn, "read " + secretPath);
 //            if (result.hasResultSet()) {
-//                System.out.println("🔍 读取结果: " + result.getRawResults());
+//                System.out.println("🔍 Read result: " + result.getRawResults());
 //            } else {
-//                System.out.println("ℹ️ 无结果集，更新计数: " + result.getUpdateCount());
+//                System.out.println("ℹ️ No result set; update count: " + result.getUpdateCount());
 //            }
 //
 //        } finally {

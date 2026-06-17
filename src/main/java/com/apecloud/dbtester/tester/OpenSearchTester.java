@@ -1,4 +1,5 @@
 package com.apecloud.dbtester.tester;
+import com.apecloud.dbtester.commons.BenchmarkUtils;
 
 import com.apecloud.dbtester.commons.DBConfig;
 import com.apecloud.dbtester.commons.DatabaseConnection;
@@ -18,9 +19,6 @@ import org.opensearch.client.RestHighLevelClient;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 public class OpenSearchTester implements DatabaseTester {
     private final DBConfig dbConfig;
@@ -476,34 +474,10 @@ public class OpenSearchTester implements DatabaseTester {
     }
 
     @Override
-    public String bench(DatabaseConnection connection, String operation, int iterations, int concurrency) {
-        StringBuilder result = new StringBuilder();
-        ExecutorService executor = Executors.newFixedThreadPool(concurrency);
-
-        for (int i = 0; i < iterations; i++) {
-            executor.execute(() -> {
-                try {
-                    execute(connection, operation);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
-        }
-
-        executor.shutdown();
-        try {
-            executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        result.append("Benchmark completed with ")
-                .append(iterations)
-                .append(" iterations and ")
-                .append(concurrency)
-                .append(" concurrency");
-        return result.toString();
+        public String bench(DatabaseConnection connection, String operation, int iterations, int concurrency) {
+        return BenchmarkUtils.run(iterations, concurrency, connection, c -> execute(c, operation));
     }
+
 
     @Override
     public String connectionStress(int connections, int duration) {

@@ -1,4 +1,5 @@
 package com.apecloud.dbtester.tester;
+import com.apecloud.dbtester.commons.BenchmarkUtils;
 
 import com.apecloud.dbtester.commons.DBConfig;
 import com.apecloud.dbtester.commons.DatabaseConnection;
@@ -109,43 +110,10 @@ public class RocketMQTester implements DatabaseTester {
     }
 
     @Override
-    public String bench(DatabaseConnection connection, String query, int iterations, int concurrency) {
-        StringBuilder result = new StringBuilder();
-        ExecutorService executor = Executors.newFixedThreadPool(concurrency);
-        long startTime = System.currentTimeMillis();
-
-        CountDownLatch latch = new CountDownLatch(iterations);
-        for (int i = 0; i < iterations; i++) {
-            executor.execute(() -> {
-                try {
-                    execute(connection, query);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                } finally {
-                    latch.countDown();
-                }
-            });
-        }
-
-        try {
-            latch.await();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        executor.shutdown();
-        long endTime = System.currentTimeMillis();
-        double duration = (endTime - startTime) / 1000.0;
-        double qps = iterations / duration;
-
-        result.append("Benchmark results:\n")
-                .append("Total iterations: ").append(iterations).append("\n")
-                .append("Concurrency level: ").append(concurrency).append("\n")
-                .append("Total time: ").append(duration).append(" seconds\n")
-                .append("Operations per second: ").append(String.format("%.2f", qps));
-
-        return result.toString();
+        public String bench(DatabaseConnection connection, String query, int iterations, int concurrency) {
+        return BenchmarkUtils.run(iterations, concurrency, connection, c -> execute(c, query));
     }
+
 
     @Override
     public String connectionStress(int connections, int duration) {
@@ -199,11 +167,13 @@ public class RocketMQTester implements DatabaseTester {
                             .append("\n");
                     break;
 
-                case "benchmark":
+                case "benchmark": {
+                    String benchQuery = (dbConfig.getQuery() != null && !dbConfig.getQuery().isEmpty()) ? dbConfig.getQuery() : testQuery;
                     results.append("Benchmark test:\n")
-                            .append(bench(connection, testQuery, 1000, 10))
-                            .append("\n");
+                           .append(bench(connection, benchQuery, dbConfig.getIterations(), dbConfig.getConcurrency()))
+                           .append("\n");
                     break;
+                }
 
                 default:
                     results.append("Unknown test type\n");

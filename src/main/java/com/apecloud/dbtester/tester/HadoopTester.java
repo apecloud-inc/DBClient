@@ -213,7 +213,24 @@ public class HadoopTester implements DatabaseTester {
 
     @Override
     public String bench(DatabaseConnection connection, String query, int iterations, int concurrency) {
-        return null;
+        return BenchmarkUtils.run(iterations, concurrency, this::connect, c -> executeHadoopBenchmark(c, query));
+    }
+
+    private void executeHadoopBenchmark(DatabaseConnection connection, String query) throws IOException {
+        HadoopFSConnection conn = (HadoopFSConnection) connection;
+        FileSystem fs = conn.getFileSystem();
+        String trimmed = query == null ? "" : query.trim();
+        if (trimmed.toLowerCase().startsWith("read ")) {
+            String path = trimmed.substring(5).trim();
+            try (FSDataInputStream in = fs.open(new Path(path))) {
+                in.readUTF();
+            }
+        } else {
+            String path = trimmed.isEmpty() ? "/dbclient_bench_" + System.nanoTime() + ".txt" : trimmed;
+            try (FSDataOutputStream out = fs.create(new Path(path), true)) {
+                out.writeUTF("benchmark");
+            }
+        }
     }
 
     @Override

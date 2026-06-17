@@ -1,4 +1,5 @@
 package com.apecloud.dbtester.tester;
+import com.apecloud.dbtester.commons.BenchmarkUtils;
 
 import com.apecloud.dbtester.commons.*;
 
@@ -9,9 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 public class PostgreSQLTester implements DatabaseTester {
     private List<DatabaseConnection> connections = new ArrayList<>();
@@ -82,30 +80,10 @@ public class PostgreSQLTester implements DatabaseTester {
     }
 
     @Override
-    public String bench(DatabaseConnection connection, String query, int iterations, int concurrency) {
-        StringBuilder result = new StringBuilder();
-        ExecutorService executor = Executors.newFixedThreadPool(concurrency);
-
-        for (int i = 0; i < iterations; i++) {
-            executor.execute(() -> {
-                try {
-                    execute(connection, query);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            });
-        }
-
-        executor.shutdown();
-        try {
-            executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        result.append("Benchmark completed with ").append(iterations).append(" iterations and ").append(concurrency).append(" concurrency");
-        return result.toString();
+        public String bench(DatabaseConnection connection, String query, int iterations, int concurrency) {
+        return BenchmarkUtils.run(iterations, concurrency, this::connect, c -> executeBenchmark(c, query));
     }
+
 
     @Override
     public String connectionStress(int connections, int duration) {
@@ -492,6 +470,18 @@ public class PostgreSQLTester implements DatabaseTester {
         Random random = new Random();
         return "<root><element>" + randomString(10) + "</element><value>" + random.nextInt(100) + "</value></root>";
     }
+    /**
+     * Execute query for benchmark mode and close Statement/ResultSet immediately.
+     */
+    private void executeBenchmark(DatabaseConnection connection, String query) throws IOException {
+        PostgreSQLConnection conn = (PostgreSQLConnection) connection;
+        try (Statement stmt = conn.connection.createStatement()) {
+            stmt.execute(query);
+        } catch (SQLException e) {
+            throw new IOException("Failed to execute query: " + e, e);
+        }
+    }
+
 
     private static class PostgreSQLConnection implements DatabaseConnection {
         private final Connection connection;

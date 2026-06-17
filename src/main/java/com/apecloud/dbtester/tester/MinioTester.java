@@ -1,4 +1,5 @@
 package com.apecloud.dbtester.tester;
+import com.apecloud.dbtester.commons.BenchmarkUtils;
 
 import com.apecloud.dbtester.commons.DBConfig;
 import com.apecloud.dbtester.commons.DatabaseConnection;
@@ -83,9 +84,10 @@ public class MinioTester implements DatabaseTester {
     }
 
     @Override
-    public String bench(DatabaseConnection connection, String query, int iterations, int concurrency) {
-        return null;
+        public String bench(DatabaseConnection connection, String query, int iterations, int concurrency) {
+        return BenchmarkUtils.run(iterations, concurrency, connection, c -> execute(c, query));
     }
+
 
     private Map<String, Object> parseJsonQuery(String query) throws IOException {
         ObjectMapper objectMapper = new ObjectMapper();
@@ -250,10 +252,13 @@ public class MinioTester implements DatabaseTester {
                             .append("\n");
                     break;
 
-                case "benchmark":
+                case "benchmark": {
+                    String benchQuery = (dbConfig.getQuery() != null && !dbConfig.getQuery().isEmpty()) ? dbConfig.getQuery() : testQuery;
                     results.append("Benchmark test:\n")
-                            .append("Benchmark not implemented yet\n");
+                            .append(bench(connection, benchQuery, dbConfig.getIterations(), dbConfig.getConcurrency()))
+                            .append("\n");
                     break;
+                }
 
                 default:
                     results.append("Unknown test type\n");
