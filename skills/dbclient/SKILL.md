@@ -1,16 +1,16 @@
 ---
 name: dbclient
 description: >
-  Entry index for DBClient (OneClient), a unified database testing CLI client.
+  Entry index for DBClient (DBClient), a unified database testing CLI client.
   Start here when you are unsure which sub-skill to use.
 ---
 
-# DBClient / OneClient
+# DBClient / DBClient
 
 ## Project Overview
 A unified Java command-line database testing client supporting connection test, query execution, connection stress test, benchmark, and execution-loop test.
 
-Entry point: `src/main/java/OneClient.java`
+Entry point: `src/main/java/DBClient.java`
 
 ## Choose a Skill by Task
 
@@ -39,12 +39,12 @@ Entry point: `src/main/java/OneClient.java`
 ```bash
 gradle build
 gradle shadowJar
-java -jar build/libs/oneclient-1.0-all.jar \
+java -jar build/libs/dbclient-1.0-all.jar \
   -h 127.0.0.1 -P 3306 -u root -p password -d test \
   -e mysql -t query -q "SELECT 1"
 ```
 
 ## Maintenance Notes
-- After modifying `OneClient.java`, `DBConfig.java`, `TesterFactory.java`, or `build.gradle`, sync `dbclient-core`.
+- After modifying `DBClient.java`, `DBConfig.java`, `TesterFactory.java`, or `build.gradle`, sync `dbclient-core`.
 - After modifying an engine alias, dependency, or special parameter, sync the corresponding `dbclient-engine-*` skill.
 - When adding a new engine, sync both `dbclient-add-engine` and the relevant engine-family skill.

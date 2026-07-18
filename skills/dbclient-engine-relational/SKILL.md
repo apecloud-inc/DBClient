@@ -85,7 +85,7 @@ implementation 'ru.yandex.clickhouse:clickhouse-jdbc:0.3.2'
 ## Minimal Verification Command (MySQL Example)
 
 ```bash
-java -jar build/libs/oneclient-1.0-all.jar \
+java -jar build/libs/dbclient-1.0-all.jar \
   -h 127.0.0.1 -P 3306 -u root -p password -d test \
   -e mysql -t query -q "SELECT 1"
 ```

@@ -2,4 +2,4 @@
 
 echo "$@"
 
-java -jar oneclient-1.0-all.jar "$@"
+java -jar dbclient-1.0-all.jar "$@"

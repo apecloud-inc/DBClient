@@ -23,7 +23,7 @@ description: >
 
 ## Symptom: `Invalid numeric parameter`
 
-- Usually a missing or non-numeric `-P` port. `OneClient` does not default the port; it must be supplied on the CLI.
+- Usually a missing or non-numeric `-P` port. `DBClient` does not default the port; it must be supplied on the CLI.
 
 ## Symptom: Connection refused / timeout
 
@@ -36,7 +36,7 @@ description: >
 
 - The driver dependency is missing or not packaged. Run `gradle shadowJar` and inspect the jar contents:
   ```bash
-  jar tf build/libs/oneclient-1.0-all.jar | grep -i mysql
+  jar tf build/libs/dbclient-1.0-all.jar | grep -i mysql
   ```
 
 ## Symptom: Results look wrong (empty / garbled / wrong format)
@@ -56,8 +56,8 @@ description: >
 
 ```bash
 # Add a temporary log or breakpoint in TesterFactory.createTester()
-# Or run with a minimal query and check the connection information printed by OneClient
-java -jar build/libs/oneclient-1.0-all.jar \
+# Or run with a minimal query and check the connection information printed by DBClient
+java -jar build/libs/dbclient-1.0-all.jar \
   -h 127.0.0.1 -P <port> -u <user> -p <pass> \
   -e <dbtype> -t query -q "SELECT 1"
 ```
@@ -66,7 +66,7 @@ java -jar build/libs/oneclient-1.0-all.jar \
 
 | File | What to inspect |
 |---|---|
-| `src/main/java/OneClient.java` | Argument parsing and validation exceptions |
+| `src/main/java/DBClient.java` | Argument parsing and validation exceptions |
 | `src/main/java/com/apecloud/dbtester/commons/TesterFactory.java` | dbType -> Tester mapping |
 | `src/main/java/com/apecloud/dbtester/commons/DBConfig.java` | Field defaults and validation rules |
 | `src/main/java/com/apecloud/dbtester/commons/TestExecutor.java` | testType dispatch and result formatting |
@@ -74,4 +74,4 @@ java -jar build/libs/oneclient-1.0-all.jar \
 
 ## Maintenance Notes
 - When adding a new failure mode, add it here.
-- When changing error messages in `OneClient.java`, `TesterFactory.java`, or `TestExecutor.java`, keep the symptom strings in this skill in sync.
+- When changing error messages in `DBClient.java`, `TesterFactory.java`, or `TestExecutor.java`, keep the symptom strings in this skill in sync.

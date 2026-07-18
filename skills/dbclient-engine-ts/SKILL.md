@@ -36,7 +36,7 @@ implementation 'com.taosdata.jdbc:taos-jdbcdriver:3.3.0'
 ## Minimal Verification Command (InfluxDB Example)
 
 ```bash
-java -jar build/libs/oneclient-1.0-all.jar \
+java -jar build/libs/dbclient-1.0-all.jar \
   -h 127.0.0.1 -P 8086 -u admin -p password -d test \
   -e influxdb -t query -q "SHOW DATABASES"
 ```

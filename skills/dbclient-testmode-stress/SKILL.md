@@ -47,7 +47,7 @@ String connectionStress(int connections, int duration);
 ## Minimal Example
 
 ```bash
-java -jar build/libs/oneclient-1.0-all.jar \
+java -jar build/libs/dbclient-1.0-all.jar \
   -h 127.0.0.1 -P 3306 -u root -p password \
   -e mysql -t connectionstress -c 200 -s 30
 ```

@@ -1,6 +1,6 @@
 # DBClient
 
-A unified database client tool for accessing various databases in KubeBlocks and other environments. DBClient provides a comprehensive command-line interface named **OneClient** that supports basic operations and advanced testing capabilities including connection stress tests, benchmarks, and query execution.
+A unified database client tool for accessing various databases in KubeBlocks and other environments. DBClient provides a comprehensive command-line interface named **DBClient** that supports basic operations and advanced testing capabilities including connection stress tests, benchmarks, and query execution.
 
 ## Features
 
@@ -90,7 +90,7 @@ cd DBClient
 gradle build
 
 # The built JAR file will be available at:
-./build/libs/oneclient-1.0-all.jar
+./build/libs/dbclient-1.0-all.jar
 ```
 
 ### Requirements
@@ -103,7 +103,7 @@ gradle build
 ### Basic Command Structure
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar [OPTIONS]
+java -jar ./build/libs/dbclient-1.0-all.jar [OPTIONS]
 ```
 
 ### Required Parameters
@@ -145,7 +145,7 @@ java -jar ./build/libs/oneclient-1.0-all.jar [OPTIONS]
 Execute a query on PostgreSQL:
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   --host=127.0.0.1 \
   --user=postgres \
   --database=postgres \
@@ -179,7 +179,7 @@ Query: SELECT * FROM pg_user LIMIT 1
 Test maximum connections with PostgreSQL:
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   --host=127.0.0.1 \
   --user=postgres \
   --database=postgres \
@@ -211,7 +211,7 @@ Duration: 60 seconds
 Or using Gradle:
 
 ```bash
-gradle runOneclient --args="--password='mysecretpassword' --port=5432 --database=postgres --user=postgres --dbtype=postgresql --test=connectionstress --connections=10"
+gradle runDBClient --args="--password='mysecretpassword' --port=5432 --database=postgres --user=postgres --dbtype=postgresql --test=connectionstress --connections=10"
 ```
 
 ### 3. Run Benchmark Test
@@ -219,7 +219,7 @@ gradle runOneclient --args="--password='mysecretpassword' --port=5432 --database
 Execute benchmark with concurrent queries:
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   --host=127.0.0.1 \
   --user=postgres \
   --database=postgres \
@@ -254,7 +254,7 @@ Query: SELECT * FROM users WHERE id = 1
 ### 4. MySQL Query Example
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   --host=127.0.0.1 \
   --user=root \
   --database=testdb \
@@ -268,7 +268,7 @@ java -jar ./build/libs/oneclient-1.0-all.jar \
 ### 5. MongoDB Query Example
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   --host=127.0.0.1 \
   --user=admin \
   --database=testdb \
@@ -282,7 +282,7 @@ java -jar ./build/libs/oneclient-1.0-all.jar \
 ### 6. Redis Query Example
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   --host=127.0.0.1 \
   --password=redispassword \
   --test=query \
@@ -296,7 +296,7 @@ java -jar ./build/libs/oneclient-1.0-all.jar \
 Continuously execute queries with specified duration and interval:
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   --host=127.0.0.1 \
   --user=postgres \
   --database=postgres \
@@ -470,7 +470,7 @@ When accessing databases from different clusters or external environments:
 ```
 DBClient/
 ├── src/main/java/
-│   ├── OneClient.java              # Main entry point
+│   ├── DBClient.java              # Main entry point
 │   └── com/apecloud/dbtester/
 │       ├── commons/                # Common utilities and interfaces
 │       │   ├── DBConfig.java
