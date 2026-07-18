@@ -86,7 +86,7 @@ Reminder: keep the alias lists in #2 and #3 identical, otherwise `config.build()
 - Exclude conflicting transitive dependencies when needed (see Hive example in `dbclient-engine-storage`).
 - `shadowJar` already excludes signature files and merges service files; verify with:
   ```bash
-  jar tf build/libs/oneclient-1.0-all.jar | grep -i xxx
+  jar tf build/libs/dbclient-1.0-all.jar | grep -i xxx
   ```
 
 ## Smoke Test Sequence
@@ -96,17 +96,17 @@ Reminder: keep the alias lists in #2 and #3 identical, otherwise `config.build()
 gradle shadowJar
 
 # 1. Query smoke test
-java -jar build/libs/oneclient-1.0-all.jar \
+java -jar build/libs/dbclient-1.0-all.jar \
   -h 127.0.0.1 -P <port> -u <user> -p <pass> -d <db> \
   -e xxx -t query -q "<minimal query>"
 
 # 2. Connection stress smoke test
-java -jar build/libs/oneclient-1.0-all.jar \
+java -jar build/libs/dbclient-1.0-all.jar \
   -h 127.0.0.1 -P <port> -u <user> -p <pass> \
   -e xxx -t connectionstress -c 50 -s 10
 
 # 3. Benchmark smoke test
-java -jar build/libs/oneclient-1.0-all.jar \
+java -jar build/libs/dbclient-1.0-all.jar \
   -h 127.0.0.1 -P <port> -u <user> -p <pass> -d <db> \
   -e xxx -t benchmark -q "<minimal query>" -i 1000 -m 10
 ```

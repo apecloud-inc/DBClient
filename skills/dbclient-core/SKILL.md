@@ -12,7 +12,7 @@ description: >
 
 | File | Responsibility |
 |---|---|
-| `src/main/java/OneClient.java` | CLI entry: parses arguments, builds DBConfig, invokes TestExecutor |
+| `src/main/java/DBClient.java` | CLI entry: parses arguments, builds DBConfig, invokes TestExecutor |
 | `src/main/java/com/apecloud/dbtester/commons/DBConfig.java` | Configuration object (Builder pattern) and whitelist validation |
 | `src/main/java/com/apecloud/dbtester/commons/TesterFactory.java` | Creates the matching Tester from dbType |
 | `src/main/java/com/apecloud/dbtester/commons/TestExecutor.java` | Dispatches execution by testType |
@@ -106,7 +106,7 @@ Result formatting has special branches for MongoDB and Redis; all others are pri
 ## Maintenance Notes
 
 Sync this skill when modifying any of the following:
-- `OneClient.java`: argument parsing and defaults
+- `DBClient.java`: argument parsing and defaults
 - `DBConfig.java`: fields, Builder, validation whitelist
 - `TesterFactory.java`: dbType mapping
 - `TestExecutor.java`: test-type dispatching and result formatting

@@ -1,8 +1,8 @@
-# DBClient (OneClient) User Guide
+# DBClient (DBClient) User Guide
 
 ## 1. Introduction
 
-DBClient (OneClient) is a unified Java-based database client tool designed for accessing databases in KubeBlocks and other environments under various network conditions. This command-line tool supports connection testing, stress testing, benchmark testing, and query testing for 30+ database types.
+DBClient (DBClient) is a unified Java-based database client tool designed for accessing databases in KubeBlocks and other environments under various network conditions. This command-line tool supports connection testing, stress testing, benchmark testing, and query testing for 30+ database types.
 
 ## 2. Supported Database Types
 
@@ -112,7 +112,7 @@ cd DBClient
 gradle build
 
 # Generated JAR file location
-./build/libs/oneclient-1.0-all.jar
+./build/libs/dbclient-1.0-all.jar
 ```
 
 ### 4.3 Docker Build
@@ -172,7 +172,7 @@ docker build -f docker/Dockerfile -t apecloud/dbclient:latest .
 ### 6.1 MySQL Query Test
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   -e mysql -h localhost -P 3306 -u root -p password \
   -d testdb -t query \
   -q "SELECT * FROM users LIMIT 10"
@@ -199,7 +199,7 @@ Query: SELECT * FROM users LIMIT 10
 ### 6.2 PostgreSQL Connection Stress Test
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   -e postgresql -h localhost -P 5432 -u postgres -p password \
   -t connectionstress -c 100 -s 60
 ```
@@ -222,14 +222,14 @@ Duration: 60 seconds
 
 Or using Gradle:
 ```bash
-gradle runOneclient --args="--password='password' --port=5432 --database=postgres \
+gradle runDBClient --args="--password='password' --port=5432 --database=postgres \
   --user=postgres --dbtype=postgresql --test=connectionstress --connections=100"
 ```
 
 ### 6.3 Redis Benchmark Test
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   -e redis -h localhost -P 6379 \
   -t benchmark -q "GET mykey" -i 1000 -m 10
 ```
@@ -253,7 +253,7 @@ Query: GET mykey
 ### 6.4 MongoDB Loop Execution Test
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   -e mongodb -h localhost -P 27017 -d testdb \
   -t executionloop -s 300 -I 10 \
   -q "db.collection.find({})"
@@ -278,7 +278,7 @@ Query: db.collection.find({})
 ### 6.5 ClickHouse Query Test
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   -e clickhouse -h localhost -P 8123 -u default -p password \
   -d default -t query \
   -q "SELECT count(*) FROM system.tables"
@@ -287,7 +287,7 @@ java -jar ./build/libs/oneclient-1.0-all.jar \
 ### 6.6 Kafka Message Test
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   -e kafka -h localhost -P 9092 \
   -t query -T my-topic \
   -q "SELECT * FROM topic"
@@ -296,7 +296,7 @@ java -jar ./build/libs/oneclient-1.0-all.jar \
 ### 6.7 MinIO Bucket Test
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   -e minio -h localhost -P 9000 -u admin -p password \
   -t query -B my-bucket \
   -q "LIST objects"
@@ -306,7 +306,7 @@ java -jar ./build/libs/oneclient-1.0-all.jar \
 
 **Oracle**: 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   -e oracle -h localhost -P 1521 -u system -p password \
   -d ORCLCDB -t query \
   -q "SELECT * FROM dual"
@@ -314,14 +314,14 @@ java -jar ./build/libs/oneclient-1.0-all.jar \
 
 **Elasticsearch**:
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   -e elasticsearch -h localhost -P 9200 \
   -t query -q "GET _cat/indices?v"
 ```
 
 **TDengine**:
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   -e tdengine -h localhost -P 6041 -u root -p password \
   -d log -t query \
   -q "SHOW DATABASES"
@@ -360,7 +360,7 @@ When applications are in different clusters or external environments:
 ### 7.3 Cross-Namespace Access Example
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   -e postgresql \
   -h mydb.database.svc.cluster.local \
   -P 5432 -u admin -p secret \
@@ -629,7 +629,7 @@ docker run --rm --network host ...
 **Solutions**:
 ```bash
 # Increase JVM heap memory
-java -Xmx2g -jar ./build/libs/oneclient-1.0-all.jar ...
+java -Xmx2g -jar ./build/libs/dbclient-1.0-all.jar ...
 
 # Reduce concurrency or connections
 --connections=50 --concurrency=5
@@ -639,7 +639,7 @@ java -Xmx2g -jar ./build/libs/oneclient-1.0-all.jar ...
 **Error Message**: `ClassNotFoundException`
 
 **Solution**:
-- Ensure using the fully built JAR file (oneclient-1.0-all.jar)
+- Ensure using the fully built JAR file (dbclient-1.0-all.jar)
 - Check if build.gradle includes the driver dependency for the corresponding database
 
 ### Debugging Tips
@@ -678,7 +678,7 @@ java -jar ... -a oracle ...
 ### 14.2 Redis Sentinel Mode
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   -e redis -h sentinel-host -P 26379 \
   -M mymaster -S sentinel-password \
   -t query -q "PING"
@@ -692,7 +692,7 @@ Write a script to batch test multiple databases:
 #!/bin/bash
 for db in mysql postgresql mongodb; do
   echo "Testing $db..."
-  java -jar ./build/libs/oneclient-1.0-all.jar \
+  java -jar ./build/libs/dbclient-1.0-all.jar \
     -e $db -h localhost -P ${PORTS[$db]} \
     -u ${USERS[$db]} -p ${PASSWORDS[$db]} \
     -t query -q "SELECT 1"
@@ -718,7 +718,7 @@ top & java -jar ... -t connectionstress -c 100
 ```
 DBClient/
 ├── src/main/java/
-│   ├── OneClient.java              # Main entry point
+│   ├── DBClient.java              # Main entry point
 │   └── com/apecloud/dbtester/
 │       ├── commons/                # Common utilities and interfaces
 │       │   ├── DBConfig.java

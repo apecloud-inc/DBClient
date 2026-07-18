@@ -2,7 +2,7 @@
 
 ## 1. 简介
 
-DBClient（OneClient）是一个基于 Java 开发的统一数据库客户端工具，支持在多种网络环境下访问 KubeBlocks 中的数据库。该工具通过命令行参数配置，可以对 30+ 种数据库执行连接测试、压力测试、基准测试和查询测试。
+DBClient（DBClient）是一个基于 Java 开发的统一数据库客户端工具，支持在多种网络环境下访问 KubeBlocks 中的数据库。该工具通过命令行参数配置，可以对 30+ 种数据库执行连接测试、压力测试、基准测试和查询测试。
 
 ## 2. 支持的数据库类型
 
@@ -112,7 +112,7 @@ cd DBClient
 gradle build
 
 # 生成的 JAR 文件位置
-./build/libs/oneclient-1.0-all.jar
+./build/libs/dbclient-1.0-all.jar
 ```
 
 ### 4.3 Docker 构建
@@ -172,7 +172,7 @@ docker build -f docker/Dockerfile -t apecloud/dbclient:latest .
 ### 6.1 MySQL 查询测试
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   -e mysql -h localhost -P 3306 -u root -p password \
   -d testdb -t query \
   -q "SELECT * FROM users LIMIT 10"
@@ -199,7 +199,7 @@ Query: SELECT * FROM users LIMIT 10
 ### 6.2 PostgreSQL 连接压力测试
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   -e postgresql -h localhost -P 5432 -u postgres -p password \
   -t connectionstress -c 100 -s 60
 ```
@@ -222,14 +222,14 @@ Duration: 60 seconds
 
 或使用 Gradle：
 ```bash
-gradle runOneclient --args="--password='password' --port=5432 --database=postgres \
+gradle runDBClient --args="--password='password' --port=5432 --database=postgres \
   --user=postgres --dbtype=postgresql --test=connectionstress --connections=100"
 ```
 
 ### 6.3 Redis 基准测试
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   -e redis -h localhost -P 6379 \
   -t benchmark -q "GET mykey" -i 1000 -m 10
 ```
@@ -253,7 +253,7 @@ Query: GET mykey
 ### 6.4 MongoDB 循环执行测试
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   -e mongodb -h localhost -P 27017 -d testdb \
   -t executionloop -s 300 -I 10 \
   -q "db.collection.find({})"
@@ -278,7 +278,7 @@ Query: db.collection.find({})
 ### 6.5 ClickHouse 查询测试
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   -e clickhouse -h localhost -P 8123 -u default -p password \
   -d default -t query \
   -q "SELECT count(*) FROM system.tables"
@@ -287,7 +287,7 @@ java -jar ./build/libs/oneclient-1.0-all.jar \
 ### 6.6 Kafka 消息测试
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   -e kafka -h localhost -P 9092 \
   -t query -T my-topic \
   -q "SELECT * FROM topic"
@@ -296,7 +296,7 @@ java -jar ./build/libs/oneclient-1.0-all.jar \
 ### 6.7 MinIO 存储桶测试
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   -e minio -h localhost -P 9000 -u admin -p password \
   -t query -B my-bucket \
   -q "LIST objects"
@@ -306,7 +306,7 @@ java -jar ./build/libs/oneclient-1.0-all.jar \
 
 **Oracle**: 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   -e oracle -h localhost -P 1521 -u system -p password \
   -d ORCLCDB -t query \
   -q "SELECT * FROM dual"
@@ -314,14 +314,14 @@ java -jar ./build/libs/oneclient-1.0-all.jar \
 
 **Elasticsearch**:
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   -e elasticsearch -h localhost -P 9200 \
   -t query -q "GET _cat/indices?v"
 ```
 
 **TDengine**:
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   -e tdengine -h localhost -P 6041 -u root -p password \
   -d log -t query \
   -q "SHOW DATABASES"
@@ -360,7 +360,7 @@ java -jar ./build/libs/oneclient-1.0-all.jar \
 ### 7.3 跨命名空间访问示例
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   -e postgresql \
   -h mydb.database.svc.cluster.local \
   -P 5432 -u admin -p secret \
@@ -629,7 +629,7 @@ docker run --rm --network host ...
 **解决方法**：
 ```bash
 # 增加 JVM 堆内存
-java -Xmx2g -jar ./build/libs/oneclient-1.0-all.jar ...
+java -Xmx2g -jar ./build/libs/dbclient-1.0-all.jar ...
 
 # 减少并发数或连接数
 --connections=50 --concurrency=5
@@ -639,7 +639,7 @@ java -Xmx2g -jar ./build/libs/oneclient-1.0-all.jar ...
 **错误信息**：`ClassNotFoundException`
 
 **解决方法**：
-- 确保使用完整构建的 JAR 文件（oneclient-1.0-all.jar）
+- 确保使用完整构建的 JAR 文件（dbclient-1.0-all.jar）
 - 检查 build.gradle 中是否包含对应数据库的驱动依赖
 
 ### 调试技巧
@@ -678,7 +678,7 @@ java -jar ... -a oracle ...
 ### 14.2 Redis Sentinel 模式
 
 ```bash
-java -jar ./build/libs/oneclient-1.0-all.jar \
+java -jar ./build/libs/dbclient-1.0-all.jar \
   -e redis -h sentinel-host -P 26379 \
   -M mymaster -S sentinel-password \
   -t query -q "PING"
@@ -692,7 +692,7 @@ java -jar ./build/libs/oneclient-1.0-all.jar \
 #!/bin/bash
 for db in mysql postgresql mongodb; do
   echo "Testing $db..."
-  java -jar ./build/libs/oneclient-1.0-all.jar \
+  java -jar ./build/libs/dbclient-1.0-all.jar \
     -e $db -h localhost -P ${PORTS[$db]} \
     -u ${USERS[$db]} -p ${PASSWORDS[$db]} \
     -t query -q "SELECT 1"
@@ -718,7 +718,7 @@ top & java -jar ... -t connectionstress -c 100
 ```
 DBClient/
 ├── src/main/java/
-│   ├── OneClient.java              # 主入口
+│   ├── DBClient.java              # 主入口
 │   └── com/apecloud/dbtester/
 │       ├── commons/                # 通用工具和接口
 │       │   ├── DBConfig.java

@@ -1,6 +1,6 @@
 # DBClient Docker Image
 
-This directory contains the Docker configuration for building and running the DBClient (OneClient) container image.
+This directory contains the Docker configuration for building and running the DBClient (DBClient) container image.
 
 ## Building the Image
 

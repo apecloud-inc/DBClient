@@ -11,7 +11,7 @@ description: >
 ## Call Chain
 
 ```
-OneClient.createConfig()
+DBClient.createConfig()
   -> TestExecutor.executeTest(tester, config)
     -> tester.connect()
     -> tester.execute(connection, query)
@@ -48,7 +48,7 @@ OneClient.createConfig()
 ## Minimal Example
 
 ```bash
-java -jar build/libs/oneclient-1.0-all.jar \
+java -jar build/libs/dbclient-1.0-all.jar \
   -h 127.0.0.1 -P 3306 -u root -p password -d test \
   -e mysql -t query -q "SELECT 1 AS one"
 ```

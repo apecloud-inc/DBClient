@@ -52,7 +52,7 @@ implementation 'org.apache.rocketmq:rocketmq-tools:4.9.8'
 ## Minimal Verification Command (Kafka Example)
 
 ```bash
-java -jar build/libs/oneclient-1.0-all.jar \
+java -jar build/libs/dbclient-1.0-all.jar \
   -h 127.0.0.1 -P 9092 -e kafka -t query \
   -T my-topic -q "test-message"
 ```

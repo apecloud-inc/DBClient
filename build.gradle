@@ -13,14 +13,14 @@ plugins {
     id 'application'
 }
 
-mainClassName = 'OneClient'
+mainClassName = 'DBClient'
 
 shadowJar {
     // 将依赖打包进 JAR
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     
     // 配置输出的文件名
-    archiveBaseName.set('oneclient')
+    archiveBaseName.set('dbclient')
     archiveClassifier.set('all')
     archiveVersion.set('1.0')
     
@@ -201,9 +201,9 @@ dependencies {
 }
 
 
-task(runOneClient, dependsOn: 'classes', type: JavaExec) {
-    main = 'OneClient'
+task(runDBClient, dependsOn: 'classes', type: JavaExec) {
+    main = 'DBClient'
     classpath = sourceSets.main.runtimeClasspath
     args 'ApeCloud'
-    systemProperty 'oneclient.message', 'Hello '
+    systemProperty 'dbclient.message', 'Hello '
 }

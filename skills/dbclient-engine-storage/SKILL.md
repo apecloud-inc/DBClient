@@ -53,7 +53,7 @@ implementation 'com.alibaba:fastjson:2.0.57'
 ## Minimal Verification Command (MongoDB Example)
 
 ```bash
-java -jar build/libs/oneclient-1.0-all.jar \
+java -jar build/libs/dbclient-1.0-all.jar \
   -h 127.0.0.1 -P 27017 -u admin -p password -d test \
   -e mongodb -t query -q "db.collection.find().limit(1)"
 ```

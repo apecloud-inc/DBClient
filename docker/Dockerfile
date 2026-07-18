@@ -24,7 +24,7 @@ RUN apt-get update && apt-get install -y tzdata
 
 WORKDIR /app
 
-COPY --from=builder /app/build/libs/oneclient-1.0-all.jar .
+COPY --from=builder /app/build/libs/dbclient-1.0-all.jar .
 
 ADD ./docker/run.sh /run.sh
 

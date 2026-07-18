@@ -34,7 +34,7 @@ implementation 'org.apache.httpcomponents.client5:httpclient5:5.2.1'
 ## Minimal Verification Command (Elasticsearch 8 Example)
 
 ```bash
-java -jar build/libs/oneclient-1.0-all.jar \
+java -jar build/libs/dbclient-1.0-all.jar \
   -h 127.0.0.1 -P 9200 -e elasticsearch -t query \
   -q '{ "query": { "match_all": {} } }'
 ```

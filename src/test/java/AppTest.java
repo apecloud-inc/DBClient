@@ -6,7 +6,7 @@ import static org.junit.Assert.*;
 
 public class AppTest {
     @Test public void testAppHasAGreeting() {
-        OneClient classUnderTest = new OneClient();
+        DBClient classUnderTest = new DBClient();
         assertNotNull("app should have a greeting", classUnderTest.getGreeting());
     }
 }

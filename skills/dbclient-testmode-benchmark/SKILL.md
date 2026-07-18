@@ -48,7 +48,7 @@ Most `bench()` methods use:
 ## Minimal Example
 
 ```bash
-java -jar build/libs/oneclient-1.0-all.jar \
+java -jar build/libs/dbclient-1.0-all.jar \
   -h 127.0.0.1 -P 3306 -u root -p password -d test \
   -e mysql -t benchmark -q "SELECT 1" -i 10000 -m 50
 ```

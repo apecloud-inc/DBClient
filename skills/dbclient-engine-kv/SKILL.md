@@ -46,7 +46,7 @@ implementation 'org.apache.zookeeper:zookeeper:3.6.3'
 Example:
 
 ```bash
-java -jar build/libs/oneclient-1.0-all.jar \
+java -jar build/libs/dbclient-1.0-all.jar \
   -h 127.0.0.1 -P 6379 -t query -e redis -q "GET mykey"
 ```
 

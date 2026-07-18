@@ -4,7 +4,7 @@ import com.apecloud.dbtester.commons.TestExecutor;
 import com.apecloud.dbtester.commons.TesterFactory;
 import org.apache.commons.cli.*;
 
-public class OneClient {
+public class DBClient {
     public static void main(String[] args) throws Exception {
         Options options = new Options();
         // 基本数据库配置选项
@@ -40,7 +40,7 @@ public class OneClient {
             executeTest(config);
         } catch (ParseException e) {
             System.err.println("Failed to parse command line arguments: " + e.getMessage());
-            new HelpFormatter().printHelp("OneClient", options);
+            new HelpFormatter().printHelp("DBClient", options);
             return;
         }
     }
