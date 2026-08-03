@@ -66,6 +66,7 @@ public class TesterFactory {
                 return new MilvusTester(config);
             // Minio
             case "minio":
+            case "rustfs":
                 return new MinioTester(config);
             // MogDB
             case "mogdb":

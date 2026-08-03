@@ -418,6 +418,7 @@ public class DBConfig {
                 case "redis":
                 case "redis-cluster":
                 case "rocketmq":
+                case "rustfs":
                 case "selectdb":
                 case "sentinelredis":
                 case "sr":
