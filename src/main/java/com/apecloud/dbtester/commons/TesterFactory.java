@@ -43,6 +43,8 @@ public class TesterFactory {
             // Hadoop
             case "hadoop":
                 return new HadoopTester(config);
+            case "he3sql":
+                return new He3SQLTester(config);
             // Hive
             case "hive":
                 return new HiveTester(config);
@@ -101,7 +103,6 @@ public class TesterFactory {
             case "postgres":
             case "postgresql":
             case "opentenbase":
-            case "he3sql":
                 return new PostgreSQLTester(config);
             // Pulsar
             case "pulsar":
