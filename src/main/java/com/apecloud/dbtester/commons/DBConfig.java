@@ -386,6 +386,7 @@ public class DBConfig {
                 case "greptime":
                 case "greptimedb":
                 case "hadoop":
+                case "he3sql":
                 case "hive":
                 case "influx":
                 case "influxdb":

@@ -101,6 +101,7 @@ public class TesterFactory {
             case "postgres":
             case "postgresql":
             case "opentenbase":
+            case "he3sql":
                 return new PostgreSQLTester(config);
             // Pulsar
             case "pulsar":
