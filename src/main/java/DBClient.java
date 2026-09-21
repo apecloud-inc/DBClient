@@ -150,6 +150,8 @@ public class DBClient {
                     switch (config.getDbType().toLowerCase()) {
                         case "redis":
                         case "redis-cluster":
+                        case "sentinelvalkey":
+                        case "valkey":
                             System.out.printf("Key: %s%n", config.getKey());
                             break;
                         case "kafka":

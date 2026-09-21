@@ -1,7 +1,7 @@
 ---
 name: dbclient-engine-kv
 description: >
-  KV / coordination engines in DBClient: Redis, RedisCluster, Redis Sentinel,
+  KV / coordination engines in DBClient: Redis, Valkey, RedisCluster, Redis Sentinel,
   Camellia-Proxy, Etcd, and Zookeeper. Use this skill when adding, debugging,
   or modifying such a Tester.
 ---
@@ -12,7 +12,7 @@ description: >
 
 | Engine | Tester | Aliases |
 |---|---|---|
-| Redis | `RedisTester.java` | `redis`, `sentinelredis`, `camellia-proxy`, `camellia-redis-proxy` |
+| Redis / Valkey | `RedisTester.java` | `redis`, `sentinelredis`, `valkey`, `sentinelvalkey`, `camellia-proxy`, `camellia-redis-proxy` |
 | Redis Cluster | `RedisClusterTester.java` | `redis-cluster` |
 | Etcd | `EtcdTester.java` | `etcd` |
 | Zookeeper | `ZookeeperTester.java` | `zk`, `zookeeper` |

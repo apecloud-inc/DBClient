@@ -108,10 +108,16 @@ public class TestExecutor {
                         throw new IOException("Query result is not a MongoDB result");
                     }
                 }
-                else if (dbType.equalsIgnoreCase("redis")) {
+                else if (dbType.equalsIgnoreCase("redis")
+                        || dbType.equalsIgnoreCase("sentinelredis")
+                        || dbType.equalsIgnoreCase("sentinelvalkey")
+                        || dbType.equalsIgnoreCase("valkey")) {
                     List<String> results = queryResult.getRawResults();
 
-                    if (results == null || results.isEmpty()) {
+                    if (results == null) {
+                        return "Update count: " + queryResult.getUpdateCount();
+                    }
+                    if (results.isEmpty()) {
                         return "No results found (key may not exist).";
                     }
 

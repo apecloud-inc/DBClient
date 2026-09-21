@@ -527,7 +527,7 @@ docker run --rm --network host apecloud/dbclient:latest \
 
 ### NoSQL
 - `mongodb`, `mongo`
-- `redis`, `sentinelredis`
+- `redis`, `sentinelredis`, `valkey`, `sentinelvalkey`
 
 ### 搜索引擎
 - `elasticsearch`, `es`, `elastic`
