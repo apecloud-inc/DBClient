@@ -67,6 +67,7 @@ public class TesterFactory {
             // Minio
             case "minio":
             case "rustfs":
+            case "seaweedfs":
                 return new MinioTester(config);
             // MogDB
             case "mogdb":
