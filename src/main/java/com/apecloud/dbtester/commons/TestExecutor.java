@@ -117,6 +117,15 @@ public class TestExecutor {
 
                     return String.join("\n", results);
                 }
+                else if (dbType.equalsIgnoreCase("minio")
+                        || dbType.equalsIgnoreCase("rustfs")
+                        || dbType.equalsIgnoreCase("seaweedfs")) {
+                    List<String> results = queryResult.getRawResults();
+                    if (results == null || results.isEmpty()) {
+                        return "OK";
+                    }
+                    return String.join("\n", results);
+                }
                 else if (queryResult.hasResultSet()) {
                     ResultSet rs = queryResult.getResultSet();
                     if (rs.getMetaData() != null) {

@@ -14,6 +14,7 @@ description: >
 |---|---|---|
 | MongoDB | `MongoDBTester.java` | `mongo`, `mongodb` |
 | MinIO | `MinioTester.java` | `minio` |
+| SeaweedFS | `MinioTester.java` | `seaweedfs` |
 | Hadoop | `HadoopTester.java` | `hadoop` |
 | Hive | `HiveTester.java` | `hive` |
 | Vault | `VaultTester.java` | `vault` |
@@ -47,6 +48,7 @@ implementation 'com.alibaba:fastjson:2.0.57'
 
 - MongoDB uses `MongoDBResult` to wrap `List<Document>`; `TestExecutor.formatQueryResult()` has a special JSON branch for `mongodb`.
 - MinIO is object storage; the query parameter usually follows bucket/key semantics; `-B` / `--bucket` and `-k` / `--key` are the dedicated parameters.
+- SeaweedFS reuses `MinioTester` over the S3 API (port `8333`).
 - Hive excludes hadoop/hbase to avoid conflicts with `hadoop-client`.
 - Nebula is a graph database; its connection and query semantics differ from JDBC.
 

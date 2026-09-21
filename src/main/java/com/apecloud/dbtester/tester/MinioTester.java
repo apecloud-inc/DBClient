@@ -488,7 +488,18 @@ public class MinioTester implements DatabaseTester {
 
         @Override
         public boolean hasResultSet() {
-            return results != null;
+            return false;
+        }
+
+        @Override
+        public List<String> getRawResults() {
+            if (results != null) {
+                return results;
+            }
+            if (message != null) {
+                return java.util.Collections.singletonList(message);
+            }
+            return java.util.Collections.emptyList();
         }
 
         public String getMessage() {
