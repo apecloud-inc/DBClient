@@ -396,7 +396,7 @@ Use these values for the `--dbtype` parameter:
 - **Oracle**: `oracle`
 - **SQL Server**: `sqlserver`, `mssql`
 - **MongoDB**: `mongodb`, `mongo`
-- **Redis**: `redis`, `sentinelredis`
+- **Redis / Valkey**: `redis`, `sentinelredis`, `valkey`, `sentinelvalkey`
 - **Elasticsearch**: `elasticsearch`, `elasticsearch7`, `elasticsearch8`, `es`, `elastic`
 - **OpenSearch**: `opensearch`
 - **ClickHouse**: `clickhouse`, `ck`

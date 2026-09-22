@@ -120,6 +120,8 @@ public class TesterFactory {
             case "camellia-redis-proxy":
             case "redis":
             case "sentinelredis":
+            case "sentinelvalkey":
+            case "valkey":
                 return new RedisTester(config);
             case "redis-cluster":
                 return new RedisClusterTester(config);

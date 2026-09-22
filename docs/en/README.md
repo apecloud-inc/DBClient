@@ -527,7 +527,7 @@ Use these values for the `--dbtype` parameter:
 
 ### NoSQL
 - `mongodb`, `mongo`
-- `redis`, `sentinelredis`
+- `redis`, `sentinelredis`, `valkey`, `sentinelvalkey`
 
 ### Search Engines
 - `elasticsearch`, `es`, `elastic`

@@ -27,7 +27,7 @@ Entry point: `src/main/java/DBClient.java`
 | Skill | Covered engines |
 |---|---|
 | `dbclient-engine-relational` | MySQL / MariaDB / TiDB / OceanBase / PolarDB-X / GreatSQL / GreatDB / GreptimeDB / FoxLake / PostgreSQL / OpenTenBase / Oracle / SQLServer / Dameng / GaussDB / OpenGauss / Kingbase / Vastbase / MogDB / Gbase8c / ClickHouse / StarRocks / Doris / SelectDB |
-| `dbclient-engine-kv` | Redis / RedisCluster / Redis Sentinel / Camellia-Redis-Proxy / Etcd / Zookeeper |
+| `dbclient-engine-kv` | Redis / Valkey / RedisCluster / Redis Sentinel / Camellia-Redis-Proxy / Etcd / Zookeeper |
 | `dbclient-engine-mq` | Kafka / Pulsar / RabbitMQ / RocketMQ |
 | `dbclient-engine-search` | Elasticsearch 8.x / OpenSearch |
 | `dbclient-engine-vector` | Milvus / Qdrant |

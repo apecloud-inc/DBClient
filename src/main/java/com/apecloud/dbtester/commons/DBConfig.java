@@ -422,6 +422,7 @@ public class DBConfig {
                 case "seaweedfs":
                 case "selectdb":
                 case "sentinelredis":
+                case "sentinelvalkey":
                 case "sr":
                 case "sqlserver":
                 case "starrocks":
@@ -431,6 +432,7 @@ public class DBConfig {
                 case "tidb":
                 case "vastbase":
                 case "vault":
+                case "valkey":
                 case "victoria-logs":
                 case "victorialogs":
                 case "victoria-metrics":
