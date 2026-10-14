@@ -78,6 +78,7 @@ public class DatabaseConnectionFactory {
             case "pg":
             case "postgresql":
             case "he3sql":
+            case "polardb-pg":
                 Class.forName("org.postgresql.Driver");
                 break;
             // TDEngine
@@ -138,6 +139,7 @@ public class DatabaseConnectionFactory {
             case "pg":
             case "postgresql":
             case "he3sql":
+            case "polardb-pg":
                 url = "jdbc:postgresql://" + host + ":" + port + "/" + database;
                 break;
             default:
