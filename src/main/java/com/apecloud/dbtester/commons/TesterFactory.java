@@ -105,6 +105,7 @@ public class TesterFactory {
             case "postgres":
             case "postgresql":
             case "opentenbase":
+            case "polardb-pg":
                 return new PostgreSQLTester(config);
             // Pulsar
             case "pulsar":

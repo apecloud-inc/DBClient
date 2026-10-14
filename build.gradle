@@ -82,7 +82,7 @@ dependencies {
     implementation 'mysql:mysql-connector-java:8.0.28'
 
     // This is for PostgreSQL Java connector
-    implementation 'org.postgresql:postgresql:42.0.0'
+    implementation 'org.postgresql:postgresql:42.7.0'
 
     // This is for MongoDB Java connector
     implementation 'org.mongodb:mongodb-driver-sync:4.6.1'
