@@ -102,6 +102,7 @@ public class TesterFactory {
                 return new OracleTester(config);
             // PostgreSQL
             case "pg":
+            case "pgpool":
             case "postgres":
             case "postgresql":
             case "opentenbase":

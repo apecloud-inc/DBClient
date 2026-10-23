@@ -409,6 +409,7 @@ public class DBConfig {
                 case "opentenbase":
                 case "oracle":
                 case "pg":
+                case "pgpool":
                 case "postgres":
                 case "postgresql":
                 case "polardbx":
