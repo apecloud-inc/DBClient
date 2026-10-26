@@ -123,17 +123,28 @@ public class DolphinDBTester implements DatabaseTester {
     @Override
     public String executionLoop(DatabaseConnection connection, String query, int duration, int interval,
                                 String database, String table) {
-        if (query == null || query.isEmpty()) {
-            throw new IllegalArgumentException("Query not specified for execution loop");
+        boolean ownWrite = query == null || query.isEmpty();
+        if (ownWrite) {
+            if (database == null || database.isEmpty()) {
+                database = "executions_loop";
+            }
+            if (table == null || table.isEmpty()) {
+                table = "executions_loop_table";
+            }
         }
         int successful = 0;
         int failed = 0;
         long end = System.currentTimeMillis() + duration * 1000L;
         long nextReport = System.currentTimeMillis();
         DatabaseConnection current = connection;
+        boolean prepared = !ownWrite;
         while (System.currentTimeMillis() < end) {
             try {
-                execute(current, query);
+                if (!prepared) {
+                    execute(current, prepareScript(database, table));
+                    prepared = true;
+                }
+                execute(current, ownWrite ? appendScript(database, table) : query);
                 successful++;
             } catch (IOException e) {
                 failed++;
@@ -156,7 +167,28 @@ public class DolphinDBTester implements DatabaseTester {
                 nextReport = now + Math.max(interval, 1) * 1000L;
             }
         }
-        return "Execution loop completed:\nSuccessful: " + successful + "\nFailed: " + failed;
+        return String.format("Total Executions: %d\n" +
+                        "Successful Executions: %d\n" +
+                        "Failed Executions: %d\n" +
+                        "Disconnection Counts: %d",
+                successful + failed, successful, failed, failed);
+    }
+
+    // ponytail: VALUE partition is 1..1, so every append uses id=1. Widen the scheme if ids must differ.
+    static String prepareScript(String database, String table) {
+        String dbPath = dbPath(database);
+        return "dbPath=\"" + dbPath + "\";"
+                + "if(existsDatabase(dbPath)){dropDatabase(dbPath)};"
+                + "db=database(dbPath,VALUE,1..1);"
+                + "db.createPartitionedTable(table(1:0,[\"id\",\"v\"],[INT,INT]),\"" + table + "\",\"id\")";
+    }
+
+    static String appendScript(String database, String table) {
+        return "loadTable(\"" + dbPath(database) + "\",\"" + table + "\").append!(table(1 as id,1 as v))";
+    }
+
+    private static String dbPath(String database) {
+        return database.startsWith("dfs://") ? database : "dfs://" + database;
     }
 
     private void executeBenchmark(DatabaseConnection connection, String query) throws IOException {
