@@ -37,6 +37,7 @@ DBClient (DBClient) is a unified Java-based database client tool designed for ac
 ### 2.4 Time-Series Databases
 - InfluxDB
 - TDengine
+- DolphinDB
 - VictoriaMetrics
 - VictoriaLogs
 - Loki
@@ -327,6 +328,14 @@ java -jar ./build/libs/dbclient-1.0-all.jar \
   -q "SHOW DATABASES"
 ```
 
+**DolphinDB**:
+```bash
+java -jar ./build/libs/dbclient-1.0-all.jar \
+  -e dolphindb -h localhost -P 8848 -u admin -p 123456 \
+  -t query \
+  -q "select 1 as val"
+```
+
 ## 7. Network Access Solutions
 
 ### 7.1 Access Within Same Kubernetes Cluster
@@ -537,6 +546,7 @@ Use these values for the `--dbtype` parameter:
 ### Time-Series Databases
 - `influxdb`, `influx`
 - `tdengine`, `td`, `taos`
+- `dolphindb`, `ddb`
 - `victoriametrics`, `vm`, `victoria-metrics`
 - `victorialogs`, `victoria-logs`
 - `loki`

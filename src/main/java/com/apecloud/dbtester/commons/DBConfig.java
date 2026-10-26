@@ -368,8 +368,10 @@ public class DBConfig {
                 case "clickhouse":
                 case "dameng":
                 case "damengdb":
+                case "ddb":
                 case "dm":
                 case "dmdb":
+                case "dolphindb":
                 case "doris":
                 case "elastic":
                 case "elasticsearch":

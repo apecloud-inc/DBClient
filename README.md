@@ -47,6 +47,7 @@ A unified database client tool for accessing various databases in KubeBlocks and
 ### Time-Series Databases
 - InfluxDB
 - TDengine
+- DolphinDB
 - VictoriaMetrics
 - VictoriaLogs
 - Loki
@@ -403,6 +404,7 @@ Use these values for the `--dbtype` parameter:
 - **Dameng**: `dameng`, `dm`, `dmdb`, `damengdb`
 - **InfluxDB**: `influxdb`, `influx`
 - **TDengine**: `tdengine`, `td`, `taos`
+- **DolphinDB**: `dolphindb`, `ddb`
 - **VictoriaMetrics**: `victoriametrics`, `vm`, `victoria-metrics`
 - **VictoriaLogs**: `victorialogs`, `victoria-logs`
 - **Kafka**: `kafka`

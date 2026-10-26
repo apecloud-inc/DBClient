@@ -17,6 +17,10 @@ public class TesterFactory {
             case "dm":
             case "dmdb":
                 return new DamengTester(config);
+            // DolphinDB
+            case "ddb":
+            case "dolphindb":
+                return new DolphinDBTester(config);
             // Doris
             case "doris":
                 return new DorisTester(config);

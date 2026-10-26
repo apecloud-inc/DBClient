@@ -124,7 +124,7 @@ The DBClient image supports 30+ database types including:
 - **Relational**: MySQL, PostgreSQL, Oracle, SQL Server, MariaDB, TiDB, OceanBase, GaussDB, etc.
 - **NoSQL**: MongoDB, Redis, Cassandra
 - **Search**: Elasticsearch, OpenSearch
-- **Time-Series**: InfluxDB, TDengine, VictoriaMetrics, VictoriaLogs
+- **Time-Series**: InfluxDB, TDengine, DolphinDB, VictoriaMetrics, VictoriaLogs
 - **Message Queues**: Kafka, RabbitMQ, RocketMQ, Pulsar
 - **Vector**: Milvus, Qdrant, Nebula
 - **Others**: ClickHouse, Doris, StarRocks, ZooKeeper, Etcd, MinIO, etc.

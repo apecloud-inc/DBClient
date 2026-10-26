@@ -37,6 +37,7 @@ DBClient（DBClient）是一个基于 Java 开发的统一数据库客户端工�
 ### 2.4 时序数据库
 - InfluxDB
 - TDengine
+- DolphinDB
 - VictoriaMetrics
 - VictoriaLogs
 - Loki
@@ -327,6 +328,14 @@ java -jar ./build/libs/dbclient-1.0-all.jar \
   -q "SHOW DATABASES"
 ```
 
+**DolphinDB**:
+```bash
+java -jar ./build/libs/dbclient-1.0-all.jar \
+  -e dolphindb -h localhost -P 8848 -u admin -p 123456 \
+  -t query \
+  -q "select 1 as val"
+```
+
 ## 7. 网络访问方案
 
 ### 7.1 同 Kubernetes 集群内访问
@@ -537,6 +546,7 @@ docker run --rm --network host apecloud/dbclient:latest \
 ### 时序数据库
 - `influxdb`, `influx`
 - `tdengine`, `td`, `taos`
+- `dolphindb`, `ddb`
 - `victoriametrics`, `vm`, `victoria-metrics`
 - `victorialogs`, `victoria-logs`
 - `loki`

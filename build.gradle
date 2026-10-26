@@ -51,6 +51,7 @@ sourceSets {
 
 // In this section you declare where to find the dependencies of your project
 repositories {
+    mavenCentral()
     // Use jcenter for resolving your dependencies.
     // You can declare any Maven/Ivy/file repository here.
     jcenter()
@@ -163,6 +164,12 @@ dependencies {
 
     // This is for TDengine connector
     implementation 'com.taosdata.jdbc:taos-jdbcdriver:3.3.0'
+
+    // DolphinDB calls net.jpountz.lz4. Exclude at.yawk.lz4 so it does not clash with Kafka's org.lz4.
+    implementation('com.dolphindb:jdbc:3.00.6.1') {
+        exclude group: 'at.yawk.lz4', module: 'lz4-java'
+        exclude group: 'org.slf4j', module: 'slf4j-simple'
+    }
 
     // This is for Solr connector
     // implementation 'org.apache.solr:solr-solrj:8.11.1'

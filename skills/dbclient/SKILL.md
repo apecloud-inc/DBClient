@@ -31,7 +31,7 @@ Entry point: `src/main/java/DBClient.java`
 | `dbclient-engine-mq` | Kafka / Pulsar / RabbitMQ / RocketMQ |
 | `dbclient-engine-search` | Elasticsearch 8.x / OpenSearch |
 | `dbclient-engine-vector` | Milvus / Qdrant |
-| `dbclient-engine-ts` | InfluxDB / TDengine / VictoriaMetrics / VictoriaLogs / Loki |
+| `dbclient-engine-ts` | InfluxDB / TDengine / DolphinDB / VictoriaMetrics / VictoriaLogs / Loki |
 | `dbclient-engine-storage` | MongoDB / MinIO / Hadoop / Hive / Vault / Nebula |
 
 ## Quick Build and Run
