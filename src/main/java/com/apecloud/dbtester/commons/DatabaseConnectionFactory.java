@@ -77,6 +77,7 @@ public class DatabaseConnectionFactory {
             // PostgreSQL
             case "pg":
             case "pgpool":
+            case "pgbouncer":
             case "postgresql":
             case "he3sql":
             case "polardb-pg":
@@ -139,6 +140,7 @@ public class DatabaseConnectionFactory {
             // PostgreSQL
             case "pg":
             case "pgpool":
+            case "pgbouncer":
             case "postgresql":
             case "he3sql":
             case "polardb-pg":

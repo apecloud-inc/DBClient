@@ -107,6 +107,7 @@ public class TesterFactory {
             // PostgreSQL
             case "pg":
             case "pgpool":
+            case "pgbouncer":
             case "postgres":
             case "postgresql":
             case "opentenbase":

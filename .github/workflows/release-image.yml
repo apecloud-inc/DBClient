@@ -16,6 +16,8 @@ on:
           - linux/amd64
           - linux/arm64
           - linux/amd64,linux/arm64
+  push:
+    branches: [ main ]
   release:
     types:
       - published
@@ -50,6 +52,8 @@ jobs:
     permissions:
       id-token: write
       contents: read
+    if: >-
+      ${{ github.event_name != 'push' || github.ref != 'refs/heads/main' }}
     needs: [ release-version ]
     uses: apecloud-inc/apecloud-cd/.github/workflows/release-image-no-cache.yml@v0.7.0
     with:
@@ -64,7 +68,9 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    if: ${{ github.event.action == 'published' }}
+    if: >-
+      ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+          (github.event_name == 'release' && github.event.action == 'published') }}
     needs: [ release-version ]
     uses: apecloud-inc/apecloud-cd/.github/workflows/release-image-no-cache.yml@v0.7.0
     with:
