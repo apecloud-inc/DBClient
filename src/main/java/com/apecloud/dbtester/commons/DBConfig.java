@@ -412,6 +412,7 @@ public class DBConfig {
                 case "oracle":
                 case "pg":
                 case "pgpool":
+                case "pgbouncer":
                 case "postgres":
                 case "postgresql":
                 case "polardbx":
