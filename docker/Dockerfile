@@ -10,13 +10,15 @@ COPY ./libs ./libs
 COPY ./gradle ./gradle
 COPY ./src ./src
 
+# Limit Gradle memory and disable daemon to prevent OOM on arm64 emulation in CI runners
+ENV GRADLE_OPTS="-Xmx1024m -Xms512m -Dorg.gradle.daemon=false"
+ENV GRADLE_USER_HOME=/tmp/.gradle
+
 RUN chmod +x gradlew && \
-    ./gradlew --version && \
-    ./gradlew build && \
-    rm -rf ./gradle && \
-    rm -rf build/distributions && \
-    rm -rf build/classes && \
-    rm -rf build/tmp
+    ./gradlew --version --no-daemon && \
+    ./gradlew build --no-daemon --max-workers=2 && \
+    rm -rf ./gradle /tmp/.gradle ~/.gradle && \
+    rm -rf build/distributions build/classes build/tmp
 
 FROM eclipse-temurin:11-jre
 
