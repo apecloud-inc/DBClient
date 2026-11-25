@@ -390,6 +390,7 @@ public class DBConfig {
                 case "hadoop":
                 case "he3sql":
                 case "hive":
+                case "inforsuite-redis":
                 case "influx":
                 case "influxdb":
                 case "kafka":

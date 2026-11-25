@@ -109,6 +109,8 @@ public class TestExecutor {
                     }
                 }
                 else if (dbType.equalsIgnoreCase("redis")
+                        || dbType.equalsIgnoreCase("redis-cluster")
+                        || dbType.equalsIgnoreCase("inforsuite-redis")
                         || dbType.equalsIgnoreCase("sentinelredis")
                         || dbType.equalsIgnoreCase("sentinelvalkey")
                         || dbType.equalsIgnoreCase("valkey")) {

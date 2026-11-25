@@ -126,6 +126,7 @@ public class TesterFactory {
             // Redis
             case "camellia-proxy":
             case "camellia-redis-proxy":
+            case "inforsuite-redis":
             case "redis":
             case "sentinelredis":
             case "sentinelvalkey":

@@ -12,7 +12,7 @@ description: >
 
 | Engine | Tester | Aliases |
 |---|---|---|
-| Redis / Valkey | `RedisTester.java` | `redis`, `sentinelredis`, `valkey`, `sentinelvalkey`, `camellia-proxy`, `camellia-redis-proxy` |
+| Redis / Valkey / InforSuite RDS | `RedisTester.java` | `redis`, `sentinelredis`, `valkey`, `sentinelvalkey`, `camellia-proxy`, `camellia-redis-proxy`, `inforsuite-redis` |
 | Redis Cluster | `RedisClusterTester.java` | `redis-cluster` |
 | Etcd | `EtcdTester.java` | `etcd` |
 | Zookeeper | `ZookeeperTester.java` | `zk`, `zookeeper` |
