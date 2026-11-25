@@ -36,3 +36,5 @@ build
 .idea
 
 outputs
+
+docker/test

@@ -417,6 +417,7 @@ public class DBConfig {
                 case "postgresql":
                 case "polardbx":
                 case "polardb-pg":
+                case "proxysql":
                 case "pulsar":
                 case "qdrant":
                 case "rabbitmq":

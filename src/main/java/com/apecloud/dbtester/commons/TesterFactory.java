@@ -89,6 +89,7 @@ public class TesterFactory {
             case "mariadb":
             case "mysql":
             case "polardbx":
+            case "proxysql":
             case "tidb":
                 return new MySQLTester(config);
             // Nebula

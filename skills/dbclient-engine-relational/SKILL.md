@@ -12,7 +12,7 @@ description: >
 ## Covered Testers and Aliases
 
 ### MySQL-protocol compatible -> `MySQLTester.java`
-Aliases: `mysql`, `mariadb`, `tidb`, `polardbx`, `greatsql`, `greatdb`, `greptime` (`greptimedb`), `foxlake`
+Aliases: `mysql`, `mariadb`, `tidb`, `polardbx`, `proxysql`, `greatsql`, `greatdb`, `greptime` (`greptimedb`), `foxlake`
 
 ### PostgreSQL-protocol compatible -> `PostgreSQLTester.java`
 Aliases: `postgresql` (`postgres` / `pg`), `opentenbase`

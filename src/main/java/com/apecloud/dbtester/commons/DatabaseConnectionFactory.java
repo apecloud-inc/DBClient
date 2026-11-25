@@ -57,6 +57,7 @@ public class DatabaseConnectionFactory {
             case "greatsql":
             case "greptime":
             case "polardbx":
+            case "proxysql":
             case "selectdb":
             case "sr":
             case "starrocks":
@@ -128,6 +129,7 @@ public class DatabaseConnectionFactory {
             case "mysql":
             case "mysql 5.1":
             case "polardbx":
+            case "proxysql":
             case "selectdb":
             case "sr":
             case "starrocks":

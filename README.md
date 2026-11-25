@@ -32,6 +32,7 @@ A unified database client tool for accessing various databases in KubeBlocks and
 - FoxLake
 - GreatSQL
 - GreatDB
+- ProxySQL (`proxysql`, MySQL protocol)
 
 ### NoSQL Databases
 - MongoDB
@@ -487,6 +488,24 @@ DBClient/
 ├── docker/                         # Docker configuration
 └── README.md                       # This file
 ```
+
+### ProxySQL
+
+ProxySQL uses the MySQL protocol and reuses `MySQLTester`. Point `--port` at the ProxySQL frontend (default `6033`) and use a frontend application account:
+
+```bash
+java -jar ./build/libs/dbclient-1.0-all.jar \
+  --host=127.0.0.1 \
+  --port=6033 \
+  --user=app_user \
+  --password=mysecretpassword \
+  --database=mydb \
+  --dbtype=proxysql \
+  --test=query \
+  --query="SELECT 1"
+```
+
+The admin interface (default `6032`) is not the target of the generated `executionloop` schema and write workload.
 
 ### Adding New Database Support
 

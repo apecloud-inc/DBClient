@@ -25,6 +25,7 @@ DBClient (DBClient) is a unified Java-based database client tool designed for ac
 - FoxLake
 - GreatSQL
 - GreatDB
+- ProxySQL (`proxysql`, MySQL protocol)
 
 ### 2.2 NoSQL Databases
 - MongoDB
@@ -513,6 +514,7 @@ Use these values for the `--dbtype` parameter:
 - `mysql`, `mysql 5.1`
 - `tidb`, `mariadb`
 - `polardbx`, `foxlake`
+- `proxysql` (default frontend port `6033`, reuses the MySQL tester)
 - `greatsql`, `greatdb`
 - `greptime`
 - `doris`, `selectdb`

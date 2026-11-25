@@ -25,6 +25,7 @@ DBClient（DBClient）是一个基于 Java 开发的统一数据库客户端工�
 - FoxLake
 - GreatSQL
 - GreatDB
+- ProxySQL（`proxysql`，MySQL 协议）
 
 ### 2.2 NoSQL 数据库
 - MongoDB
@@ -513,6 +514,7 @@ docker run --rm --network host apecloud/dbclient:latest \
 - `mysql`, `mysql 5.1`
 - `tidb`, `mariadb`
 - `polardbx`, `foxlake`
+- `proxysql`（默认前端端口 `6033`，复用 MySQL 测试器）
 - `greatsql`, `greatdb`
 - `greptime`
 - `doris`, `selectdb`
